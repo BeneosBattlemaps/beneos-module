@@ -32,7 +32,7 @@
 import { MODULE_ID, SETTING, streamEnabled, localCacheEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
          gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage,
-         adresseNormal, ohneDeckung } from "./stream-fetch.mjs"
+         adresseNormal, ohneDeckung, gehaltenePruefung, adresseVonKennung } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
@@ -157,15 +157,13 @@ export function kennungVon(url) {
   return t ? `${t.release}|${t.variant}|${t.pfad}` : ""
 }
 
-/** Aus einer Dateikennung wieder eine Adresse bauen, mit dem heutigen Schluessel. */
+/**
+ * Aus einer Dateikennung wieder eine Adresse bauen, mit dem heutigen Schluessel.
+ * Die Regel steht seit stre-T-081 als `adresseVonKennung` in `stream-fetch.mjs`,
+ * dort mit der Traegersuche fuer geteilte Dateien.
+ */
 export function adresseVon(kennung) {
-  const teile = String(kennung || "").split("|")
-  if (teile.length < 3) return ""
-  const [release, variant, ...rest] = teile
-  // `rest.join` und nicht `teile[2]`: ein Pfad darf einen senkrechten Strich
-  // tragen, und ein abgeschnittener Pfad waere eine tote Adresse, die niemand
-  // als solche erkennt.
-  return assetUrl(release, variant, rest.join("|"))
+  return adresseVonKennung(kennung)
 }
 
 /**
@@ -1851,7 +1849,9 @@ export async function verwaisteLoesen() {
   if (!verwaist.length) return { ...leer, geprueft: gehalten.length }
 
   const bytes = verwaist.reduce((s, v) => s + (Number(v.bytes) || 0), 0)
-  const erg = await offlineFreigeben(verwaist.map(v => v.url))
+  // Geloest wird ueber den Schluessel: eine geteilte Datei ohne bekannten
+  // Traeger hat keine Toradresse (stre-T-081).
+  const erg = await offlineFreigeben(verwaist.map(v => v.schluessel || v.url))
   console.log(`Beneos Stream | ${verwaist.length} gehaltene Datei(en) ohne Zusage geloest, `
     + `${Math.round(bytes / 1048576)} MB wieder raeumbar`)
   return { geprueft: gehalten.length, verwaist: verwaist.length, bytes, geloest: erg.geloest || 0 }
@@ -1961,11 +1961,17 @@ export async function geteilteLuecken() {
   // Dateien waeren das dreissig Oeffnungen im Startpfad der Welt. `verwaisteLoesen`
   // benutzt dieselbe Quelle, und dass beide Abgleiche denselben Stand lesen,
   // ist mehr als eine Ersparnis: sonst koennten sie sich widersprechen.
-  const gehalten = new Set((await gehalteneAdressen()).map(g => adresseNormal(g.url)))
+  // Seit stre-T-081 im Raum der Vorratsschluessel, ueber dieselbe Regel wie
+  // `verwaisteLoesen` (`gehaltenePruefung` neben `ohneDeckung`).
+  const istGehalten = gehaltenePruefung(await gehalteneAdressen())
 
   let fehlend = 0, bytes = 0, geaendert = 0
   for (const [url, e] of eintraege) {
-    if (gehalten.has(adresseNormal(url))) {
+    const stand = istGehalten(url)
+    // Nur der Name passt, die Pruefsumme ist unbekannt: den Vermerk weder
+    // setzen noch loeschen, bis ein Lauf mit Manifest es sicher weiss.
+    if (stand === "unklar") continue
+    if (stand) {
       // Ein Vermerk, der sich erledigt hat. Er muss auch dann verschwinden,
       // wenn in diesem Lauf sonst nichts fehlt, sonst bliebe die Datei
       // dauerhaft aus der Kontingentrechnung heraus.

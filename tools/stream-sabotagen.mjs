@@ -145,6 +145,12 @@
  * Tor auf eine HEAD-Nachfrage den denied-Kopf schickt; je Adresse einmal, mit
  * eigener Zeitgrenze, ohne den Klang aufzuhalten. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-081 dazu `vorrat` (`scripts/stream/stream-vorrat.test.mjs`): der
+ * Abgleich gehaltener Dateien vergleicht im Raum der Vorratsschluessel, ein
+ * eigener Schluessel ohne Toradresse laesst sich loesen, ein fremder Ursprung
+ * nicht, und eine geteilte Kennung findet ihren Traeger. An der Basis gibt es
+ * ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -2160,6 +2166,40 @@ const SABOTAGEN = [
   { satz: "klangwache", ziel: ["offline: keine Nachfrage","offline: die Meldung ist die fuer offline"], ersetze: [[ONLINE, "if (tor && streamEnabled() && isOffline() && src.includes(tor)) {", "if (false) {"], [ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& this?.failed) frageTorNach(src)"]] },
   { satz: "klangwache", ziel: ["offline: die Meldung ist die fuer offline"], ersetze: [[ONLINE, "      meldeKlang(\"offline\", src)\n      return this", "      return this"]] },
   { satz: "klangwache", ziel: ["[Struktur] die Nachfrage hat eine Zeitgrenze von 1 bis 10 Sekunden"], ersetze: [[ONLINE, "const KLANG_NACHFRAGE_MS = 5000", "const KLANG_NACHFRAGE_MS = 60000"]] },
+  // ---------------------------------------------------------------- vorrat (stre-T-081)
+  // Der Vergleich wieder im Adressraum, wie vor stre-T-081.
+  { satz: "vorrat", ziel: ["P-A: Zusage mit der Kartenadresse deckt die Datei","P-A: Kennung aus dem Gemeinschaftsvorrat deckt die Datei","P-B: Kennung aus dem Gemeinschaftsvorrat deckt sie","Weltstart: Zusage mit der Kartenadresse deckt sie","Weltstart: Kennung in Kartenform deckt sie"], ersetze: [[FETCH, "  return (gehalten || []).filter(g => !gedecktIn(decke, gehaltenerSchluessel(g, an)))", "  return (gehalten || []).filter(g => !(gedeckt || []).map(adresseNormal).includes(adresseNormal(g.url)))"]] },
+  // Der Praefix-Ausweg entfernt, und einmal ohne den Schraegstrich dahinter.
+  { satz: "vorrat", ziel: ["P-B: der verwaiste Schluessel ist loesbar"], ersetze: [[FETCH, "  const eigen = u => ours(u) || u.startsWith(`${VORRAT_URSPRUNG}/a/`)", "  const eigen = u => ours(u)"]] },
+  { satz: "vorrat", ziel: ["fremder Ursprung wird nicht geloest"], ersetze: [[FETCH, "u.startsWith(`${VORRAT_URSPRUNG}/a/`)", "u.startsWith(VORRAT_URSPRUNG)"]] },
+  // Die Traegersuche in der Kennung entfernt (W2).
+  { satz: "vorrat", ziel: ["geteilte Kennung mit bekanntem Traeger gibt die /s/-Adresse"], ersetze: [[FETCH, "    if (mitTraeger) return mitTraeger\n", "\n"]] },
+  { satz: "vorrat", ziel: ["[Struktur] adresseVon ruft adresseVonKennung"], ersetze: [[OFFLINE, "  return adresseVonKennung(kennung)\n", "  return \"\"\n"]] },
+  { satz: "vorrat", ziel: ["[Struktur] verwaisteLoesen loest ueber den Schluessel"], ersetze: [[OFFLINE, "offlineFreigeben(verwaist.map(v => v.schluessel || v.url))", "offlineFreigeben(verwaist.map(v => v.url))"]] },
+  { satz: "vorrat", ziel: ["[Struktur] gehalteneAdressen gibt den Schluessel mit"], ersetze: [[FETCH, "        schluessel: anfrage.url,\n", "\n"]] },
+  // Legacy, Schalter AUS: Schluesselform, Rueckweg, Abgleich und Filter.
+  { satz: "vorrat", ziel: ["Vorratsschluessel der Karte zeichengleich","Vorratsschluessel der /a/-Datei zeichengleich","Vorratsschluessel des Tonstuecks zeichengleich","Karte: der Rueckweg gibt die Toradresse von heute","/a/-Datei: der Rueckweg gibt die Toradresse von heute","Tonstueck: der Rueckweg gibt die Toradresse von heute","Fall A: der Schluessel ist release-frei","Fall A: der Rueckweg gibt eine /s/-Adresse"], ersetze: [[FETCH, "  return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(quelle.release)}", "  return `${VORRAT_URSPRUNG}/k/${encodeURIComponent(quelle.release)}"]] },
+  { satz: "vorrat", ziel: ["ohneDeckung wie der alte Abgleich: alles gedeckt","ohneDeckung wie der alte Abgleich: nichts gedeckt","ohneDeckung wie der alte Abgleich: nur die Karte gedeckt","ohneDeckung wie der alte Abgleich: Deckung mit Abfrage und Anker","P-A Gegenwert: ohne Deckung ist sie verwaist","P-B Gegenwert: ohne Deckung ist sie verwaist"], ersetze: [[FETCH, "  return (gehalten || []).filter(g => !gedecktIn(decke, gehaltenerSchluessel(g, an)))", "  return (gehalten || []).filter(g => gedecktIn(decke, gehaltenerSchluessel(g, an)))"]] },
+  { satz: "vorrat", ziel: ["eigeneEingaben wie der alte Filter"], ersetze: [[FETCH, "  return [...new Set((urls || []).filter(u => typeof u === \"string\" && eigen(u)))]", "  return (urls || []).filter(u => typeof u === \"string\" && eigen(u))"]] },
+  // Kennung zur Adresse: Reihenfolge, fremder Traeger, und der Rueckweg ohne Traeger.
+  { satz: "vorrat", ziel: ["Kennung einer Karte gibt die Toradresse wie bisher"], ersetze: [[FETCH, "  return assetUrl(release, variant, pfad)", "  return assetUrl(variant, release, pfad)"]] },
+  { satz: "vorrat", ziel: ["Gegenwert: geteilte Kennung ohne Traeger bleibt leer"], ersetze: [[FETCH, "geteilteAdresse(variant, pfad, adressenZuSha.get(variant))", "geteilteAdresse(variant, pfad, [...adressenZuSha.values()].flatMap(l => [...l]))"]] },
+  { satz: "vorrat", ziel: ["Fall B: der Rueckweg laesst den Schluessel stehen"], ersetze: [[FETCH, "return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s", "return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || \"\""]] },
+  { satz: "vorrat", ziel: ["Kennung shared ohne Pruefsumme: die Antwort von vorher"], ersetze: [[FETCH, "  return assetUrl(release, variant, pfad)", "  return release === GETEILT_RAUM ? \"\" : assetUrl(release, variant, pfad)"]] },
+  // Kalt-Review stre-T-081: Weltstart ohne Pruefsumme, rohe Speicherschluessel, der Zwilling geteilteLuecken.
+  { satz: "vorrat", ziel: ["Weltstart: Zusage mit der Kartenadresse deckt sie","Weltstart: Kennung in Kartenform deckt sie"], ersetze: [[FETCH, "  return Boolean(name && decke.namen.has(name))", "  return false"]] },
+  { satz: "vorrat", ziel: ["Weltstart Gegenwert: eine andere geteilte Datei deckt sie nicht"], ersetze: [[FETCH, "  return Boolean(name && decke.namen.has(name))", "  return Boolean(name && decke.namen.size > 0)"]] },
+  { satz: "vorrat", ziel: ["Weltstart Gegenwert: eine Kartendatei gleichen Namens deckt sie nicht"], ersetze: [[FETCH, "  if (!istGeteilteDatei(pfad)) return \"\"\n", "\n"]] },
+  { satz: "vorrat", ziel: ["roher Speicherschluessel (Umzug gescheitert): gedeckt wie vorher"], ersetze: [[FETCH, "  return adresseNormal(vorratsSchluesselBei(adresseNormal(g?.schluessel || g?.url), an))", "  return adresseNormal(g?.schluessel || g?.url)"]] },
+  { satz: "vorrat", ziel: ["gewollte Abweichung: Deckung unter frueherem Streamschluessel haelt die Datei"], ersetze: [[FETCH, "  if (/^https?:\\/\\//.test(s)) return adresseNormal(vorratsSchluesselBei(adresseNormal(s), an))", "  if (/^https?:\\/\\//.test(s)) return adresseNormal(s)"]] },
+  { satz: "vorrat", ziel: ["AUS: eine gehaltene Karte gilt als gehalten","AN, Pruefsumme bekannt: die /a/-Adresse gilt als gehalten"], ersetze: [[FETCH, "    if (schluessel.has(s)) return true\n", "\n"]] },
+  { satz: "vorrat", ziel: ["AN, Weltstart: der Eintrag in Kartenform ist unklar"], ersetze: [[FETCH, "    return name && namen.has(name) ? \"unklar\" : false", "    return name && namen.has(name) ? true : false"]] },
+  { satz: "vorrat", ziel: ["Gegenwert: ohne gehaltene Datei fehlt der Eintrag"], ersetze: [[FETCH, "    return name && namen.has(name) ? \"unklar\" : false", "    return name ? \"unklar\" : false"]] },
+  // Kalt-Review stre-T-081, Runde 2: die Namensregel nur bei AN, und "unklar" laesst den Vermerk stehen.
+  { satz: "vorrat", ziel: ["AUS: ein geteilter Schluessel ist durch die Kartenform nicht gedeckt"], ersetze: [[FETCH, "    const name = an ? ungeloesterGeteilterName(e, s) : \"\"", "    const name = ungeloesterGeteilterName(e, s)"]] },
+  { satz: "vorrat", ziel: ["AUS: ein geteilter Schluessel gilt fuer die Kartenform nicht als gehalten"], ersetze: [[FETCH, "    const name = an ? geteilterName(s) : \"\"", "    const name = geteilterName(s)"], [FETCH, "    const name = an ? ungeloesterGeteilterName(eintrag, s) : \"\"", "    const name = ungeloesterGeteilterName(eintrag, s)"]] },
+  { satz: "vorrat", ziel: ["[Struktur] geteilteLuecken laesst einen unklaren Eintrag unberuehrt"], ersetze: [[OFFLINE, "    if (stand === \"unklar\") continue\n", "\n"]] },
+  { satz: "vorrat", ziel: ["[Struktur] geteilteLuecken fragt ueber gehaltenePruefung"], ersetze: [[OFFLINE, "gehaltenePruefung(await gehalteneAdressen())", "gehaltenePruefung([])"]] },
 ];
 
 /*
@@ -2401,7 +2441,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

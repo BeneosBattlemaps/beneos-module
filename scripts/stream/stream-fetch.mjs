@@ -375,9 +375,17 @@ export function ours(url) {
  * Die Eingaben, die `offlineFreigeben` und `offlineGehalten` anfassen duerfen,
  * ohne Doppelte (stre-T-081). Ausgezogen, damit der Pruefsatz genau diesen
  * Filter misst und nicht eine Abschrift davon.
+ *
+ * NEBEN DER TORADRESSE AUCH DER EIGENE VORRATSSCHLUESSEL. Eine geteilte Datei,
+ * deren Traeger in dieser Sitzung unbekannt ist, hat keine Toradresse; der
+ * Rueckweg laesst ihren Schluessel stehen. Ohne diesen Ausweg bliebe sie
+ * gehalten, ohne dass sie je jemand loesen koennte. Angenommen wird genau der
+ * Ursprung des Vorrats mit dem Raum `/a/`, nichts, was nur so beginnt: der
+ * Vergleich laeuft auf dem Praefix MIT dem Schraegstrich dahinter.
  */
 export function eigeneEingaben(urls) {
-  return [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  const eigen = u => ours(u) || u.startsWith(`${VORRAT_URSPRUNG}/a/`)
+  return [...new Set((urls || []).filter(u => typeof u === "string" && eigen(u)))]
 }
 
 /**
@@ -395,16 +403,148 @@ export function adresseNormal(url) {
 }
 
 /**
+ * Der Vorratsschluessel aus einer Dateikennung `release|variant|pfad`, ohne
+ * Umweg ueber eine Toradresse (stre-T-081).
+ *
+ * Fuer eine geteilte Datei ohne bekannten Traeger gibt es keine Toradresse,
+ * wohl aber einen Schluessel, und genau unter dem liegt sie im Vorrat.
+ */
+export function schluesselVonKennung(release, variant, pfad) {
+  const p = String(pfad).split("/").map(encodeURIComponent).join("/")
+  return `${VORRAT_URSPRUNG}/a/${encodeURIComponent(release)}/${encodeURIComponent(variant)}/${p}`
+}
+
+/*
+ * Ein Eintrag der Deckung als Vorratsschluessel. Eine Adresse geht ueber
+ * `vorratsSchluesselBei`, eine Kennung ueber `assetUrl` und, wo es keine
+ * Adresse gibt, direkt ueber `schluesselVonKennung`.
+ */
+function deckungsSchluessel(eintrag, an) {
+  const s = String(eintrag ?? "")
+  if (/^https?:\/\//.test(s)) return adresseNormal(vorratsSchluesselBei(adresseNormal(s), an))
+  const teile = s.split("|")
+  if (teile.length < 3) return s
+  const [release, variant, ...rest] = teile
+  const pfad = rest.join("|")
+  const adresse = release === GETEILT_RAUM ? "" : assetUrl(release, variant, pfad)
+  if (adresse) return adresseNormal(vorratsSchluesselBei(adresse, an))
+  return schluesselVonKennung(release, variant, pfad)
+}
+
+/*
+ * Der Name einer geteilten Datei, die als Karten- oder Kennungsform kommt und
+ * ihren geteilten Schluessel NICHT bekommen hat, weil die Pruefsumme in dieser
+ * Sitzung noch unbekannt ist. Sonst "".
+ *
+ * Der Fall ist der Weltstart: `verwaisteLoesen` laeuft, bevor ein Manifest das
+ * Sitzungsverzeichnis fuellt, und die Zusagen tragen geteilte Dateien unter
+ * ihrer Kartenadresse (Kalt-Review stre-T-081).
+ */
+function ungeloesterGeteilterName(eintrag, schluessel) {
+  if (geteilterName(schluessel)) return ""
+  const s = String(eintrag ?? "")
+  let pfad
+  if (/^https?:\/\//.test(s)) pfad = adresseNormal(s)
+  else {
+    const teile = s.split("|")
+    if (teile.length < 3 || teile[0] === GETEILT_RAUM) return ""
+    pfad = "/" + teile.slice(2).join("|")
+  }
+  if (!istGeteilteDatei(pfad)) return ""
+  try { return decodeURIComponent(pfad.split("/").pop()) } catch (_) { return pfad.split("/").pop() }
+}
+
+/* Der Dateiname eines geteilten Vorratsschluessels, sonst "". */
+function geteilterName(schluessel) {
+  const vorne = `${VORRAT_URSPRUNG}/a/${GETEILT_RAUM}/`
+  if (!String(schluessel).startsWith(vorne)) return ""
+  try { return decodeURIComponent(String(schluessel).split("/").pop()) } catch (_) { return "" }
+}
+
+/*
+ * Der Schluessel eines gehaltenen Eintrags, gleich gebaut wie die Deckung.
+ * `vorratsSchluesselBei` laesst einen Vorratsschluessel stehen und macht aus
+ * einer rohen Toradresse (Umzug gescheitert) den Schluessel, den sie haette.
+ */
+function gehaltenerSchluessel(g, an) {
+  return adresseNormal(vorratsSchluesselBei(adresseNormal(g?.schluessel || g?.url), an))
+}
+
+/*
+ * Ist der Schluessel gedeckt? Genau, oder als geteilte Datei, deren Name eine
+ * Deckung ohne bekannte Pruefsumme traegt. Die zweite Regel kann eine
+ * verwaiste Datei gleichen Namens halten; das ist die Richtung, in die ein
+ * Irrtum fallen soll: lieber gehalten als einem Kunden offline genommen.
+ */
+function gedecktIn(decke, schluessel) {
+  if (decke.schluessel.has(schluessel)) return true
+  const name = geteilterName(schluessel)
+  return Boolean(name && decke.namen.has(name))
+}
+
+function baueDecke(eintraege, an) {
+  const decke = { schluessel: new Set(), namen: new Set() }
+  for (const e of eintraege || []) {
+    const s = deckungsSchluessel(e, an)
+    decke.schluessel.add(s)
+    // Nur bei AN: bei AUS liegt keine geteilte Datei unter einem geteilten
+    // Schluessel, und das Ergebnis soll bleiben, wie es war.
+    const name = an ? ungeloesterGeteilterName(e, s) : ""
+    if (name) decke.namen.add(name)
+  }
+  return decke
+}
+
+/**
  * Die gehaltenen Eintraege ohne Deckung (stre-T-081).
  *
  * `gehalten` ist die Liste aus `gehalteneAdressen`, `gedeckt` jede Adresse
  * oder Kennung, die eine Zusage oder der Gemeinschaftsvorrat deckt. Eine reine
  * Funktion, damit der Abgleich in node gemessen werden kann.
+ *
+ * VERGLICHEN WIRD IM RAUM DER VORRATSSCHLUESSEL, nicht der Toradressen. Mit
+ * dem Schalter AN hat eine geteilte Datei drei Schreibweisen: die /a/-Adresse
+ * der Zusage, die /s/-Adresse des Rueckwegs und die Kennung des
+ * Gemeinschaftsvorrats. Nur der Schluessel ist fuer alle drei derselbe. Mit dem
+ * Schalter AUS bildet der Schluessel jede Toradresse eins zu eins ab, das
+ * Ergebnis bleibt also, wie es war; nur zwei Adressen derselben Datei mit
+ * verschiedenem Streamschluessel oder verschiedener Basis gelten jetzt als
+ * eine, und das sind sie auch.
+ *
+ * `an` ist eine Naht fuer den Pruefsatz. Das Modul ruft ohne sie.
  */
-export function ohneDeckung(gehalten, gedeckt) {
-  const decke = new Set()
-  for (const u of gedeckt || []) decke.add(adresseNormal(u))
-  return (gehalten || []).filter(g => !decke.has(adresseNormal(g.url)))
+export function ohneDeckung(gehalten, gedeckt, { an = GETEILTER_VORRAT_AN } = {}) {
+  const decke = baueDecke(gedeckt, an)
+  return (gehalten || []).filter(g => !gedecktIn(decke, gehaltenerSchluessel(g, an)))
+}
+
+/**
+ * Die umgekehrte Frage fuer `geteilteLuecken`: ist dieser Eintrag (Adresse
+ * oder Kennung) gehalten? Im selben Raum und nach denselben Regeln wie
+ * `ohneDeckung`, damit beide Abgleiche desselben Weltstarts einander nicht
+ * widersprechen (stre-T-081).
+ *
+ * Antwort `true`, `false` oder `"unklar"`. Unklar heisst: nur der Dateiname
+ * passt, die Pruefsumme ist in dieser Sitzung unbekannt. Fuer `verwaisteLoesen`
+ * ist "im Zweifel halten" die sichere Richtung, fuer `geteilteLuecken` waere
+ * "im Zweifel gehalten" die unsichere: ein echter Fehlvermerk einer
+ * gleichnamigen anderen Datei fiele weg. Der Aufrufer laesst den Vermerk bei
+ * "unklar" deshalb stehen. Die Namensregel gilt nur bei AN.
+ */
+export function gehaltenePruefung(gehalten, { an = GETEILTER_VORRAT_AN } = {}) {
+  const schluessel = new Set(), namen = new Set()
+  for (const g of gehalten || []) {
+    const s = gehaltenerSchluessel(g, an)
+    schluessel.add(s)
+    const name = an ? geteilterName(s) : ""
+    if (name) namen.add(name)
+  }
+  return eintrag => {
+    const s = deckungsSchluessel(eintrag, an)
+    if (schluessel.has(s)) return true
+    const name = an ? ungeloesterGeteilterName(eintrag, s) : ""
+    return name && namen.has(name) ? "unklar" : false
+  }
 }
 
 /* ------------------------------------------------ Schluessel des Vorrats -- */
@@ -436,6 +576,13 @@ export function ohneDeckung(gehalten, gedeckt) {
  * aussen ausschliesslich die Toradresse von heute. Umgerechnet wird an der
  * Grenze, in `vMatch`, `vPut`, `vDelete` sowie in den zwei Stellen, die
  * Schluessel nach aussen geben: `gehalteneAdressen` und `alleZusagenLoesen`.
+ *
+ * SEIT stre-T-081 EINE AUSNAHME, und zwar mit Absicht: `gehalteneAdressen`
+ * gibt neben der Toradresse auch den Vorratsschluessel heraus, und
+ * `offlineFreigeben` und `offlineGehalten` nehmen ausser Toradressen einen
+ * eigenen Vorratsschluessel an (`eigeneEingaben`). Eine geteilte Datei ohne
+ * bekannten Traeger hat keine Toradresse; ohne diesen Weg liesse sie sich
+ * weder abgleichen noch loesen.
  */
 const VORRAT_URSPRUNG = "https://beneos-stream.invalid"
 
@@ -569,10 +716,39 @@ function vorratsSchluesselBei(url, an) {
 }
 
 /**
+ * Aus einer Dateikennung `release|variant|pfad` die Toradresse von heute
+ * (stre-T-081, bis dahin nur in `stream-offline.mjs` als `adresseVon`).
+ *
+ * EINE GETEILTE KENNUNG BRAUCHT DEN TRAEGER, wie im Rueckweg darunter. Ohne
+ * ihn hiess die Antwort fuer jede geteilte Datei "", und der
+ * Gemeinschaftsvorrat fuehrte statt einer Adresse die nackte Kennung, auch
+ * wenn das Sitzungsverzeichnis eine Kartenadresse kannte. Ist keine bekannt,
+ * bleibt die Antwort die leere Zeichenkette.
+ *
+ * Hier und nicht in `stream-offline.mjs`, damit der Pruefsatz sie in node
+ * messen kann; `adresseVon` dort ruft sie.
+ */
+export function adresseVonKennung(kennung) {
+  const teile = String(kennung || "").split("|")
+  if (teile.length < 3) return ""
+  const [release, variant, ...rest] = teile
+  // `rest.join` und nicht `teile[2]`: ein Pfad darf einen senkrechten Strich
+  // tragen, und ein abgeschnittener Pfad waere eine tote Adresse.
+  const pfad = rest.join("|")
+  if (release === GETEILT_RAUM) {
+    const mitTraeger = geteilteAdresse(variant, pfad, adressenZuSha.get(variant))
+    if (mitTraeger) return mitTraeger
+  }
+  // Ohne Traeger die Antwort von vorher: "" fuer eine echte Pruefsumme.
+  return assetUrl(release, variant, pfad)
+}
+
+/**
  * Der Rueckweg: Vorratsschluessel zur Toradresse von HEUTE.
  *
- * Exportiert seit T-056 nur fuer `stream-geteilt.test.mjs`, das den Weg mit
- * und ohne geladenes Manifest misst.
+ * Exportiert seit T-056 fuer `stream-geteilt.test.mjs`, das den Weg mit und
+ * ohne geladenes Manifest misst, seit stre-T-081 auch fuer
+ * `stream-vorrat.test.mjs`.
  */
 export function adresseAusSchluessel(schluessel) {
   const s = String(schluessel || "")
@@ -1062,10 +1238,14 @@ export async function gehalteneAdressen() {
     for (const anfrage of await store.keys()) {
       const hit = await store.match(anfrage)
       if (!hit?.headers.get(KEEP_HEADER)) continue
-      // Nach aussen geht die Toradresse von heute, nicht der Vorratsschluessel.
-      // Der Aufrufer vergleicht sie gegen die Zusagenliste, und die ist in
-      // Toradressen gebaut.
-      raus.push({ url: adresseAusSchluessel(anfrage.url), bytes: Number(hit.headers.get("content-length") || 0) })
+      // Nach aussen gehen die Toradresse von heute UND, seit stre-T-081, der
+      // Vorratsschluessel: verglichen und geloest wird ueber ihn, denn eine
+      // geteilte Datei ohne bekannten Traeger hat keine Toradresse.
+      raus.push({
+        url: adresseAusSchluessel(anfrage.url),
+        schluessel: anfrage.url,
+        bytes: Number(hit.headers.get("content-length") || 0),
+      })
     }
   } catch (_) { /* melde, was gefunden wurde */ }
   return raus
