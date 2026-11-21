@@ -294,6 +294,22 @@ const CSS_BOGEN = "css/beneos-character-sheet.css";
 const CSS_WIKI = "css/beneos-wiki.css";
 const CSS_BENEOS = "css/beneos.css";
 
+// vertrag-manifest (stre-T-021): die Probennamen tragen die Vorlage vorn. Die
+// Namen der /2-Manifeste stehen in der Vorlage von beneos-stream-beta; aendert
+// sie sich, meldet der Laeufer "Ziel ist keine Probe des Satzes".
+const VM_ZWEI = ["/2 beneos_bm_0001_markt/4k", "/2 beneos_bm_0002_hafen/4k"];
+const VM_PROBE = (text, vorlagen = ["/4", ...VM_ZWEI]) => vorlagen.map((v) => `${v}: ${text}`);
+// Welche Vorlage welchen Zweig der Weiche erreicht, steht in ihren Eintraegen:
+// ungepinnte Randeintraege tragen /4 und markt, gepinnte /4 und hafen, geteilte
+// nur die beiden /2. Je Zweig eine Sabotage, damit jede Vorlage bewacht ist.
+const VM_KANTE = ["/4", VM_ZWEI[0]];
+const VM_PIN = ["/4", VM_ZWEI[1]];
+// vertrag-adresse (stre-T-021). Die drei Zeilen in stream-settings.mjs, die
+// eine Kartenadresse bauen, und die Faelle, die das Tor annehmen muss.
+const VA_CLEAN = "  const clean = String(path).replace(/^\\/+/, \"\").split(\"/\").map(encodeURIComponent).join(\"/\")";
+const VA_RET = "  return [\"a\", encodeURIComponent(release), encodeURIComponent(variant), clean]";
+const VA_URL = "  return `${streamBase()}/${teile[0]}/${schluessel}/${teile.slice(1).join(\"/\")}`";
+const VA_NAMEN = ["Leerzeichen", "Klammern", "Apostroph", "Plus", "Prozent", "Umlaut", "Unterordner", "Bindestrich"];
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
   { satz: "maske", ziel: ["Kartenroute, nackte Adresse","Kreaturenroute","die gemessene Zeile des Kerns","Abfragezeichenkette dahinter bleibt","zwei Adressen in einer Zeile, beide maskiert","in Anfuehrungszeichen, der Schluessel endet am Zeichen","in spitzen Klammern","im Text: zweimal maskieren aendert nichts mehr","Schluessel direkt vor dem Anfuehrungszeichen, das Zeichen bleibt","Schluessel direkt vor der spitzen Klammer, die Klammer bleibt","Beute, nackte Adresse","Beute, die gemessene Zeile des Kerns","geteilt, nackte Adresse","geteilt, die gemessene Zeile des Kerns","alle vier Raeume in einer Zeile","Raum karte (/a/): der Schluessel steht nicht mehr darin","Raum karte (/a/): der Buchstabe steht noch darin","Raum kreatur (/c/): der Schluessel steht nicht mehr darin","Raum kreatur (/c/): der Buchstabe steht noch darin","Raum beute (/l/): der Schluessel steht nicht mehr darin","Raum beute (/l/): der Buchstabe steht noch darin","Raum geteilt (/s/): der Schluessel steht nicht mehr darin","Raum geteilt (/s/): der Buchstabe steht noch darin","Fliesstext an ohneSchluessel: der Schluessel faellt (Textmaske)","Fliesstext an ohneSchluessel: der Rest bleibt stehen"], ersetze: [[REPORT, "  return s.replace(maskeCache.muster, (_, raum) => `${basis}/${raum}/-`)", "  return s"]] },
@@ -2047,6 +2063,9 @@ const SABOTAGEN = [
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  elif [ \"$code\" -eq 2 ]; then", "  elif [ \"$code\" -eq 99 ]; then"]] },
   { satz: "doppelwache", ziel: ["mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"]] },
+  // Die Weiche der Schleife (stre-T-021): Muster geweitet, anderer Zweig geleert.
+  { satz: "doppelwache", ziel: ["der echte Haken wertet nur die Vertragssaetze ueber werte_aus"], ersetze: [[HAKEN, "      scripts/stream/stream-vertrag-*.test.mjs)", "      scripts/*.test.mjs)"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden anderen Streamsatz ueber fahre"], ersetze: [[HAKEN, "      *)\n        fahre \"$datei\" \"$(basename \"$datei\")\"\n        ;;", "      *)\n        ;;"]] },
   { satz: "doppelwache", ziel: ["Doppelname mit skip-worktree im Index sperrt", "mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"], [HAKEN, "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n  then", "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n     && false\n  then"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Syntaxpruefung sperrt", "Parserfehler im Index: Haken endet rot"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if false; then"]] },
   { satz: "doppelwache", ziel: ["sauberer Index mit sauberer Platte geht durch", "sauberer Index geht durch, Globalenwache", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ok  $name\"", "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ROT  $name\""]] },
@@ -2279,12 +2298,75 @@ const SABOTAGEN = [
   { satz: "offline-geteilt", ziel: ["AUS: die eigene Datei bleibt gehalten"], ersetze: [[FETCH, "  if (!an || hit?.headers.get(KEEP_HEADER)) return hit\n", "  if (!an) return undefined\n  if (hit?.headers.get(KEEP_HEADER)) return hit\n"]] },
   { satz: "offline-geteilt", ziel: ["Eintrag ohne Pruefsumme: kein Treffer","andere Variante, gleicher Name: kein Treffer"], ersetze: [[FETCH, "  if (!schluessel) return hit\n", "  if (!schluessel) {\n    const name = routenName(ohneAbfrage(url))\n    for (const r of await store.keys()) if (geteilterName(r.url) === name) return store.match(r.url, opts)\n    return hit\n  }\n"]] },
   { satz: "offline-geteilt", ziel: ["der nicht gehaltene Eintrag bleibt liegen"], ersetze: [[FETCH, "  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n", "  if (geteilt && !geteilt.headers.get(KEEP_HEADER)) await store.delete(schluessel, opts)\n  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n"]] },
+  // ---- vertrag-manifest (stre-T-021): beide Manifest-Vorlagen der Erzeuger
+  // durch loadStreamManifest und buildStreamPack. Nur auf Zuruf.
+  { satz: "vertrag-manifest", ziel: VM_PROBE("loadStreamManifest nimmt sie an"),
+    ersetze: [[INSTALL, "  const manifest = await response.json()", "  const manifest = { ...(await response.json()), entries: [] }"]] },
+  { satz: "vertrag-manifest", ziel: [...VM_PROBE("keine unbekannte Rolle", VM_KANTE), ...VM_PROBE("keine unbekannte Rolle (Stills aus)")],
+    ersetze: [[INSTALL, "    if (entry.role === \"edge\") {", "    if (entry.role === \"kante\") {"]] },
+  { satz: "vertrag-manifest", ziel: [...VM_PROBE("jeder Eintrag landet genau einmal", VM_KANTE), ...VM_PROBE("jeder Eintrag landet genau einmal (Stills aus)")],
+    ersetze: [[INSTALL, "      streamTargets.set(stripLeadSlash(installedPath(key)),\n                        assetUrl(release, variant, key))", "      void key"]] },
+  { satz: "vertrag-manifest", ziel: VM_PROBE("jedes Dokument wird ein Dokument"),
+    ersetze: [[INSTALL, "    if (key.startsWith(DOC_DIR)) {", "    if (key.startsWith(\"_dox/\")) {"]] },
+  { satz: "vertrag-manifest", ziel: [...VM_PROBE("die Bytes der Weiche gehen auf", VM_KANTE), ...VM_PROBE("die Bytes der Weiche gehen auf (Stills aus)")],
+    ersetze: [[INSTALL, "      edgeBytes += entry.bytes || 0", "      edgeBytes += 0"]] },
+  { satz: "vertrag-manifest", ziel: VM_PROBE("shared streamt von der url des Eintrags", VM_ZWEI),
+    ersetze: [[INSTALL, "      const url = entry.url || assetUrl(release, variant, key)", "      const url = assetUrl(release, variant, key)"]] },
+  { satz: "vertrag-manifest", ziel: VM_PROBE("keine unbekannte Rolle", VM_ZWEI),
+    ersetze: [[INSTALL, "    if (entry.role === \"shared\") {", "    if (entry.role === \"geteilt\") {"]] },
+  { satz: "vertrag-manifest", ziel: VM_PROBE("jeder Eintrag landet genau einmal", VM_PIN),
+    ersetze: [[INSTALL, "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      zaehleLokal(entry.bytes)\n      pinned += 1", "      zaehleLokal(entry.bytes)\n      pinned += 1"]] },
+  { satz: "vertrag-manifest", ziel: VM_PROBE("die Bytes der Weiche gehen auf", VM_PIN),
+    ersetze: [[INSTALL, "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      zaehleLokal(entry.bytes)\n      pinned += 1", "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      pinned += 1"]] },
+  { satz: "vertrag-manifest", ziel: ["unbekannte Rolle: genau eine Warnung"],
+    ersetze: [[INSTALL, "    console.warn(`Beneos Stream | unbekannte Rolle", "    void (`Beneos Stream | unbekannte Rolle"]] },
+  // ---- vertrag-adresse (stre-T-021): dieses Modul baut /a/-Adressen, die das
+  // Tor vom Integrationszweig des Workers annimmt. Nur auf `--satz vertrag-adresse`.
+  { satz: "vertrag-adresse", ziel: ["die Moduladresse ist eine /a/-Adresse mit Schluessel", "schlichter Name: 200",
+      "schlichter Name: genau eine Unteranfrage an den Spiegel", ...VA_NAMEN.flatMap((n) => [`${n}: 200`, `${n}: genau eine Unteranfrage an den Spiegel`]),
+      "Releasename mit Punkt: 200", "Releasename mit Punkt: das eigene Paket", "Releasename mit Bindestrich: 200"],
+    ersetze: [[SETTINGS, VA_URL, "  return `${streamBase()}/${teile[0]}/${teile.slice(1).join(\"/\")}/${schluessel}`"]] },
+  { satz: "vertrag-adresse", ziel: ["Leerzeichen: der Spiegel bekommt genau diesen Pfad"],
+    ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(t).replace(/%20/g, \"+\"))")]] },
+  { satz: "vertrag-adresse", ziel: ["Leerzeichen", "Plus", "Prozent", "Umlaut"].map((n) => `${n}: der Spiegel bekommt genau diesen Pfad`),
+    ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(encodeURIComponent(t)))")]] },
+  { satz: "vertrag-adresse", ziel: ["Ausrufezeichen", "Stern", "Tilde"].flatMap((n) => [`${n}: 400 bad-path (bekannt H6)`, `${n}: keine Unteranfrage`]),
+    ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(t).replace(/[!'()*~]/g, (c) => \"%\" + c.charCodeAt(0).toString(16).toUpperCase()))")]] },
+  { satz: "vertrag-adresse", ziel: ["schlichter Name: Praefix ist das Paket", ...VA_NAMEN.map((n) => `${n}: der Spiegel bekommt genau diesen Pfad`)],
+    ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".replace(/^\\/+/, \"\")", ".replace(/^\\/*[^/]*\\/+/, \"\")")]] },
+  { satz: "vertrag-adresse", ziel: ["Releasename mit Punkt: 200", "Releasename mit Punkt: das eigene Paket"],
+    ersetze: [[SETTINGS, VA_RET, VA_RET.replace("encodeURIComponent(release)", "encodeURIComponent(release).replace(/\\./g, \"%2E\")")]] },
+  { satz: "vertrag-adresse", ziel: ["Releasename mit Leerzeichen: 400 bad-path"],
+    ersetze: [[SETTINGS, VA_RET, VA_RET.replace("encodeURIComponent(release)", "encodeURIComponent(release.replace(/ /g, \"_\"))")]] },
 ];
 
 /*
  * PROBEN, DIE KEINE SABOTAGE AM CODE ROT MACHEN KANN, je eine Zeile Grund.
  */
+const VM_VORLAGE = "Aussage ueber die Vorlage des Erzeugers, nicht ueber das Modul: keine Sabotage am Modul kann sie rot machen. Bewacht beim Erzeuger, /4 in beneos-cloud-server tests/test-vertrag-manifest.php, /2 in beneos-stream-beta test_vertrag_manifest2.py; aendert ein Erzeuger seine Form, wird sie hier rot, sobald die Vorlage auf dem Integrationszweig liegt.";
 const EIGENPROBEN = {
+  "vertrag-manifest": {
+    "/4: schema":
+      VM_VORLAGE,
+    "/4: keine Rolle shared":
+      VM_VORLAGE,
+    "/4: kein Eintrag traegt url":
+      VM_VORLAGE,
+    "/2 beneos_bm_0001_markt/4k: schema":
+      VM_VORLAGE,
+    "/2 beneos_bm_0002_hafen/4k: schema":
+      VM_VORLAGE,
+    "/2 beneos_bm_0001_markt/4k: traegt geteilte Eintraege":
+      VM_VORLAGE,
+    "/2 beneos_bm_0002_hafen/4k: traegt geteilte Eintraege":
+      VM_VORLAGE,
+    "/2: Vorlage traegt mindestens ein Manifest":
+      VM_VORLAGE,
+  },
+  "vertrag-adresse": {
+    "ueber alle Faelle: jede Unteranfrage geht an den Spiegel":
+      "Aussage ueber das Tor, nicht ueber das Modul: welche Unteranfragen das Tor stellt, entscheidet allein der Worker, das Modul liefert nur den Pfad. Bewacht im Worker (tools/pruefe-vertrag-adresse.mjs mit den Sabotagen in tools/pruefe-tor-sabotagen.mjs); hier wird sie rot, sobald ein solches Tor auf dem Integrationszweig liegt.",
+  },
   export: {
     "Link: href traegt den Schluessel 0 Mal":
       "Mehrfach gedeckt (Kalt-Review stre-T-142 W2): das Textnetz maskiert den href, textFrei laesst die Maske stehen, die Schluesselformen werden zu -, und Schritt 5 haelt einen Rest an. Jede Stufe hat eigene Proben mit Sabotage; eine einzelne Sabotage kann diese Probe deshalb nicht rot machen, das ist der Zweck der Staffel.",
@@ -2499,6 +2581,9 @@ function kopiere(ziel) {
 
 // ------------------------------------------------------------- --alle-saetze
 
+// Die Vertragssaetze (stre-T-021), deren Rueckgabe 2 "Nachbar fehlt" heisst.
+const VERTRAGSSATZ = /(^|\/)stream-vertrag-[^/]+\.test\.mjs$/;
+
 if (process.argv.includes("--alle-saetze")) {
   const saetze = [];
   for (const ordner of ["scripts/stream", "scripts/loot"]) {
@@ -2508,14 +2593,23 @@ if (process.argv.includes("--alle-saetze")) {
   }
   let schlecht = 0;
   let getoetet = 0;
+  let nichtGemessen = 0;
   for (const s of saetze) {
     const r = await fahre(WURZEL, s, zeitgrenze);
-    if (r.rc !== 0 || r.getoetet) schlecht += 1;
+    // Rueckgabe 2 eines Vertragssatzes heisst nicht gemessen (Nachbarklon
+    // fehlt, stre-T-021): nie ein Befund, aber auch nie gruen. Wie im Haken
+    // gilt das NUR fuer stream-vertrag-*; jeder andere Satz mit 2 ist schlecht.
+    const ungemessen = r.rc === 2 && !r.getoetet && VERTRAGSSATZ.test(s);
+    if (ungemessen) nichtGemessen += 1;
+    else if (r.rc !== 0 || r.getoetet) schlecht += 1;
     if (r.getoetet) getoetet += 1;
-    const warum = ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r, zeitgrenze)}` : "";
+    const warum = ungemessen
+      ? ` nicht gemessen: ${r.ausgabe.filter((z) => z.includes("NICHT GEMESSEN")).slice(-1)[0] || erklaere(r, zeitgrenze)}`
+      : ["absturz", "zeitgrenze"].includes(einordnen(r)) ? ` ${einordnen(r)}: ${erklaere(r, zeitgrenze)}` : "";
     console.log(`${s} rc=${r.rc} ok=${r.gruen.size} rot=${r.rot.size}${warum}`);
   }
-  console.log(`saetze=${saetze.length}, davon rc ungleich 0: ${schlecht}`);
+  console.log(`saetze=${saetze.length}, davon rot oder abgebrochen: ${schlecht}, nicht gemessen: ${nichtGemessen}`);
+  if (schlecht === 0 && nichtGemessen > 0) process.exit(2);
   // Eine Untergrenze wie im Haken: ein neuer Satz bricht die Zahl nicht.
   // Eine Toetung ist nicht pruefbar (2), wie im Sabotageweg, nie ein Befund.
   if (getoetet > 0) process.exit(2);
@@ -2529,8 +2623,12 @@ if (process.argv.includes("--alle-saetze")) {
 // neben anderer Last 459 s. Im vollen Lauf kaeme das je Sabotage dazu, mit
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
-const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "doppelwache"]
+// `vertrag-manifest` (stre-T-021) liest die Vorlagen per git show aus zwei
+// Nachbarklonen und ist ohne sie nicht messbar; der Vorgabelauf soll daran
+// nicht haengen. Er laeuft mit `--satz vertrag-manifest`. Ebenso
+// `vertrag-adresse` (stre-T-021): er holt das Tor per git show aus dem Worker.
+const NUR_AUF_ZURUF = ["doppelwache", "vertrag-manifest", "vertrag-adresse"];
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "doppelwache", "vertrag-manifest", "vertrag-adresse"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
@@ -2641,7 +2739,10 @@ lauf: try {
     }
     if (r.rc !== 0 || r.rot.size > 0 || r.getoetet) {
       const art = einordnen(r);
-      const warum = art === "rot" ? `${r.rot.size} rot` : `${art}: ${erklaere(r)}`;
+      // Rueckgabe 2 ohne Toetung: der Satz sagt selbst, warum (NICHT GEMESSEN
+      // auf stdout, etwa ein fehlender Nachbarklon); das gehoert in die Zeile.
+      const selbst = r.rc === 2 && !r.getoetet ? r.ausgabe.slice(-1)[0] : "";
+      const warum = art === "rot" ? `${r.rot.size} rot` : `${art}: ${erklaere(r)}${selbst ? `; ${selbst}` : ""}`;
       console.log(`NICHT PRUEFBAR: ${satz} ist schon ohne Sabotage nicht gruen (${warum}).`);
       nichtPruefbar += 1;
     }
