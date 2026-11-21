@@ -530,8 +530,8 @@ gleich("[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den 
 gleich("[Struktur] stream-canvas holt aufbauEnde aus der Meldestelle", /import \{[^}]*\baufbauEnde\b[^}]*\} from "\.\/stream-hinweis\.mjs"/.test(CANVAS), true)
 const klang = ONLINE.slice(ONLINE.indexOf("function installKlangWache() {"), ONLINE.indexOf("let klangGemeldet = false"))
 gleich("[Struktur] die Klangwache meldet offline", /meldeKlang\("offline", src\)/.test(klang), true)
-gleich("[Struktur] die Klangwache meldet einen gescheiterten Torklang",
-  /if \(tor && src\.includes\(tor\) && this\?\.failed && !isOffline\(\)\) meldeKlang\("denied", src\)/.test(klang), true)
+gleich("[Struktur] die Klangwache fragt bei einem gescheiterten Torklang nach (stre-T-172)",
+  /if \(tor && src\.includes\(tor\) && this\?\.failed && !isOffline\(\)\) frageTorNach\(src\)/.test(klang), true)
 gleich("[Struktur] der Klanghelfer gibt an die Meldestelle weiter",
   /function meldeKlang\(grund, src\) \{\s+import\("\.\/stream-hinweis\.mjs"\)\.then\(\(m\) => m\.meldeAusfall\(grund, src\)\)/.test(ONLINE), true)
 const wache = ONLINE.slice(ONLINE.indexOf("function installSceneGuard() {"), ONLINE.indexOf("function installKlangWache() {"))

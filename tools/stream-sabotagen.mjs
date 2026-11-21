@@ -140,6 +140,11 @@
  * Anschlussstellen in Fetch, Szenen- und Klangwache und die neuen Sprachwerte
  * in allen Sprachdateien. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-172 dazu `klangwache` (`scripts/stream/stream-klangwache.test.mjs`):
+ * ein online gescheiterter Torklang meldet "nicht im Zugang" nur, wenn das
+ * Tor auf eine HEAD-Nachfrage den denied-Kopf schickt; je Adresse einmal, mit
+ * eigener Zeitgrenze, ohne den Klang aufzuhalten. An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -2085,7 +2090,7 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["[Struktur] die Offline-Antwort meldet den Grund"], ersetze: [[FETCH, "  meldeAusfall(\"offline\", url)\n", "\n"]] },
   { satz: "hinweis", ziel: ["[Struktur] der Video-Hinweis merkt sich, dass er kam"], ersetze: [[FETCH, "    merkeVideoToast()\n", "\n"]] },
   { satz: "hinweis", ziel: ["[Struktur] die Klangwache meldet offline"], ersetze: [[ONLINE, "      meldeKlang(\"offline\", src)\n", "\n"]] },
-  { satz: "hinweis", ziel: ["[Struktur] die Klangwache meldet einen gescheiterten Torklang"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) meldeKlang", "&& this?.failed) meldeKlang"]] },
+  { satz: "hinweis", ziel: ["[Struktur] die Klangwache fragt bei einem gescheiterten Torklang nach (stre-T-172)"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach", "&& this?.failed) frageTorNach"]] },
   { satz: "hinweis", ziel: ["[Struktur] der Klanghelfer gibt an die Meldestelle weiter"], ersetze: [[ONLINE, "m.meldeAusfall(grund, src)", "m.meldeAusfall(\"denied\", src)"]] },
   { satz: "hinweis", ziel: ["[Struktur] die Szenenablehnung nimmt ihren Text aus dem Schluessel"], ersetze: [[ONLINE, "hinweisText(\"BENEOS.Stream.Scene.Offline\"", "hinweisText(\"BENEOS.Stream.Scene.Gone\""]] },
   { satz: "hinweis", ziel: ["[Struktur] kein hart geschriebener Ablehnungstext mehr"], ersetze: [[ONLINE, "      ui.notifications?.warn?.(satz)", "      ui.notifications?.warn?.(satz || \"cannot be loaded, there is no connection\")"]] },
@@ -2137,6 +2142,24 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["nach ready: der Manager wird geholt","nach ready: Buy kommt","und die Liste nur einmal"], ersetze: [[HINWEIS, "        mgr = await globalThis.ensureBeneosScenePacker()\n", ""]] },
   { satz: "hinweis", ziel: ["Suffixfall: beneos_bm_0030_cos_castle_ravenloft_6f_9f findet bm_0030"], ersetze: [[HINWEIS, " ?? index.kerne.get(index.kern(release))", ""]] },
   { satz: "hinweis", ziel: ["beneos_bm_0047b_modular_city_dark findet bm_0047 nicht"], ersetze: [[HINWEIS, "index.kerne.get(index.kern(release))", "index.kerne.get(index.kern(release).replace(/b$/, \"\"))"]] },
+  // ---------------------------------------------------------------- klangwache (stre-T-172)
+  { satz: "klangwache", ziel: ["Vorbedingung: der Klang laeuft ueber die Wache"], ersetze: [[ONLINE, "  wrapped.__beneosStream = true\n  Sound.prototype.load = wrapped", "  Sound.prototype.load = wrapped"]] },
+  { satz: "klangwache", ziel: ["geladener Klang: keine Nachfrage"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& !isOffline()) frageTorNach(src)"]] },
+  { satz: "klangwache", ziel: ["und keine Meldung"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& !isOffline()) meldeKlang(\"denied\", src)"]] },
+  { satz: "klangwache", ziel: ["Netzfehler: keine Meldung \"nicht im Zugang\"","503 ohne Kopf: keine Meldung \"nicht im Zugang\"","200 ohne Kopf, trotzdem gescheitert: keine Meldung","abgebrochene Nachfrage: keine Meldung","gescheiterter Klang: genau eine Nachfrage"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& this?.failed && !isOffline()) meldeKlang(\"denied\", src)"]] },
+  { satz: "klangwache", ziel: ["503 ohne Kopf: keine Meldung \"nicht im Zugang\"","200 ohne Kopf, trotzdem gescheitert: keine Meldung"], ersetze: [[ONLINE, "if (antwort?.headers?.get?.(\"x-beneos-denied\")) meldeKlang(\"denied\", src)", "if (antwort) meldeKlang(\"denied\", src)"]] },
+  { satz: "klangwache", ziel: ["und zwar als HEAD"], ersetze: [[ONLINE, "{ method: \"HEAD\", signal:", "{ method: \"GET\", signal:"]] },
+  { satz: "klangwache", ziel: ["mit eigener Zeitgrenze","[Struktur] und nimmt sie als AbortSignal.timeout"], ersetze: [[ONLINE, "{ method: \"HEAD\", signal: AbortSignal.timeout(KLANG_NACHFRAGE_MS) }", "{ method: \"HEAD\" }"]] },
+  { satz: "klangwache", ziel: ["derselbe Klang noch einmal, auch nach gescheiterter Nachfrage: keine zweite"], ersetze: [[ONLINE, "  if (nachgefragt.has(src)) return\n", "\n"]] },
+  { satz: "klangwache", ziel: ["derselbe Klang noch einmal, auch nach gescheiterter Nachfrage: keine zweite"], ersetze: [[ONLINE, "  nachgefragt.add(src)\n", "\n"], [ONLINE, ".then((antwort) => { if (antwort", ".then((antwort) => { nachgefragt.add(src); if (antwort"]] },
+  { satz: "klangwache", ziel: ["und keine unbehandelte Ablehnung"], ersetze: [[ONLINE, "\n    .catch(() => { /* Leitung, Abbruch oder Zeitgrenze: kein Grund bekannt, also keine Meldung */ })", ""]] },
+  { satz: "klangwache", ziel: ["die Nachfrage haelt den Klang nicht auf"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& this?.failed && !isOffline()) await frageTorNach(src)"], [ONLINE, "  nachgefragt.add(src)\n  Promise.resolve()", "  nachgefragt.add(src)\n  return Promise.resolve()"]] },
+  { satz: "klangwache", ziel: ["und zwar die fuer den Zugang"], ersetze: [[ONLINE, "if (antwort?.headers?.get?.(\"x-beneos-denied\")) meldeKlang(\"denied\", src)", "if (antwort?.headers?.get?.(\"x-beneos-denied\")) meldeKlang(\"offline\", src)"]] },
+  { satz: "klangwache", ziel: ["denied-Kopf: genau eine Meldung","und zwar die fuer den Zugang"], ersetze: [[ONLINE, "if (antwort?.headers?.get?.(\"x-beneos-denied\")) meldeKlang(\"denied\", src)", "if (antwort?.headers?.get?.(\"x-beneos-offline\")) meldeKlang(\"denied\", src)"]] },
+  { satz: "klangwache", ziel: ["offline waehrend des Ladens: keine Nachfrage"], ersetze: [[ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& this?.failed) frageTorNach(src)"]] },
+  { satz: "klangwache", ziel: ["offline: keine Nachfrage","offline: die Meldung ist die fuer offline"], ersetze: [[ONLINE, "if (tor && streamEnabled() && isOffline() && src.includes(tor)) {", "if (false) {"], [ONLINE, "&& this?.failed && !isOffline()) frageTorNach(src)", "&& this?.failed) frageTorNach(src)"]] },
+  { satz: "klangwache", ziel: ["offline: die Meldung ist die fuer offline"], ersetze: [[ONLINE, "      meldeKlang(\"offline\", src)\n      return this", "      return this"]] },
+  { satz: "klangwache", ziel: ["[Struktur] die Nachfrage hat eine Zeitgrenze von 1 bis 10 Sekunden"], ersetze: [[ONLINE, "const KLANG_NACHFRAGE_MS = 5000", "const KLANG_NACHFRAGE_MS = 60000"]] },
 ];
 
 /*
@@ -2378,7 +2401,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

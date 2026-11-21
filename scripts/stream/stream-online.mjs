@@ -403,11 +403,13 @@ function installKlangWache() {
     try {
       return await original.apply(this, args)
     } finally {
-      // Ein Torklang, der MIT Verbindung scheitert, hat vom Tor den
-      // Platzhalter bekommen: der Zugang enthaelt ihn nicht (stream-klang.mjs,
-      // Kopf). Der Klang laeuft ueber ein `<audio>`-Element und nicht ueber den
-      // `fetch`-Ersatz, dessen denied-Zweig sieht ihn also nie.
-      if (tor && src.includes(tor) && this?.failed && !isOffline()) meldeKlang("denied", src)
+      // Ein Torklang, der MIT Verbindung scheitert, KANN vom Tor den
+      // Platzhalter bekommen haben (stream-klang.mjs, Kopf). Er kann aber
+      // genauso an der Leitung, an einem 5xx oder am Codec gescheitert sein.
+      // Das `<audio>`-Element sagt nicht, welches davon, und laeuft nicht ueber
+      // den `fetch`-Ersatz. Gemeldet wird deshalb erst, wenn das Tor auf
+      // Nachfrage den denied-Kopf schickt (stre-T-172).
+      if (tor && src.includes(tor) && this?.failed && !isOffline()) frageTorNach(src)
     }
   }
   wrapped.__beneosStream = true
@@ -415,6 +417,25 @@ function installKlangWache() {
 }
 
 let klangGemeldet = false
+
+// Die Nachfrage beim Tor, ob ein gescheiterter Klang abgewiesen wurde
+// (stre-T-172). HEAD und nicht ein Bereichsabruf: eine erlaubte Datei
+// antwortet auf Range mit 206, und der `fetch`-Ersatz legt jede ok-Antwort in
+// den Vorrat; HEAD geht dort nie hinein. Das Tor schickt bei Abweisung immer
+// den Platzhalter mit `X-Beneos-Denied`, auch auf HEAD (beneos-stream-worker
+// src/index.js, placeholder). Je Adresse hoechstens einmal je Sitzung, auch
+// wenn die Nachfrage scheitert, und mit eigener Zeitgrenze, damit kein
+// Auftrag haengt. Der Klang wartet nie darauf.
+const KLANG_NACHFRAGE_MS = 5000
+const nachgefragt = new Set()
+function frageTorNach(src) {
+  if (nachgefragt.has(src)) return
+  nachgefragt.add(src)
+  Promise.resolve()
+    .then(() => globalThis.fetch(src, { method: "HEAD", signal: AbortSignal.timeout(KLANG_NACHFRAGE_MS) }))
+    .then((antwort) => { if (antwort?.headers?.get?.("x-beneos-denied")) meldeKlang("denied", src) })
+    .catch(() => { /* Leitung, Abbruch oder Zeitgrenze: kein Grund bekannt, also keine Meldung */ })
+}
 
 // Import zur Laufzeit, Begruendung in der Szenenwache. Die Meldung darf den
 // Klang nie aufhalten, deshalb ohne `await`.
