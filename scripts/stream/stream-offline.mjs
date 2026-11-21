@@ -31,7 +31,8 @@
 
 import { MODULE_ID, SETTING, streamEnabled, localCacheEnabled, assetUrl, zerlegeAdresse, streamKey, streamBase, VIDEO_EXT, istGeteilteDatei } from "./stream-settings.mjs"
 import { offlineGehalten, offlineHalten, offlineFreigeben, nichtGehalten,
-         gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage } from "./stream-fetch.mjs"
+         gehalteneAdressen, speicherAusfallStand, speicherBereit, speicherLage,
+         adresseNormal, ohneDeckung } from "./stream-fetch.mjs"
 import { streamAdressenVon, streamState } from "./stream-online.mjs"
 import { loadStreamManifest } from "./stream-install.mjs"
 import { BeneosInstallState, releaseKern, anzeigename } from "../cloud-v2/beneos-install-state.mjs"
@@ -1771,18 +1772,8 @@ export async function heilbarkeit(stand) {
   return { holbar, gesperrt, grund: gesperrt.length ? "kontingent-voll" : "", bytesHolbar: summe }
 }
 
-/**
- * Adressen vergleichbar machen.
- *
- * Der Speicher fuehrt die Adresse so, wie sie angefordert wurde, die
- * Zusagenliste so, wie sie im Manifest steht. Ein angehaengter Parameter
- * genuegt, damit dieselbe Datei zweimal verschieden aussieht, und ein
- * Abgleich, der das nicht abfaengt, haelt eine gedeckte Datei fuer verwaist.
- */
-function adresseNormal(url) {
-  try { const u = new URL(String(url)); u.search = ""; u.hash = ""; return u.href }
-  catch (_) { return String(url) }
-}
+// `adresseNormal` (Adressen vergleichbar machen) steht seit stre-T-081 in
+// `stream-fetch.mjs`, neben `ohneDeckung`, damit der Abgleich in node messbar ist.
 
 /**
  * Die Zusagenliste lesen, ohne Auffangnetz.
@@ -1856,7 +1847,7 @@ export async function verwaisteLoesen() {
   const gehalten = await gehalteneAdressen()
   if (!gehalten.length) return leer
 
-  const verwaist = gehalten.filter(g => !gedeckt.has(adresseNormal(g.url)))
+  const verwaist = ohneDeckung(gehalten, gedeckt)
   if (!verwaist.length) return { ...leer, geprueft: gehalten.length }
 
   const bytes = verwaist.reduce((s, v) => s + (Number(v.bytes) || 0), 0)

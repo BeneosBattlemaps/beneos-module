@@ -371,6 +371,42 @@ export function ours(url) {
   try { return new URL(url, location.href).host === host } catch (_) { return false }
 }
 
+/**
+ * Die Eingaben, die `offlineFreigeben` und `offlineGehalten` anfassen duerfen,
+ * ohne Doppelte (stre-T-081). Ausgezogen, damit der Pruefsatz genau diesen
+ * Filter misst und nicht eine Abschrift davon.
+ */
+export function eigeneEingaben(urls) {
+  return [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+}
+
+/**
+ * Eine Adresse ohne Abfrage und Anker, fuer jeden Abgleich gehaltener Dateien.
+ *
+ * Der Speicher fuehrt die Adresse so, wie sie angefordert wurde, die
+ * Zusagenliste so, wie sie im Manifest steht. Ein angehaengter Parameter
+ * genuegt, damit dieselbe Datei zweimal verschieden aussieht, und ein
+ * Abgleich, der das nicht abfaengt, haelt eine gedeckte Datei fuer verwaist.
+ * Seit stre-T-081 hier statt in `stream-offline.mjs`, das in node nicht laedt.
+ */
+export function adresseNormal(url) {
+  try { const u = new URL(String(url)); u.search = ""; u.hash = ""; return u.href }
+  catch (_) { return String(url) }
+}
+
+/**
+ * Die gehaltenen Eintraege ohne Deckung (stre-T-081).
+ *
+ * `gehalten` ist die Liste aus `gehalteneAdressen`, `gedeckt` jede Adresse
+ * oder Kennung, die eine Zusage oder der Gemeinschaftsvorrat deckt. Eine reine
+ * Funktion, damit der Abgleich in node gemessen werden kann.
+ */
+export function ohneDeckung(gehalten, gedeckt) {
+  const decke = new Set()
+  for (const u of gedeckt || []) decke.add(adresseNormal(u))
+  return (gehalten || []).filter(g => !decke.has(adresseNormal(g.url)))
+}
+
 /* ------------------------------------------------ Schluessel des Vorrats -- */
 
 /**
@@ -2112,7 +2148,7 @@ export async function offlineHalten(urls, onProgress) {
  * er die gewoehnlichen 72 Stunden Puffer.
  */
 export async function offlineFreigeben(urls) {
-  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  const liste = eigeneEingaben(urls)
   if (!liste.length) return { geloest: 0 }
   const store = await openStore()
   if (!store) return { geloest: 0 }
@@ -2135,7 +2171,7 @@ export async function offlineFreigeben(urls) {
 
 /** Sind ALLE diese Adressen dauerhaft gehalten? Eine fehlende genuegt fuer Nein. */
 export async function offlineGehalten(urls) {
-  const liste = [...new Set((urls || []).filter(u => typeof u === "string" && ours(u)))]
+  const liste = eigeneEingaben(urls)
   if (!liste.length) return false
   const store = await openStore()
   if (!store) return false
