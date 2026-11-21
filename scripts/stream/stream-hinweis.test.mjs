@@ -541,7 +541,7 @@ gleich("[Struktur] der Einstieg baut die Meldestelle ein", EINSTIEG.includes("in
 gleich("[Struktur] kein Patreon-Link in einem Sprachwert", lies("lang/en.json").includes("patreon.com/c/"), false)
 gleich("[Struktur] jeder Wechsel der Verbindung stellt das Schild neu",
   lies("scripts/stream/stream-hinweis.mjs").includes("onStreamState(() => pruefeSchild())"), true)
-gleich("[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall", zweig.includes('if (!isControl(url)) meldeAusfall("denied", url)'), true)
+gleich("[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall", zweig.includes('if (endgueltig && !isControl(url)) meldeAusfall("denied", url)'), true)
 const FENSTER = lies("scripts/cloud-v2/cloud-window-v2.mjs")
 gleich("[Struktur] der Kaufknopf im Fenster nimmt weiter kaufKnopf(bmapRelease)",
   FENSTER.includes("const bmapKauf = kaufKnopf(bmapRelease)") && FENSTER.includes("shopUrl: bmapKauf.url,"), true)

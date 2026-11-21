@@ -1428,6 +1428,40 @@ function merkeTraegerAbweisung(url) {
 }
 
 /**
+ * Die `/s/`-Adresse, die nach einer Abweisung von `url` an die Reihe kaeme,
+ * oder "" (stre-T-173). Gerechnet, BEVOR abgerufen wird, und ohne die
+ * Sitzungsmenge zu veraendern: `offlineHalten` muss vor dem Abruf wissen, ob
+ * eine Abweisung endgueltig waere.
+ *
+ * Nur ein Traeger, der in dieser Sitzung noch nicht abgewiesen wurde und
+ * dessen Adresse in `versucht` (Adressen ohne Abfrageteil) noch fehlt. Mit
+ * einem einzigen Traeger ist die Antwort also immer "".
+ */
+function ausweichTraeger(url, versucht) {
+  const roh = ohneAbfrage(url)
+  const t = zerlegeAdresse(roh)
+  if (t?.raum !== "geteilt" || !t.traeger) return ""
+  const ohne = new Set(abgewieseneTraeger).add(`${t.traeger.release}|${t.traeger.variant}`)
+  const a = geteilteAdresse(t.variant, t.pfad, adressenZuSha.get(t.variant), ohne)
+  const ta = zerlegeAdresse(a)?.traeger
+  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return ""
+  if (a === roh || versucht?.has(a) || !ours(a)) return ""
+  return a
+}
+
+/**
+ * `/s/`-Adressen (ohne Abfrageteil), die `offlineHalten` gerade abruft und
+ * fuer die ein weiterer Traeger bereitsteht (stre-T-173, Kalt-Review
+ * cab0a2e). Weist das Tor eine davon ab, schweigt der Abweisungszweig des
+ * Abrufersatzes gegenueber dem Kunden: keine Konsolenzeile, kein Hinweis,
+ * kein Kartenschild. Die Abweisung ist dann nicht endgueltig, und eine
+ * Meldung "nicht im Zugang" fuer eine Datei, die gleich darauf ueber den
+ * naechsten Traeger gehalten wird, waere falsch. Gezaehlt und an das Tor
+ * berichtet wird sie trotzdem, denn abgewiesen wurde sie wirklich.
+ */
+const leiserVersuch = new Set()
+
+/**
  * Deckel gegen unbegrenztes Wachstum.
  *
  * Ein grosses Paket traegt einige tausend Eintraege, und eine Sitzung kann viele
@@ -2192,6 +2226,11 @@ export async function alleImSpeicher(urls) {
         // Eine abgewiesene `/s/`-Adresse sperrt ihren Traeger fuer diese
         // Sitzung, der Rueckweg nimmt danach den naechsten (stre-T-173).
         merkeTraegerAbweisung(url)
+        // Steht fuer diese Adresse schon ein weiterer Traeger bereit, ist die
+        // Abweisung nicht endgueltig, und die Meldungen darunter entfallen
+        // (siehe `leiserVersuch`). Weist auch der letzte ab, meldet dessen
+        // Abruf wie bisher.
+        const endgueltig = !leiserVersuch.has(ohneAbfrage(url))
         // Einmal je Szene, nicht je Datei.
         //
         // Eine abgelaufene Miete sperrt nicht eine Datei, sondern das ganze
@@ -2200,11 +2239,11 @@ export async function alleImSpeicher(urls) {
         // und ein Foundry-Nutzer, der sein Log liest, haelt das fuer zwanzig
         // Fehler. Gesammelt wird nach Release und Variante, die beide in der
         // Adresse stehen.
-        meldeAbweisung(url)
+        if (endgueltig) meldeAbweisung(url)
 
         // Und beim Video zusaetzlich einmal sichtbar, weil es sonst niemand
         // erfaehrt. Siehe die Begruendung an `meldeVideoAbweisung`.
-        meldeVideoAbweisung(url)
+        if (endgueltig) meldeVideoAbweisung(url)
 
         // Und einmal je Sitzung in Worten, fuer Token, Journal, Karte und
         // Klang gleich (stre-T-166). Nach dem Video-Hinweis, weil die
@@ -2212,7 +2251,7 @@ export async function alleImSpeicher(urls) {
         // Adresse stellt das Kartenschild auf, wenn sie zur Szene gehoert.
         // Steuerdateien nicht: ein abgewiesenes Manifest meldet der Installer
         // selbst, und in der Welt fehlt dann nichts (Kalt-Review a9acf9e).
-        if (!isControl(url)) meldeAusfall("denied", url)
+        if (endgueltig && !isControl(url)) meldeAusfall("denied", url)
 
         // Und hier endet die Abweisung, statt als leeres Feld weiterzureisen.
         //
@@ -2396,21 +2435,30 @@ export async function offlineHalten(urls, onProgress) {
         // EINE ABGEWIESENE `/s/`-ADRESSE BEKOMMT DEN NAECHSTEN TRAEGER
         // (stre-T-173). Der Traeger wird gemerkt, der Rueckweg aus dem
         // geteilten Schluessel nennt danach den naechsten, und abgelegt wird
-        // unter demselben Schluessel. Jede Adresse hoechstens einmal; mit
-        // einem einzigen Traeger nennt der Rueckweg dieselbe, und es bleibt
-        // bei einem Abruf wie vorher. Die Gegenprobe ist ein eigener Abruf,
-        // nicht der Ersatz im Abrufpfad: im Download-Betrieb ist der nicht
-        // vorgeschaltet.
+        // unter demselben Schluessel. Jede Adresse hoechstens einmal, ohne
+        // Abfrageteil verglichen; mit einem einzigen Traeger gibt es keinen
+        // naechsten, und es bleibt bei einem Abruf wie vorher.
+        //
+        // Die Abweisung erkennt `toStore` an der Kopfzeile `x-beneos-denied`.
+        // Im Download-Betrieb traegt sie die Torantwort selbst; im
+        // Streaming-Betrieb laeuft der Abruf durch den Abrufersatz, und dessen
+        // `ersatzAntwort` gibt sie mit. Faellt sie dort weg, ist der Rueckfall
+        // im Streaming-Betrieb stumm (Pruefsatz stream-traeger-ersatz).
+        //
+        // Der naechste Traeger wird VOR dem Abruf bestimmt: steht einer
+        // bereit, meldet der Abrufersatz eine Abweisung nicht dem Kunden
+        // (`leiserVersuch`).
         let ziel = url, antwort, befund = {}, abgelegt = false
         const versucht = new Set()
         for (;;) {
-          versucht.add(ziel)
-          antwort = await fetch(ziel)
+          const roh = ohneAbfrage(ziel)
+          versucht.add(roh)
+          const naechste = ausweichTraeger(ziel, versucht)
+          if (naechste) leiserVersuch.add(roh)
+          try { antwort = await fetch(ziel) } finally { leiserVersuch.delete(roh) }
           befund = {}
           abgelegt = await toStore(store, ziel, antwort, true, befund)
-          if (abgelegt || befund.grund !== "abgewiesen" || !merkeTraegerAbweisung(ziel)) break
-          const naechste = adresseAusSchluessel(vorratsSchluessel(ziel))
-          if (!naechste || versucht.has(naechste) || !ours(naechste)) break
+          if (abgelegt || befund.grund !== "abgewiesen" || !merkeTraegerAbweisung(ziel) || !naechste) break
           ziel = naechste
         }
         if (abgelegt) {

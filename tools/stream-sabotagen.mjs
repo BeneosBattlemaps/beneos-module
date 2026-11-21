@@ -2102,8 +2102,8 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["zurueck zur abgewiesenen Szene: Schild wieder da"], ersetze: [[HINWEIS, "  globalThis.Hooks?.on?.(\"canvasReady\", () => pruefeSchild())", "  globalThis.Hooks?.on?.(\"canvasReady\", () => {})"]] },
   { satz: "hinweis", ziel: ["ein zweiter Einbau setzt die Haken nicht doppelt"], ersetze: [[HINWEIS, "  if (eingebaut) return\n", "\n"]] },
   { satz: "hinweis", ziel: ["canvasReady einer sauberen Szene baut ein stehendes Schild ab","faellt die Verbindung, verschwindet das denied-Schild"], ersetze: [[HINWEIS, "  if (!adresse) {\n    entferneSchild()\n    return null\n  }", "  if (!adresse) {\n    return null\n  }"]] },
-  { satz: "hinweis", ziel: ["[Struktur] der denied-Zweig meldet den Grund","[Struktur] und zwar NACH dem Video-Hinweis","[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall"], ersetze: [[FETCH, "        if (!isControl(url)) meldeAusfall(\"denied\", url)\n", "\n"]] },
-  { satz: "hinweis", ziel: ["[Struktur] und zwar NACH dem Video-Hinweis"], ersetze: [[FETCH, "        meldeVideoAbweisung(url)\n", "        meldeAusfall(\"denied\", url)\n        meldeVideoAbweisung(url)\n"]] },
+  { satz: "hinweis", ziel: ["[Struktur] der denied-Zweig meldet den Grund","[Struktur] und zwar NACH dem Video-Hinweis","[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall"], ersetze: [[FETCH, "        if (endgueltig && !isControl(url)) meldeAusfall(\"denied\", url)\n", "\n"]] },
+  { satz: "hinweis", ziel: ["[Struktur] und zwar NACH dem Video-Hinweis"], ersetze: [[FETCH, "        if (endgueltig) meldeVideoAbweisung(url)\n", "        meldeAusfall(\"denied\", url)\n        if (endgueltig) meldeVideoAbweisung(url)\n"]] },
   { satz: "hinweis", ziel: ["[Struktur] die Offline-Antwort meldet den Grund"], ersetze: [[FETCH, "  meldeAusfall(\"offline\", url)\n", "\n"]] },
   { satz: "hinweis", ziel: ["[Struktur] der Video-Hinweis merkt sich, dass er kam"], ersetze: [[FETCH, "    merkeVideoToast()\n", "\n"]] },
   { satz: "hinweis", ziel: ["[Struktur] die Klangwache meldet offline"], ersetze: [[ONLINE, "      meldeKlang(\"offline\", src)\n", "\n"]] },
@@ -2130,7 +2130,7 @@ const SABOTAGEN = [
   { satz: "hinweis", ziel: ["das Patreon der Kreaturen ist eine Konstante","Kreaturenadresse: Subscribe fuehrt auf das Patreon der Kreaturen"], ersetze: [[HINWEIS, "export const PATREON_TOKEN = \"https://www.patreon.com/c/BeneosTokens\"", "export const PATREON_TOKEN = \"https://www.patreon.com/c/BeneosBattlemaps\""]] },
   { satz: "hinweis", ziel: ["online: Subscribe fuehrt auf das Patreon der Karten","Kreaturenadresse: Subscribe fuehrt auf das Patreon der Kreaturen"], ersetze: [[HINWEIS, "=== \"c\" ? PATREON_TOKEN : PATREON_KARTEN", "=== \"a\" ? PATREON_TOKEN : PATREON_KARTEN"]] },
   { satz: "hinweis", ziel: ["online: das Schild steht"], ersetze: [[HINWEIS, "  if (isOffline()) return null\n  const el", "  return null\n  const el"]] },
-  { satz: "hinweis", ziel: ["[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall"], ersetze: [[FETCH, "if (!isControl(url)) meldeAusfall", "if (true) meldeAusfall"]] },
+  { satz: "hinweis", ziel: ["[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall"], ersetze: [[FETCH, "if (endgueltig && !isControl(url)) meldeAusfall", "if (endgueltig) meldeAusfall"]] },
   { satz: "hinweis", ziel: ["[Struktur] jeder Wechsel der Verbindung stellt das Schild neu","faellt die Verbindung, verschwindet das denied-Schild"], ersetze: [[HINWEIS, "  onStreamState(() => pruefeSchild())\n", ""]] },
   { satz: "hinweis", ziel: ["[Struktur] der Kaufknopf im Fenster nimmt weiter kaufKnopf(bmapRelease)"], ersetze: [["scripts/cloud-v2/cloud-window-v2.mjs", "      shopUrl: bmapKauf.url,", "      shopUrl: null,"]] },
   { satz: "hinweis", ziel: ["[Struktur] das Schild nimmt denselben kaufKnopf","shop_url_kind bundle: dieselbe Beschriftung wie der Kaufknopf"], ersetze: [[HINWEIS, "import { kaufKnopf } from \"../cloud-v2/cloud-kaufknopf.mjs\"", "const kaufKnopf = (r) => ({ url: r?.shop_url || null, isBundle: false })"]] },
@@ -2217,11 +2217,11 @@ const SABOTAGEN = [
   { satz: "traeger", ziel: ["ohne Abweisung der erste Traeger"], ersetze: [[SETTINGS, "    if (!abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse\n", "    if (erster && !abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse\n"]] },
   { satz: "traeger", ziel: ["ohne Menge wie vorher der erste"], ersetze: [[SETTINGS, "    if (!abgewiesen?.has?.(", "    if (!(abgewiesen ?? new Set([\"beneos_bm_0113|4k\"])).has("]] },
   { satz: "traeger", ziel: ["der Rueckweg nennt vor der Abweisung den ersten Traeger","ohne Abweisung der erste Traeger"], ersetze: [[SETTINGS, "  let erster = \"\"\n  for (const a of kartenAdressen || []) {", "  let erster = \"\"\n  for (const a of [...(kartenAdressen || [])].reverse()) {"]] },
-  { satz: "traeger", ziel: ["zwei Traeger: erst der erste, dann der zweite gefragt","zwei Traeger: die Datei ist geholt","zwei Traeger: kein Fehlschlag gezaehlt","zwei Traeger: sie liegt unter dem geteilten Schluessel"], ersetze: [[FETCH, "if (abgelegt || befund.grund !== \"abgewiesen\" || !merkeTraegerAbweisung(ziel)) break", "break"]] },
-  { satz: "traeger", ziel: ["zwei Traeger: die Datei ist geholt","danach nennt der Rueckweg den zweiten Traeger","danach nennt die Kennung den zweiten Traeger"], ersetze: [[FETCH, "  abgewieseneTraeger.add(`${t.traeger.release}|${t.traeger.variant}`)\n", "\n"]] },
+  { satz: "traeger", ziel: ["zwei Traeger: erst der erste, dann der zweite gefragt","zwei Traeger: die Datei ist geholt","zwei Traeger: kein Fehlschlag gezaehlt","zwei Traeger: sie liegt unter dem geteilten Schluessel"], ersetze: [[FETCH, "if (abgelegt || befund.grund !== \"abgewiesen\" || !merkeTraegerAbweisung(ziel) || !naechste) break", "break"]] },
+  { satz: "traeger", ziel: ["danach nennt der Rueckweg den zweiten Traeger","danach nennt die Kennung den zweiten Traeger"], ersetze: [[FETCH, "  abgewieseneTraeger.add(`${t.traeger.release}|${t.traeger.variant}`)\n", "\n"]] },
   { satz: "traeger", ziel: ["danach nennt die Kennung den zweiten Traeger"], ersetze: [[FETCH, "geteilteAdresse(variant, pfad, adressenZuSha.get(variant), abgewieseneTraeger)", "geteilteAdresse(variant, pfad, adressenZuSha.get(variant))"]] },
-  { satz: "traeger", ziel: ["danach nennt der Rueckweg den zweiten Traeger","zwei Traeger: die Datei ist geholt"], ersetze: [[FETCH, "geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger)", "geteilteAdresse(sha, name, adressenZuSha.get(sha))"]] },
-  { satz: "traeger", ziel: ["ein Traeger: genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(ziel)\n", "          versucht.add(`${ziel}|${versucht.size}`)\n"], [FETCH, "if (!naechste || versucht.has(naechste) || !ours(naechste)) break", "if (!naechste || versucht.size > 1 || !ours(naechste)) break"]] },
+  { satz: "traeger", ziel: ["danach nennt der Rueckweg den zweiten Traeger"], ersetze: [[FETCH, "geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger)", "geteilteAdresse(sha, name, adressenZuSha.get(sha))"]] },
+  { satz: "traeger", ziel: ["ein Traeger: genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(roh)\n", "          versucht.add(`${roh}|${versucht.size}`)\n"], [FETCH, "  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return \"\"\n", "  if (!a || !ta) return \"\"\n"], [FETCH, "  if (a === roh || versucht?.has(a) || !ours(a)) return \"\"\n", "  if (versucht?.size > 2 || !ours(a)) return \"\"\n"]] },
   { satz: "traeger", ziel: ["ein Traeger: Fehlschlag wie vorher","ein Traeger: Grund abgewiesen wie vorher"], ersetze: [[FETCH, "        if (abgelegt) {", "        if (abgelegt || versucht.size > 0) {"]] },
   { satz: "traeger", ziel: ["[Struktur] der Abweisungszweig des Abrufersatzes merkt den Traeger"], ersetze: [[FETCH, "        // Sitzung, der Rueckweg nimmt danach den naechsten (stre-T-173).\n        merkeTraegerAbweisung(url)\n", "\n"]] },
   // ---------------------------------------------------------------- pruefsumme (stre-T-174)
@@ -2243,6 +2243,17 @@ const SABOTAGEN = [
   { satz: "pruefsumme", ziel: ["Vorbedingung: die Zusage gelingt"], ersetze: [[OFFLINE, "    const { sha: alt, ...rest } = e\n", "    const { sha: alt, ...rest } = null\n"]] },
   { satz: "pruefsumme", ziel: ["[Struktur] verwaisteLoesen deckt den Gemeinschaftsvorrat ueber deckungDesVorrats"], ersetze: [[OFFLINE, "    for (const d of deckungDesVorrats(liesGeteilt())) gedeckt.add(d)\n", "    for (const u of Object.keys(liesGeteilt())) gedeckt.add(adresseNormal(u))\n"]] },
   { satz: "pruefsumme", ziel: ["[Struktur] geteilteLuecken fragt mit dem Eintrag"], ersetze: [[OFFLINE, "istGehalten(deckungDesVorrats({ [url]: e })[0])", "istGehalten(url)"]] },
+  // ---------------------------------------------------------------- traeger-ersatz (stre-T-173, Kalt-Review cab0a2e)
+  // Der Rueckfall am echten Abrufersatz: eine nicht endgueltige Abweisung meldet
+  // nichts an den Kunden, eine endgueltige wie vorher, und der Abfrageteil
+  // fuehrt nicht zu einem zweiten Abruf desselben Traegers.
+  { satz: "traeger-ersatz", ziel: ["kein Hinweis an die Spielleitung","keine Konsolenzeile 'kein Material'"], ersetze: [[FETCH, "        const endgueltig = !leiserVersuch.has(ohneAbfrage(url))\n", "        const endgueltig = true\n"]] },
+  { satz: "traeger-ersatz", ziel: ["kein Hinweis an die Spielleitung","keine Konsolenzeile 'kein Material'"], ersetze: [[FETCH, "          if (naechste) leiserVersuch.add(roh)\n", "\n"]] },
+  { satz: "traeger-ersatz", ziel: ["ein Hinweis an die Spielleitung","eine Konsolenzeile fuer den Traeger"], ersetze: [[FETCH, "        const endgueltig = !leiserVersuch.has(ohneAbfrage(url))\n", "        const endgueltig = false\n"]] },
+  { satz: "traeger-ersatz", ziel: ["erst der erste, dann der zweite gefragt","die Datei ist geholt","kein Fehlschlag gezaehlt","sie liegt unter dem geteilten Schluessel"], ersetze: [[FETCH, "if (abgelegt || befund.grund !== \"abgewiesen\" || !merkeTraegerAbweisung(ziel) || !naechste) break", "break"]] },
+  { satz: "traeger-ersatz", ziel: ["genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(roh)\n", "          versucht.add(`${roh}|${versucht.size}`)\n"], [FETCH, "  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return \"\"\n", "  if (!a || !ta) return \"\"\n"], [FETCH, "  if (a === roh || versucht?.has(a) || !ours(a)) return \"\"\n", "  if (versucht?.size > 2 || !ours(a)) return \"\"\n"]] },
+  { satz: "traeger-ersatz", ziel: ["ein Traeger: Fehlschlag mit Grund abgewiesen","mit Abfrageteil: Fehlschlag mit Grund abgewiesen"], ersetze: [[FETCH, "        if (abgelegt) {", "        if (abgelegt || versucht.size > 0) {"]] },
+  { satz: "traeger-ersatz", ziel: ["genau ein Abruf, auch mit Abfrageteil"], ersetze: [[FETCH, "          const roh = ohneAbfrage(ziel)\n", "          const roh = ziel\n"], [FETCH, "  if (!a || !ta || ohne.has(`${ta.release}|${ta.variant}`)) return \"\"\n", "  if (!a || !ta) return \"\"\n"], [FETCH, "  if (a === roh || versucht?.has(a) || !ours(a)) return \"\"\n", "  if (a === url || versucht?.has(a) || !ours(a)) return \"\"\n"]] },
 ];
 
 /*
@@ -2484,7 +2495,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "pruefsumme", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
