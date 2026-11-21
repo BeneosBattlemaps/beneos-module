@@ -106,7 +106,8 @@ fi
 # ---------------------------------------------------------------- Syntax -----
 # --no-renames: eine umbenannte Datei erscheint sonst als R und faellt durch
 # den Filter ACM, ihre neue Fassung bliebe ungeprueft.
-git diff --cached --name-only --no-renames --diff-filter=ACM   -- '*.js' '*.mjs' '*.cjs' > "$TMP/vorgemerkt" 2>/dev/null
+git diff --cached --name-only --no-renames --diff-filter=ACM \
+  -- '*.js' '*.mjs' '*.cjs' > "$TMP/vorgemerkt" 2>/dev/null
 
 ANZ_SYNTAX=0
 while IFS= read -r pfad; do
@@ -130,7 +131,9 @@ done < "$TMP/vorgemerkt"
 # Alle Pruefungen laufen gegen die vorgemerkte Fassung, Begruendung oben.
 # Gemessen am 2026-11-21: 180 Dateien, rund 0,5 s.
 IDX="$TMP/idx"
-if ! git ls-files -z -- scripts tools lang module.json > "$TMP/indexliste"    || ! xargs -0 git checkout-index --prefix="$IDX/" -- < "$TMP/indexliste"         2>"$TMP/fehler"
+if ! git ls-files -z -- scripts tools lang module.json > "$TMP/indexliste" \
+   || ! xargs -0 git checkout-index --prefix="$IDX/" -- < "$TMP/indexliste" \
+        2>"$TMP/fehler"
 then
   meld "pre-commit: ROT  der Index liess sich nicht ausspielen, keine Pruefung lief"
   sed -n '1,6p' "$TMP/fehler" >&2
@@ -186,19 +189,20 @@ scripts/cloud-v2/transfer-drossel.test.mjs
 scripts/canvas/map-sharpen-curve.test.mjs
 tools/pruefe-katalog-offline.mjs"
 
-git diff --cached --name-only --no-renames --diff-filter=ACMD   > "$TMP/gegenstand" 2>/dev/null
+git diff --cached --name-only --no-renames --diff-filter=ACMD \
+  > "$TMP/gegenstand" 2>/dev/null
 ALLE_GEGENSTAND=0
 grep -q '^tools/haken/' "$TMP/gegenstand" && ALLE_GEGENSTAND=1
 
 if [ -s "$TMP/gegenstand" ]; then
   if [ "$ALLE_GEGENSTAND" -eq 1 ]; then
-    printf '%s
-' "$NACH_GEGENSTAND" > "$TMP/betroffen"
-  elif fehlt tools/haken/betroffen.mjs "betroffen.mjs"; then
-    : > "$TMP/betroffen"
+    printf '%s\n' "$NACH_GEGENSTAND" > "$TMP/betroffen"
   else
+    # Kein Existenzwaechter: fehlt betroffen.mjs im Index, ist das eine
+    # vorgemerkte Loeschung unter tools/haken/ und damit der Zweig oben.
     # shellcheck disable=SC2086
-    (cd "$IDX" && node tools/haken/betroffen.mjs "$TMP/gegenstand" $NACH_GEGENSTAND)       > "$TMP/betroffen" 2>"$TMP/fehler" < /dev/null || {
+    (cd "$IDX" && node tools/haken/betroffen.mjs "$TMP/gegenstand" $NACH_GEGENSTAND) \
+      > "$TMP/betroffen" 2>"$TMP/fehler" < /dev/null || {
         meld "pre-commit: ROT  betroffen.mjs konnte den Gegenstand nicht bestimmen"
         sed -n '1,6p' "$TMP/fehler" >&2
         ROT=$((ROT + 1))
@@ -220,12 +224,12 @@ fi
 # das ungeprueft durchlaesst, ist keines. Die Bank laeuft wie alle anderen im
 # ausgespielten Index; die Foundry-Pfade sind absolut und brauchen ihn nicht.
 BANK="tools/scene-merge-token-bench/unit.mjs"
-if { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK"      -e 'scripts/cloud-v2/token-delta.mjs' "$TMP/gegenstand"; }    && ! fehlt "$BANK" "scene-merge-token-bench"; then
+if { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK" \
+     -e 'scripts/cloud-v2/token-delta.mjs' "$TMP/gegenstand"; } \
+   && ! fehlt "$BANK" "scene-merge-token-bench"; then
   FVTT="D:/PNP_Game/Foundry VTT/FoundryVTT"
   APPS="${BENEOS_FOUNDRY_APPS:-$FVTT/Foundry Virtual Tabletop v13/resources/app;$FVTT/Foundry Virtual Tabletop V14/App/resources/app}"
-  printf '%s
-' "$APPS" | tr ';' '
-' > "$TMP/apps"
+  printf '%s\n' "$APPS" | tr ';' '\n' > "$TMP/apps"
   ANZ_APPS=0
   while IFS= read -r app; do
     [ -f "$app/package.json" ] || continue
