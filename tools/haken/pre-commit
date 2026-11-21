@@ -505,7 +505,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Kreaturen-Installer vorgemerkt, die Adressform laeuft mit"
-  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench, 31 Saetze"
+  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench"
 fi
 
 # Der Bildweg des Installers, wenn er angefasst wird.
@@ -570,7 +570,7 @@ if git diff --cached --name-only --diff-filter=ACM \
    | grep -q .
 then
   meld "pre-commit: Bauvorgabe vorgemerkt, die Paketgrenze laeuft mit"
-  fahre "tools/paket-grenze-bench/bench.mjs" "paket-grenze-bench, 39 Saetze"
+  fahre "tools/paket-grenze-bench/bench.mjs" "paket-grenze-bench"
 fi
 
 # Der Satz gegen die Globalen, die Foundry 15 entfernt.
