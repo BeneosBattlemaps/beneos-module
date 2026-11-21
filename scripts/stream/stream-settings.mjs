@@ -1434,16 +1434,27 @@ export function leinwandAdresse(src) {
  *
  * Hier und nicht in `stream-fetch.mjs`, damit der Pruefsatz sie ohne die
  * Abrufschicht laden kann.
+ *
+ * EIN ABGEWIESENER TRAEGER WIRD UEBERSPRUNGEN (stre-T-173). `abgewiesen` ist
+ * eine Menge von `release|variant`, die das Tor in dieser Sitzung fuer `/s/`
+ * abgewiesen hat. Fuehren zwei Karten dieselbe Datei und ist die erste nicht
+ * im Recht des Kunden, kommt die Datei ueber die zweite. Sind alle
+ * abgewiesen, bleibt es beim ersten gueltigen Traeger wie vorher: lieber eine
+ * Adresse, die abgewiesen wird, als keine, und mit einem einzigen Traeger
+ * aendert sich so nichts.
  */
-export function geteilteAdresse(sha, name, kartenAdressen) {
+export function geteilteAdresse(sha, name, kartenAdressen, abgewiesen) {
+  let erster = ""
   for (const a of kartenAdressen || []) {
     const t = zerlegeAdresse(a)
     if (t?.raum !== "karte") continue
     const traeger = { release: t.release, variant: t.variant }
     if (!istTraeger(traeger)) continue
-    return assetUrl(GETEILT_RAUM, sha, name, traeger)
+    const adresse = assetUrl(GETEILT_RAUM, sha, name, traeger)
+    if (!abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse
+    if (!erster) erster = adresse
   }
-  return ""
+  return erster
 }
 
 /**

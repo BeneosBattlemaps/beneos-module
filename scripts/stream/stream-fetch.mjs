@@ -736,7 +736,7 @@ export function adresseVonKennung(kennung) {
   // tragen, und ein abgeschnittener Pfad waere eine tote Adresse.
   const pfad = rest.join("|")
   if (release === GETEILT_RAUM) {
-    const mitTraeger = geteilteAdresse(variant, pfad, adressenZuSha.get(variant))
+    const mitTraeger = geteilteAdresse(variant, pfad, adressenZuSha.get(variant), abgewieseneTraeger)
     if (mitTraeger) return mitTraeger
   }
   // Ohne Traeger die Antwort von vorher: "" fuer eine echte Pruefsumme.
@@ -767,7 +767,7 @@ export function adresseAusSchluessel(schluessel) {
     if (decodeURIComponent(teile[1]) === GETEILT_RAUM && teile.length === 4) {
       const sha = decodeURIComponent(teile[2])
       const name = decodeURIComponent(teile[3])
-      return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s
+      return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger) || s
     }
     return assetUrl(
       decodeURIComponent(teile[1]),
@@ -1337,6 +1337,25 @@ async function fromStore(store, url) {
  */
 const shaZuAdresse = new Map()   // Adresse ohne Abfrageteil -> sha256
 const adressenZuSha = new Map()  // sha256 -> Set der Adressen
+
+/**
+ * Traeger, die das Tor in dieser Sitzung fuer `/s/` abgewiesen hat, als
+ * `release|variant` (stre-T-173). `geteilteAdresse` ueberspringt sie, solange
+ * ein anderer Traeger bekannt ist.
+ *
+ * Nur eine Abweisung einer `/s/`-Adresse zaehlt. Eine Abweisung unter `/a/`
+ * sagt nichts ueber den geteilten Raum: das Tor prueft `/s/` mit eigenem
+ * Releasebezug am Manifest (T-052), und eine Gleichsetzung waere geraten.
+ * Gilt fuer die Sitzung, wie die Meldung einer Abweisung auch.
+ */
+const abgewieseneTraeger = new Set()
+
+function merkeTraegerAbweisung(url) {
+  const t = zerlegeAdresse(String(url || "").replace(/[?#].*$/, ""))
+  if (t?.raum !== "geteilt" || !t.traeger) return false
+  abgewieseneTraeger.add(`${t.traeger.release}|${t.traeger.variant}`)
+  return true
+}
 
 /**
  * Deckel gegen unbegrenztes Wachstum.
@@ -2100,6 +2119,9 @@ export async function alleImSpeicher(urls) {
         count("denied", url)
         noteResult(true)
         reportFailure({ url, reason: "denied", detail: "placeholder returned" })
+        // Eine abgewiesene `/s/`-Adresse sperrt ihren Traeger fuer diese
+        // Sitzung, der Rueckweg nimmt danach den naechsten (stre-T-173).
+        merkeTraegerAbweisung(url)
         // Einmal je Szene, nicht je Datei.
         //
         // Eine abgelaufene Miete sperrt nicht eine Datei, sondern das ganze
@@ -2296,13 +2318,32 @@ export async function offlineHalten(urls, onProgress) {
         ergebnis.gehalten++
         ergebnis.bytes += Number(hit.headers.get("content-length") || 0)
       } else {
-        const antwort = await fetch(url)
         // `toStore` weist Ablehnungen und Ersatzantworten selbst ab und
         // schafft bei vollem Speicher Platz, indem es Wegwerfware raeumt.
         // Genau das fehlte bis zum 29.08.2026: ein voller Speicher liess das
         // Halten stillschweigend scheitern.
-        const befund = {}
-        if (await toStore(store, url, antwort, true, befund)) {
+        //
+        // EINE ABGEWIESENE `/s/`-ADRESSE BEKOMMT DEN NAECHSTEN TRAEGER
+        // (stre-T-173). Der Traeger wird gemerkt, der Rueckweg aus dem
+        // geteilten Schluessel nennt danach den naechsten, und abgelegt wird
+        // unter demselben Schluessel. Jede Adresse hoechstens einmal; mit
+        // einem einzigen Traeger nennt der Rueckweg dieselbe, und es bleibt
+        // bei einem Abruf wie vorher. Die Gegenprobe ist ein eigener Abruf,
+        // nicht der Ersatz im Abrufpfad: im Download-Betrieb ist der nicht
+        // vorgeschaltet.
+        let ziel = url, antwort, befund = {}, abgelegt = false
+        const versucht = new Set()
+        for (;;) {
+          versucht.add(ziel)
+          antwort = await fetch(ziel)
+          befund = {}
+          abgelegt = await toStore(store, ziel, antwort, true, befund)
+          if (abgelegt || befund.grund !== "abgewiesen" || !merkeTraegerAbweisung(ziel)) break
+          const naechste = adresseAusSchluessel(vorratsSchluessel(ziel))
+          if (!naechste || versucht.has(naechste) || !ours(naechste)) break
+          ziel = naechste
+        }
+        if (abgelegt) {
           ergebnis.geholt++
           ergebnis.bytes += Number(antwort.headers.get("content-length") || 0)
         } else {

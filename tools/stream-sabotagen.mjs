@@ -151,6 +151,11 @@
  * nicht, und eine geteilte Kennung findet ihren Traeger. An der Basis gibt es
  * ihn nicht.
  *
+ * Seit stre-T-173 dazu `traeger` (`scripts/stream/stream-traeger.test.mjs`):
+ * nach der Abweisung einer `/s/`-Adresse nimmt der Rueckweg den naechsten
+ * Traeger, `offlineHalten` holt die Datei ueber ihn, und mit einem einzigen
+ * Traeger bleibt alles wie vorher. An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -331,8 +336,8 @@ const SABOTAGEN = [
   { satz: "geteilt", ziel: ["ein Schluessel bleibt ein Schluessel"], ersetze: [[FETCH, "  if (s.startsWith(VORRAT_URSPRUNG)) return s\n  const t = zerlegeAdresse(s)\n  if (!t) return s\n  const g", "  const t = zerlegeAdresse(s)\n  if (!t) return s\n  const g"]] },
   { satz: "geteilt", ziel: ["mit Pruefsumme, Schalter AN: der geteilte Schluessel","bei AN idempotent: ein Schluessel bleibt ein Schluessel","bei AN haengt der Vergleich am Pfad, eine Abfrage stoert nicht"], ersetze: [[FETCH, "  const quelle = g || t\n", "  const quelle = t\n"]] },
   // Der Rueckweg und das Sammeln.
-  { satz: "geteilt", ziel: ["mit Manifest wird daraus die siebenteilige Adresse des Traegers"], ersetze: [[FETCH, "      return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s", "      return s"]] },
-  { satz: "geteilt", ziel: ["ohne Manifest bleibt der geteilte Schluessel, wie er ist"], ersetze: [[FETCH, "      return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s", "      return geteilteAdresse(sha, name, adressenZuSha.get(sha))"]] },
+  { satz: "geteilt", ziel: ["mit Manifest wird daraus die siebenteilige Adresse des Traegers"], ersetze: [[FETCH, "      return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger) || s", "      return s"]] },
+  { satz: "geteilt", ziel: ["ohne Manifest bleibt der geteilte Schluessel, wie er ist"], ersetze: [[FETCH, "      return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger) || s", "      return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger)"]] },
   { satz: "geteilt", ziel: ["eine geteilte Adresse sammelt unter ihrem Traeger"], ersetze: [[FETCH, "  if (t.traeger) return `${t.traeger.release}/${t.traeger.variant}`", "  if (t.traeger) return t.release"]] },
   { satz: "geteilt", ziel: ["eine Karte sammelt wie vorher (Legacy, byte-gleich)"], ersetze: [[FETCH, "  return t.variant ? `${t.release}/${t.variant}` : t.release\n}", "  return t.release\n}"]] },
   // Die Adresse: Bau, Traeger, Zerlegung.
@@ -373,7 +378,7 @@ const SABOTAGEN = [
   { satz: "geteilt", ziel: ["[Struktur] und wirft Kommentare weg"], ersetze: [[SETTINGS, "UMGEZOGEN AM 2026-11-08", "umgezogen am 2026-11-08"]] },
   { satz: "geteilt", ziel: ["die Adresse hat die Form der Route","der Schluessel steht drin","Kartenadresse byte-gleich","Kreaturadresse byte-gleich","Beuteadresse byte-gleich","eine Karte kommt zurueck wie vorher (Legacy, byte-gleich)"], ersetze: [[SETTINGS, "  const schluessel = encodeURIComponent(streamKey())\n", "  const schluessel = \"-\"\n"]] },
   { satz: "geteilt", ziel: ["geteilteAdresse: erste Kartenadresse ist der Traeger","geteilteAdresse: andere erste Karte, anderer Traeger"], ersetze: [[SETTINGS, "  for (const a of kartenAdressen || []) {", "  for (const a of [...(kartenAdressen || [])].reverse()) {"]] },
-  { satz: "geteilt", ziel: ["geteilteAdresse: ohne Kartenadresse leer","geteilteAdresse: ohne Verzeichnis leer","ohne Manifest bleibt der geteilte Schluessel, wie er ist"], ersetze: [[SETTINGS, "    return assetUrl(GETEILT_RAUM, sha, name, traeger)\n  }\n  return \"\"\n", "    return assetUrl(GETEILT_RAUM, sha, name, traeger)\n  }\n  return assetUrl(GETEILT_RAUM, sha, name, { release: \"beneos_bm_0001\", variant: \"4k\" })\n"]] },
+  { satz: "geteilt", ziel: ["geteilteAdresse: ohne Kartenadresse leer","geteilteAdresse: ohne Verzeichnis leer","ohne Manifest bleibt der geteilte Schluessel, wie er ist"], ersetze: [[SETTINGS, "    if (!erster) erster = adresse\n  }\n  return erster\n", "    if (!erster) erster = adresse\n  }\n  return erster || assetUrl(GETEILT_RAUM, sha, name, { release: \"beneos_bm_0001\", variant: \"4k\" })\n"]] },
   { satz: "geteilt", ziel: ["ohne Pruefsumme kommt die Kartenadresse","und nicht die geteilte"], ersetze: [[SETTINGS, "  if (istGeteilterRaum(release, variant)) {", "  if (String(release) === GETEILT_RAUM) {"]] },
   { satz: "geteilt", ziel: ["eine Karte bleibt eine Karte","Kartenadresse byte-gleich","Kartenplatzhalter byte-gleich","eine Kartenadresse bleibt eine Karte","eine geteilte Datei behaelt bei AUS den Kartenschluessel","eine Karte kommt zurueck wie vorher (Legacy, byte-gleich)"], ersetze: [[SETTINGS, "  if (istGeteilterRaum(release, variant)) {", "  if (istGeteilterRaum(release, variant) || String(release).startsWith(\"beneos_bm\")) {"]] },
   { satz: "geteilt", ziel: ["eine Kreatur bleibt eine Kreatur","Kreaturadresse byte-gleich","eine Kreaturenadresse bleibt eine Kreatur"], ersetze: [[SETTINGS, "  if (istKreatur(release)) {\n    return [\"c\"", "  if (istKreatur(release) && false) {\n    return [\"c\""]] },
@@ -2183,8 +2188,8 @@ const SABOTAGEN = [
   { satz: "vorrat", ziel: ["eigeneEingaben wie der alte Filter"], ersetze: [[FETCH, "  return [...new Set((urls || []).filter(u => typeof u === \"string\" && eigen(u)))]", "  return (urls || []).filter(u => typeof u === \"string\" && eigen(u))"]] },
   // Kennung zur Adresse: Reihenfolge, fremder Traeger, und der Rueckweg ohne Traeger.
   { satz: "vorrat", ziel: ["Kennung einer Karte gibt die Toradresse wie bisher"], ersetze: [[FETCH, "  return assetUrl(release, variant, pfad)", "  return assetUrl(variant, release, pfad)"]] },
-  { satz: "vorrat", ziel: ["Gegenwert: geteilte Kennung ohne Traeger bleibt leer"], ersetze: [[FETCH, "geteilteAdresse(variant, pfad, adressenZuSha.get(variant))", "geteilteAdresse(variant, pfad, [...adressenZuSha.values()].flatMap(l => [...l]))"]] },
-  { satz: "vorrat", ziel: ["Fall B: der Rueckweg laesst den Schluessel stehen"], ersetze: [[FETCH, "return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || s", "return geteilteAdresse(sha, name, adressenZuSha.get(sha)) || \"\""]] },
+  { satz: "vorrat", ziel: ["Gegenwert: geteilte Kennung ohne Traeger bleibt leer"], ersetze: [[FETCH, "geteilteAdresse(variant, pfad, adressenZuSha.get(variant), abgewieseneTraeger)", "geteilteAdresse(variant, pfad, [...adressenZuSha.values()].flatMap(l => [...l]), abgewieseneTraeger)"]] },
+  { satz: "vorrat", ziel: ["Fall B: der Rueckweg laesst den Schluessel stehen"], ersetze: [[FETCH, "return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger) || s", "return geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger) || \"\""]] },
   { satz: "vorrat", ziel: ["Kennung shared ohne Pruefsumme: die Antwort von vorher"], ersetze: [[FETCH, "  return assetUrl(release, variant, pfad)", "  return release === GETEILT_RAUM ? \"\" : assetUrl(release, variant, pfad)"]] },
   // Kalt-Review stre-T-081: Weltstart ohne Pruefsumme, rohe Speicherschluessel, der Zwilling geteilteLuecken.
   { satz: "vorrat", ziel: ["Weltstart: Zusage mit der Kartenadresse deckt sie","Weltstart: Kennung in Kartenform deckt sie"], ersetze: [[FETCH, "  return Boolean(name && decke.namen.has(name))", "  return false"]] },
@@ -2200,6 +2205,19 @@ const SABOTAGEN = [
   { satz: "vorrat", ziel: ["AUS: ein geteilter Schluessel gilt fuer die Kartenform nicht als gehalten"], ersetze: [[FETCH, "    const name = an ? geteilterName(s) : \"\"", "    const name = geteilterName(s)"], [FETCH, "    const name = an ? ungeloesterGeteilterName(eintrag, s) : \"\"", "    const name = ungeloesterGeteilterName(eintrag, s)"]] },
   { satz: "vorrat", ziel: ["[Struktur] geteilteLuecken laesst einen unklaren Eintrag unberuehrt"], ersetze: [[OFFLINE, "    if (stand === \"unklar\") continue\n", "\n"]] },
   { satz: "vorrat", ziel: ["[Struktur] geteilteLuecken fragt ueber gehaltenePruefung"], ersetze: [[OFFLINE, "gehaltenePruefung(await gehalteneAdressen())", "gehaltenePruefung([])"]] },
+  // ---------------------------------------------------------------- traeger (stre-T-173)
+  { satz: "traeger", ziel: ["erster abgewiesen, der zweite wird genommen","zwei Traeger: erst der erste, dann der zweite gefragt","zwei Traeger: die Datei ist geholt","danach nennt der Rueckweg den zweiten Traeger","danach nennt die Kennung den zweiten Traeger"], ersetze: [[SETTINGS, "    if (!abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse\n", "    return adresse\n"]] },
+  { satz: "traeger", ziel: ["nur ein Traeger, abgewiesen: es bleibt derselbe","alle abgewiesen: der erste wie vorher, nie leer","ein Traeger: der Rueckweg bleibt beim selben"], ersetze: [[SETTINGS, "    if (!erster) erster = adresse\n  }\n  return erster\n", "    if (!erster) erster = adresse\n  }\n  return \"\"\n"]] },
+  { satz: "traeger", ziel: ["ohne Abweisung der erste Traeger"], ersetze: [[SETTINGS, "    if (!abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse\n", "    if (erster && !abgewiesen?.has?.(`${traeger.release}|${traeger.variant}`)) return adresse\n"]] },
+  { satz: "traeger", ziel: ["ohne Menge wie vorher der erste"], ersetze: [[SETTINGS, "    if (!abgewiesen?.has?.(", "    if (!(abgewiesen ?? new Set([\"beneos_bm_0113|4k\"])).has("]] },
+  { satz: "traeger", ziel: ["der Rueckweg nennt vor der Abweisung den ersten Traeger","ohne Abweisung der erste Traeger"], ersetze: [[SETTINGS, "  let erster = \"\"\n  for (const a of kartenAdressen || []) {", "  let erster = \"\"\n  for (const a of [...(kartenAdressen || [])].reverse()) {"]] },
+  { satz: "traeger", ziel: ["zwei Traeger: erst der erste, dann der zweite gefragt","zwei Traeger: die Datei ist geholt","zwei Traeger: kein Fehlschlag gezaehlt","zwei Traeger: sie liegt unter dem geteilten Schluessel"], ersetze: [[FETCH, "if (abgelegt || befund.grund !== \"abgewiesen\" || !merkeTraegerAbweisung(ziel)) break", "break"]] },
+  { satz: "traeger", ziel: ["zwei Traeger: die Datei ist geholt","danach nennt der Rueckweg den zweiten Traeger","danach nennt die Kennung den zweiten Traeger"], ersetze: [[FETCH, "  abgewieseneTraeger.add(`${t.traeger.release}|${t.traeger.variant}`)\n", "\n"]] },
+  { satz: "traeger", ziel: ["danach nennt die Kennung den zweiten Traeger"], ersetze: [[FETCH, "geteilteAdresse(variant, pfad, adressenZuSha.get(variant), abgewieseneTraeger)", "geteilteAdresse(variant, pfad, adressenZuSha.get(variant))"]] },
+  { satz: "traeger", ziel: ["danach nennt der Rueckweg den zweiten Traeger","zwei Traeger: die Datei ist geholt"], ersetze: [[FETCH, "geteilteAdresse(sha, name, adressenZuSha.get(sha), abgewieseneTraeger)", "geteilteAdresse(sha, name, adressenZuSha.get(sha))"]] },
+  { satz: "traeger", ziel: ["ein Traeger: genau ein Abruf"], ersetze: [[FETCH, "          versucht.add(ziel)\n", "          versucht.add(`${ziel}|${versucht.size}`)\n"], [FETCH, "if (!naechste || versucht.has(naechste) || !ours(naechste)) break", "if (!naechste || versucht.size > 1 || !ours(naechste)) break"]] },
+  { satz: "traeger", ziel: ["ein Traeger: Fehlschlag wie vorher","ein Traeger: Grund abgewiesen wie vorher"], ersetze: [[FETCH, "        if (abgelegt) {", "        if (abgelegt || versucht.size > 0) {"]] },
+  { satz: "traeger", ziel: ["[Struktur] der Abweisungszweig des Abrufersatzes merkt den Traeger"], ersetze: [[FETCH, "        // Sitzung, der Rueckweg nimmt danach den naechsten (stre-T-173).\n        merkeTraegerAbweisung(url)\n", "\n"]] },
 ];
 
 /*
@@ -2441,7 +2459,7 @@ if (process.argv.includes("--alle-saetze")) {
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
 const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "doppelwache"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
