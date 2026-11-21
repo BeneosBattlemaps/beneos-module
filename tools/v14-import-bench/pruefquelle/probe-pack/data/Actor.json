@@ -1,0 +1,40 @@
+[
+  {
+    "_id": "probeActor000001",
+    "name": "Probe Creature 1",
+    "type": "npc",
+    "prototypeToken": {
+      "name": "Probe Creature 1",
+      "width": 2,
+      "height": 2,
+      "detectionModes": [{ "id": "seeInvisibility", "range": 60, "enabled": true }]
+    },
+    "_stats": { "coreVersion": "13.351" }
+  },
+  {
+    "_id": "probeActor000002",
+    "name": "Probe Creature 2",
+    "type": "npc",
+    "prototypeToken": {
+      "name": "Probe Creature 2",
+      "width": 1,
+      "height": 1,
+      "detectionModes": [{ "id": "feelTremor", "range": 30, "enabled": true }]
+    },
+    "_stats": { "coreVersion": "13.351" }
+  },
+  {
+    "_id": "probeActor000003",
+    "name": "Probe Creature 3",
+    "type": "npc",
+    "prototypeToken": { "name": "Probe Creature 3", "width": 1, "height": 1 },
+    "_stats": { "coreVersion": "13.351" }
+  },
+  {
+    "_id": "probeActor000004",
+    "name": "Probe Creature 4",
+    "type": "character",
+    "prototypeToken": { "name": "Probe Creature 4", "width": 1, "height": 1, "actorLink": true },
+    "_stats": { "coreVersion": "13.351" }
+  }
+]

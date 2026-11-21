@@ -8,21 +8,34 @@
  * disappears or changes value on the way is a loss at install time.
  *
  * Usage, see README:
- *   node bench.mjs --foundry "<path to the app folder>" --packs "<folder>"
+ *   node bench.mjs [--foundry "<path to the app folder>"] [--packs "<folder>"]
  *                  [--limit 20] [--verbose] [--without-bridge]
  *
+ * Without --packs the run reads the synthetic test source next to this file
+ * (stre-T-019) and says so. It holds no catalogue data; the catalogue is
+ * measured with --packs.
+ *
  * Exit code 1 as soon as a loss is found, so the run works as a release gate.
+ * Every loss is also listed on stdout as a line "ROT: <finding>", and stderr
+ * carries one line "ROT: <n> loss kind(s)".
  * Exit code 2 when the run could not measure anything, so "nothing lost" can
- * never be confused with "nothing measured".
+ * never be confused with "nothing measured": no Foundry, a missing pack source,
+ * too few documents.
  */
 import fs from "node:fs"
 import path from "node:path"
 import url from "node:url"
 import { execFileSync } from "node:child_process"
+import { findeFoundry, gesuchteOrte } from "../foundry-orte.mjs"
 
 const HERE = path.dirname(url.fileURLToPath(import.meta.url))
 const MODULE_ROOT = path.resolve(HERE, "..", "..")
 const NODE_MIN = 18
+
+// Read when --packs is missing. Synthetic: no catalogue names, texts or image
+// paths. Every pattern in BRIDGE_MOVES occurs in it; tools/bench-sabotagen.mjs
+// proves that entry by entry.
+const TEST_SOURCE = path.join(HERE, "pruefquelle")
 
 const PACK_FILES = ["data/Scene.json", "data/Actor.json", "data/Item.json", "data/JournalEntry.json",
   "data/Playlist.json", "data/Macro.json", "data/RollTable.json", "data/Cards.json", "data/folders.json"]
@@ -74,8 +87,8 @@ const SKIP_AT_ROOT = new Set(["system", "_stats", "_key", "flags", "ownership", 
 function parseArgs(argv) {
   const a = { limit: Infinity, verbose: false, withoutBridge: false }
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--foundry") a.foundry = argv[++i]
-    else if (argv[i] === "--packs") a.packs = argv[++i]
+    if (argv[i] === "--foundry") a.foundry = argv[++i] ?? ""
+    else if (argv[i] === "--packs") a.packs = argv[++i] ?? ""
     else if (argv[i] === "--limit") a.limit = Number(argv[++i]) || Infinity
     else if (argv[i] === "--verbose") a.verbose = true
     // A green run that cannot turn red proves nothing.
@@ -84,20 +97,10 @@ function parseArgs(argv) {
   return a
 }
 
-const FOUNDRY_CANDIDATES = [
-  "D:/PNP_Game/Foundry VTT/FoundryVTT/Foundry Virtual Tabletop V14/App/resources/app",
-  "D:/PNP_Game/Foundry VTT/FoundryVTT/Foundry Virtual Tabletop v13/resources/app",
-  "C:/Program Files/Foundry Virtual Tabletop/resources/app",
-]
-
+// The places to look for Foundry live in tools/foundry-orte.mjs, shared with
+// the other two benches that load Foundry (stre-T-019).
 function findFoundry(wanted) {
-  for (const p of (wanted ? [wanted] : FOUNDRY_CANDIDATES)) {
-    for (const inner of ["", "resources/app", "App/resources/app"]) {
-      const q = inner ? path.join(p, inner) : p
-      if (fs.existsSync(path.join(q, "common", "documents", "_module.mjs"))) return q
-    }
-  }
-  return null
+  return findeFoundry({ gesetzt: wanted, merkmale: ["common/documents/_module.mjs"] })?.app ?? null
 }
 
 /* ----------------------------------------------------------------------- */
@@ -302,11 +305,16 @@ if (Number(process.versions.node.split(".")[0]) < NODE_MIN) {
 const root = findFoundry(arg.foundry)
 if (!root) {
   console.error('no Foundry installation found. Point --foundry "<path>" at the app folder.')
-  console.error("looked in:\n  " + FOUNDRY_CANDIDATES.join("\n  "))
+  console.error("looked in:\n  " + gesuchteOrte(arg.foundry).join("\n  "))
   process.exit(2)
 }
-if (!arg.packs) {
-  console.error('no pack source. --packs "<folder of ZIP archives or unpacked packs>"')
+// A pack source that is missing, given or default, is "not measured", never a
+// loss and never a pass.
+const SOURCE = arg.packs ?? TEST_SOURCE
+const SOURCE_LABEL = arg.packs === undefined ? "the synthetic test source, not the catalogue" : SOURCE
+if (!SOURCE || !fs.existsSync(SOURCE)) {
+  console.error(`pack source not found: ${SOURCE_LABEL}`)
+  console.error('--packs "<folder of ZIP archives or unpacked packs>"')
   process.exit(2)
 }
 
@@ -326,10 +334,10 @@ const CLASS = {
   "data/folders.json": documents.BaseFolder,
 }
 
-const packs = loadPacks(arg.packs, arg.limit)
+const packs = loadPacks(SOURCE, arg.limit)
 console.log(`Foundry ${version} (generation ${generation}) from ${root}`)
 console.log(`node ${process.versions.node}${pythonVersion ? `, ${pythonVersion.version}` : ""}`)
-console.log(`${packs.length} packs from ${arg.packs}${arg.withoutBridge ? "  [WITHOUT the bridge]" : ""}`)
+console.log(`${packs.length} packs from ${SOURCE_LABEL}${arg.withoutBridge ? "  [WITHOUT the bridge]" : ""}`)
 
 const totals = new Map()
 let documentCount = 0
@@ -412,4 +420,13 @@ if (packs.length < MIN_PACKS || documentCount < MIN_DOCUMENTS) {
   console.error("'no loss' would mean 'nothing measured' here. Check --packs.")
   process.exit(2)
 }
-process.exit(rows.some(([, e]) => e.real > 0) ? 1 : 0)
+// One line per real loss, so a caller can name what turned red
+// (tools/bench-sabotagen.mjs reads them). On stdout, because a caller may cut a
+// long stderr; stderr carries the one line that says the run is red. The count
+// line is the run's limit.
+const losses = rows.filter(([, e]) => e.real > 0)
+if (losses.length) console.log("")
+for (const [k] of losses) console.log(`ROT: ${k}`)
+if (losses.length) console.error(`ROT: ${losses.length} loss kind(s)`)
+console.log(`\nLoss kinds: ${losses.length}, allowed 0`)
+process.exit(losses.length ? 1 : 0)

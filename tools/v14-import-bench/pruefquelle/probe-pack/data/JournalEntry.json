@@ -1,0 +1,10 @@
+[
+  {
+    "_id": "probeJournal0001",
+    "name": "Probe Journal",
+    "pages": [
+      { "_id": "probePage0000001", "name": "Probe Page", "type": "text", "text": { "content": "<p>Probe page.</p>" } }
+    ],
+    "_stats": { "coreVersion": "13.351" }
+  }
+]

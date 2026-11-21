@@ -70,6 +70,28 @@ p.gleich("ein Ziel, das genau eine Probe beginnt, ist eine",
 p.gleich("bei Art ausgang darf das Ziel nicht schon im Grundlauf stehen",
   l?.zieleOhneProbe("v15-globale", lauf({ ausgabe: ["    1  Ray  (bis Foundry 15)"] }), ["1  Ray"])?.length, 1)
 
+p.abschnitt("Aufrufproben mit Ziel und Gegenprobe (stre-T-019)")
+const urteil = (a, r, g) => l?.aufrufUrteil?.(a, lauf(r), g)?.art
+const zwei = { bench: "v14-import", args: [], rc: 2 }
+const mitGegen = { ...zwei, gegen: [["x", "a", "b"]] }
+p.gleich("falscher Ausgang ist ein Befund", urteil(zwei, { rc: 0 }), "befund")
+p.gleich("richtiger Ausgang ohne Gegenprobe ist ok", urteil(zwei, { rc: 2 }), "ok")
+p.gleich("ein getoeteter Aufruf ist nicht pruefbar", urteil(zwei, { rc: 2, getoetet: true }), "nichtpruefbar")
+p.gleich("Gegenprobe mit anderem Ausgang ist ok", urteil(mitGegen, { rc: 2 }, { r: lauf({ rc: 0 }) }), "ok")
+p.gleich("Gegenprobe mit gleichem Ausgang ist ein Befund: die Probe sieht den Vorgabeweg nicht",
+  urteil(mitGegen, { rc: 2 }, { r: lauf({ rc: 2 }) }), "befund")
+p.gleich("Gegenprobe, die nicht lief, ist nicht pruefbar", urteil(mitGegen, { rc: 2 }, { fehler: "Anker 0x" }), "nichtpruefbar")
+p.gleich("Gegenprobe getoetet ist nicht pruefbar",
+  urteil(mitGegen, { rc: 2 }, { r: lauf({ rc: 0, getoetet: true }) }), "nichtpruefbar")
+const mitZiel = { bench: "v14-import", args: ["--without-bridge"], rc: 1, ziel: ["ROT: A", "ROT: B"] }
+p.gleich("alle Ziele da ist ok", urteil(mitZiel, { rc: 1, ausgabe: ["ROT: A : weg", "ROT: B : weg"] }), "ok")
+p.gleich("ein Ziel fehlt ist ein Befund", urteil(mitZiel, { rc: 1, ausgabe: ["ROT: A : weg"] }), "befund")
+p.gleich("jede Aufrufprobe nennt einen bekannten Bench",
+  (l?.AUFRUFPROBEN ?? [{}]).every((a) => a.bench in (l?.BENCHES ?? {})), true)
+p.gleich("jede Aufrufprobe auf einen Bench, der Foundry laedt, hat eine Gegenprobe",
+  (l?.AUFRUFPROBEN ?? [{}]).filter((a) => ["v14-import", "scene-merge-token", "v15-globale"].includes(a.bench))
+    .every((a) => Array.isArray(a.gegen) && a.gegen.length > 0), true)
+
 p.abschnitt("die Tabelle")
 const benches = Object.keys(l?.BENCHES ?? {})
 p.gleich("jede Sabotage nennt einen bekannten Bench",

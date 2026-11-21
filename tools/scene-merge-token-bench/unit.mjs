@@ -6,15 +6,27 @@
  * replayed: the client turns each change into a diff, the server applies that
  * diff to its stored token, which carries `delta: null` for a linked token.
  *
- * Usage: node unit.mjs --foundry "<path to resources/app>"     Exit code 1 on any failure.
+ * Usage: node unit.mjs [--foundry "<path to resources/app>"]
+ *
+ * Without --foundry the places in tools/foundry-orte.mjs are tried (stre-T-019).
+ * Exit code 1 on any failure, 2 when no Foundry was found: "nothing measured" is
+ * never reported as a pass.
  */
 import path from "node:path"
 import url from "node:url"
 import fs from "node:fs"
+import { findeFoundry, gesuchteOrte } from "../foundry-orte.mjs"
 
 const arg = process.argv.indexOf("--foundry")
-if (arg < 0) { console.error("missing --foundry <path to resources/app>"); process.exit(2) }
-const APP = process.argv[arg + 1]
+const GESETZT = arg >= 0 ? process.argv[arg + 1] ?? "" : null
+const FUND = findeFoundry({ gesetzt: GESETZT, merkmale: ["common/server.mjs"] })
+if (!FUND) {
+  console.error('no Foundry found. Point --foundry "<path to resources/app>" at an installation.')
+  console.error("looked in:\n  " + gesuchteOrte(GESETZT).join("\n  "))
+  process.exit(2)
+}
+const APP = FUND.app
+console.log(`Foundry from ${APP}`)
 const GENERATION = JSON.parse(fs.readFileSync(path.join(APP, "package.json"), "utf-8")).release.generation
 
 globalThis.foundry = await import(url.pathToFileURL(path.join(APP, "common", "server.mjs")).href)

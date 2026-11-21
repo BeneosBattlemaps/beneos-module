@@ -30,6 +30,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs"
 import { join, relative, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { findeFoundry } from "../foundry-orte.mjs"
 
 const HIER = dirname(fileURLToPath(import.meta.url))
 const MODUL = join(HIER, "..", "..")
@@ -53,12 +54,6 @@ const MIND_DATEIEN = 100    // weniger heisst: der Bestand wurde nicht gelesen
 const ORDNER = ["scripts"]
 const ENDUNGEN = [".js", ".mjs"]
 
-const FOUNDRY_ORTE = [
-  "D:/PNP_Game/Foundry VTT/FoundryVTT/Foundry Virtual Tabletop V14/App/resources/app",
-  "D:/PNP_Game/Foundry VTT/FoundryVTT/Foundry Virtual Tabletop v13/resources/app",
-  "C:/Program Files/Foundry Virtual Tabletop/resources/app",
-]
-
 const argv = process.argv.slice(2)
 const hatSchalter = (n) => argv.includes(n)
 const wertVon = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null }
@@ -66,17 +61,11 @@ const VERBOSE = hatSchalter("--verbose")
 const SABOTAGE = hatSchalter("--sabotage")
 
 // ------------------------------------------------- Teil 1: die Namensliste
+// Die Ortsliste steht in tools/foundry-orte.mjs, gemeinsam mit den zwei
+// anderen Benches, die Foundry laden (stre-T-019).
 function foundryMjs() {
-  const gesetzt = wertVon("--foundry")
-  const kandidaten = gesetzt ? [gesetzt, join(gesetzt, "resources", "app"),
-    join(gesetzt, "App", "resources", "app")] : FOUNDRY_ORTE
-  for (const k of kandidaten) {
-    for (const inner of ["public/scripts/foundry.mjs", "scripts/foundry.mjs"]) {
-      const p = join(k, inner)
-      if (existsSync(p)) return p
-    }
-  }
-  return null
+  return findeFoundry({ gesetzt: wertVon("--foundry"),
+    merkmale: ["public/scripts/foundry.mjs", "scripts/foundry.mjs"] })?.datei ?? null
 }
 
 // Liest ein Objektliteral ueber die Klammertiefe. Ein Muster bis zur naechsten

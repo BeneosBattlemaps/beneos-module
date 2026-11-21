@@ -9,6 +9,7 @@ Two runs, neither needs a running Foundry.
 ## `bench.mjs`, the gate
 
 ```
+node bench.mjs
 node bench.mjs --packs "F:/_beneos_cloud_uploads/zip"
 node bench.mjs --packs "<folder of unpacked packs>"
 node bench.mjs --foundry "<path to the app folder>" --packs "<...>" --limit 20 --verbose
@@ -30,14 +31,41 @@ Exit codes:
 | 2 | could not measure: no Foundry, no pack source, or too few documents |
 
 Code 2 exists because "nothing lost" and "nothing measured" print the same way
-otherwise. A source that holds no packs fails the run instead of passing it.
+otherwise. A source that holds no packs fails the run instead of passing it, and
+so does a `--packs` folder that does not exist.
+
+Every loss is listed on stdout as `ROT: <finding>`, stderr carries one line
+`ROT: <n> loss kind(s)`, and the run ends with `Loss kinds: <n>, allowed 0`.
+`tools/bench-sabotagen.mjs` reads these lines.
+
+### Without `--packs`: the synthetic test source
+
+`pruefquelle/` holds one unpacked pack written by hand: three scenes, four
+actors and five other documents. No catalogue names, texts or image paths. Every
+pattern in `BRIDGE_MOVES` occurs in it, so the run without arguments measures the
+bridge against the installed Foundry, and the hook and the sabotage runner can
+drive it. The output says `the synthetic test source, not the catalogue`; a
+statement about the catalogue still needs `--packs`.
+
+What proves the source is enough, in `tools/bench-sabotagen.mjs`:
+
+- with the bridge it is green with zero losses;
+- `--without-bridge` turns red for eight of the nine patterns, one line each;
+- the ninth, tile `x`/`y`, is moved only by the bridge and left alone by
+  Foundry, so it cannot turn red without the bridge. Removing its entry from
+  `BRIDGE_MOVES` turns the run red, which shows the source carries it.
+
+The places where Foundry is looked for live in `tools/foundry-orte.mjs`, shared
+with `scene-merge-token-bench` and `v15-globale-bench`. `BENEOS_FOUNDRY_ORTE`
+replaces the list; set but empty, it is a machine without Foundry, and the run
+ends with code 2.
 
 `--packs` takes a folder of ZIP archives or a folder of unpacked packs. ZIP needs
 Python on PATH; node ships no ZIP reader. The archive path is handed over as an
 argument, never pasted into the Python source.
 
 `--foundry` points at the app folder of an installation, the one that contains
-`common/`. Without it the usual locations are tried. This is where the value sits:
+`common/`. Without it the places in `tools/foundry-orte.mjs` are tried. This is where the value sits:
 **the same measurement against any release** that is on disk.
 
 ### The red run

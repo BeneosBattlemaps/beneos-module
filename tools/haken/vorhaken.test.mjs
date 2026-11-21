@@ -163,7 +163,7 @@ function merke(b, pfad, inhalt) {
 
 /** Merkt die eigenen Fassungen der Benches vor, damit der Haken sie und nicht HEAD faehrt. */
 function merkeBenches(b) {
-  const liste = execFileSync("git", ["ls-files", "--others", "--cached", "--exclude-standard", "--", "tools/doppelnamen-bench", "tools/v15-globale-bench"],
+  const liste = execFileSync("git", ["ls-files", "--others", "--cached", "--exclude-standard", "--", "tools/doppelnamen-bench", "tools/v15-globale-bench", "tools/foundry-orte.mjs"],
     { env: b.env, cwd: b.wt, encoding: "utf8" }).split("\n").filter(Boolean)
   for (const pfad of liste) {
     if (/\.(m?js|json)$/.test(pfad) && existsSync(join(b.wt, pfad))) {

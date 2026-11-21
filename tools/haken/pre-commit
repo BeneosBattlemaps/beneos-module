@@ -165,6 +165,7 @@ fahre() {
 fahre_weich() {
   datei=$1
   name=$2
+  shift 2
   if ! git cat-file -e ":$datei" 2>/dev/null; then
     if git cat-file -e "HEAD:$datei" 2>/dev/null; then
       meld "pre-commit: $name fehlt im Index, HEAD kennt sie aber"
@@ -176,7 +177,11 @@ fahre_weich() {
   # Ueber eine Datei, nicht ueber ein Rohr: sh kennt kein pipefail, und eine
   # unvollstaendige Indexkopie (etwa ein Eintrag mit skip-worktree) liesse die
   # Bench sonst still eine Teilmenge lesen.
-  if ! git ls-files -z -- scripts "$(dirname "$datei")" > "$TMP/indexliste" \
+  #
+  # Weitere Pfade hinter dem Namen kommen mit in die Indexkopie, etwa die
+  # gemeinsame Ortsliste tools/foundry-orte.mjs (stre-T-019). Fehlt einer,
+  # bricht die Bench beim Laden ab und der Satz wird rot, nicht gruen.
+  if ! git ls-files -z -- scripts "$(dirname "$datei")" "$@" > "$TMP/indexliste" \
      || ! git checkout-index -z --stdin --ignore-skip-worktree-bits \
           --prefix="$TMP/index/" < "$TMP/indexliste" 2>"$TMP/fehler"
   then
@@ -590,8 +595,11 @@ fi
 # Ausloeser, der schmaler ist als der Lesebereich seines Satzes, ist eine
 # Luecke und wird nie rot; dasselbe stand am 08.11. bei `OP-PRJ-216` und am
 # 09.11. bei `OP-PRJ-151`.
+#
+# Die Ortsliste fuer Foundry steht seit stre-T-019 in tools/foundry-orte.mjs
+# und gehoert damit zum Lesebereich, also in den Ausloeser.
 if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts module.json tools/v15-globale-bench \
+     -- scripts module.json tools/v15-globale-bench tools/foundry-orte.mjs \
    | grep -q .
 then
   meld "pre-commit: Modulcode vorgemerkt, die Globalenwache laeuft mit"
@@ -600,7 +608,37 @@ then
   # Eine Zahl an zwei Stellen laeuft auseinander, und die Beschriftung ist die
   # Stelle, die niemand nachmisst. Die Grenze steht in `bench.mjs` und nur da.
   fahre_weich "tools/v15-globale-bench/bench.mjs" \
-              "v15-globale-bench"
+              "v15-globale-bench" tools/foundry-orte.mjs
+fi
+
+# Die zwei Benches, die Foundry selbst laden (stre-T-019). Bis dahin brachen
+# beide ohne Argument mit Austritt 2 ab und liefen in keinem Tor.
+#
+# v14-import liest ohne --packs die synthetische Pruefquelle neben sich und
+# prueft die V13-zu-V14-Bruecke gegen das Datenmodell der installierten
+# Foundry. scene-merge-token prueft die Aufteilung der Token-Updates gegen
+# den Foundry-Kern. Beide finden Foundry ueber tools/foundry-orte.mjs.
+#
+# fahre_weich, denn ohne Foundry enden beide mit 2: "nicht gemessen", gemeldet,
+# kein Commit gesperrt und nie gruen. Der Ausloeser deckt, was der Satz liest:
+# die Bruecke bzw. die Aufteilung, den Ordner der Bench und die Ortsliste.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts/cloud-v2/beneos-v14-scene-migration.mjs tools/v14-import-bench \
+        tools/foundry-orte.mjs \
+   | grep -q .
+then
+  meld "pre-commit: V14-Bruecke vorgemerkt, die Importbench laeuft mit"
+  fahre_weich "tools/v14-import-bench/bench.mjs" \
+              "v14-import-bench" tools/foundry-orte.mjs
+fi
+if git diff --cached --name-only --diff-filter=ACM \
+     -- scripts/cloud-v2/token-delta.mjs tools/scene-merge-token-bench \
+        tools/foundry-orte.mjs \
+   | grep -q .
+then
+  meld "pre-commit: Token-Aufteilung vorgemerkt, ihre Bench laeuft mit"
+  fahre_weich "tools/scene-merge-token-bench/unit.mjs" \
+              "scene-merge-token-bench" tools/foundry-orte.mjs
 fi
 
 # DOPPELNAMEN IM GANZEN BESTAND, und dieser Stand geht die Gegenrichtung zu
@@ -645,7 +683,7 @@ fi
 # dieser, ein Stub ist; er ruft sich darum nicht selbst wieder auf.
 if git diff --cached --name-only --diff-filter=ACM \
      -- tools/haken tools/doppelnamen-bench tools/v15-globale-bench \
-        tools/lib/foundry-attrappe.mjs \
+        tools/lib/foundry-attrappe.mjs tools/foundry-orte.mjs \
    | grep -q .
 then
   meld "pre-commit: Vorhaken oder seine Benches vorgemerkt, sein Satz laeuft mit"

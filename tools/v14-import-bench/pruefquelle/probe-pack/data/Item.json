@@ -1,0 +1,4 @@
+[
+  { "_id": "probeItem0000001", "name": "Probe Item 1", "type": "loot", "_stats": { "coreVersion": "13.351" } },
+  { "_id": "probeItem0000002", "name": "Probe Item 2", "type": "loot", "_stats": { "coreVersion": "13.351" } }
+]

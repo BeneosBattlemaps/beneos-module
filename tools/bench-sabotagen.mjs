@@ -65,6 +65,9 @@ const VORRAT = "templates/stream/offline-vorrat.hbs"
 const ATTRIBUTE = ".gitattributes"
 const SHEET = "scripts/loot/item-sheet-extender.mjs"
 const TOUREN = "scripts/beneos_tours.js"
+const MIG = "scripts/cloud-v2/beneos-v14-scene-migration.mjs"
+const TD = "scripts/cloud-v2/token-delta.mjs"
+const V15 = "tools/v15-globale-bench/bench.mjs"
 // stream-sprachen liest auch `tools/` nach Aufrufern. Stuende der Aufruf hier
 // am Stueck, faende der Bench in dieser Tabelle einen zweiten Aufrufer, und
 // die Sabotage daran bliebe gruen (gemessen beim Bau, stre-T-015).
@@ -73,6 +76,10 @@ const FETCHING1 = 'game.i18n.format("BENEOS.Stream.Offline.Fetching1", '
 /*
  * DIE BENCHES. `rot` und `ok` sind die Zeilenpraefixe, gemessen am Grundlauf
  * (stre-T-015). `grenze` liest bei Art `ausgang` die Zeile "ist, erlaubt".
+ * `datei` nennt eine Bench, deren Datei nicht `bench.mjs` heisst.
+ *
+ * v14-import und scene-merge-token laden Foundry (stre-T-019). Ohne Foundry
+ * ist ihr Grundlauf Ausgang 2 und der Lauf "nicht pruefbar", nie gruen.
  */
 export const BENCHES = {
   "waisen-adressform": { art: "zeilen", kopie: "teile" },
@@ -82,8 +89,11 @@ export const BENCHES = {
   "paket-grenze": { art: "zeilen", kopie: "baum" },
   "v15-globale": { art: "ausgang", kopie: "teile", grenze: /^Stellen, die bei entferntem Globalen brechen: (\d+), erlaubt (\d+)$/ },
   "doppelnamen": { art: "ausgang", kopie: "teile", grenze: /^Doppelnamen: (\d+), erlaubt (\d+)$/ },
+  "v14-import": { art: "ausgang", kopie: "teile", grenze: /^Loss kinds: (\d+), allowed (\d+)$/ },
+  "scene-merge-token": { art: "zeilen", kopie: "teile", datei: "tools/scene-merge-token-bench/unit.mjs",
+    ok: ["ok  "], rot: ["FAIL "] },
 }
-export const BENCHDATEI = (bench) => `tools/${bench}-bench/bench.mjs`
+export const BENCHDATEI = (bench) => BENCHES[bench]?.datei ?? `tools/${bench}-bench/bench.mjs`
 
 // Eine Sperrzeile der `.gitattributes`, einzeln entfernt (TC-305).
 const ohneSperre = (zeile, ziel) => ({
@@ -283,16 +293,106 @@ export const SABOTAGEN = [
   // Eine abgelehnte Zusage statt eines Wurfs.
   { bench: "bildform-adresse", ziel: ["E8 "],
     ersetze: [[BENCHDATEI("bildform-adresse"), "beginne(\"E8\")\n", "beginne(\"E8\")\nawait Promise.reject(new Error(\"Sabotage stre-T-162\"))\n"]] },
+  // stre-T-019 v14-import am Produkt: die Bruecke selbst.
+  // Die Bruecke greift nie. Was sie verschiebt, ist entschuldigt; was sie umzieht, faellt weg.
+  { bench: "v14-import", ziel: ["ROT: Scene.background.src","ROT: Scene.foreground"],
+    ersetze: [[MIG, "  if (generation < 14) return false\n", "  return false\n"]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.background.src"],
+    ersetze: [[MIG, "  if (bg && bg.src != null)            background.src = bg.src\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.foreground"],
+    ersetze: [[MIG, "    level.foreground = foreground\n", ""]] },
+  // stre-T-019 v14-import an der Bench: je Eintrag in BRIDGE_MOVES einer. Rot
+  // heisst, die Pruefquelle traegt das Muster und die Bruecke schreibt es um.
+  // Bei backgroundColor, foregroundElevation und offsetX/offsetY bleibt der
+  // Lauf ohne den Eintrag gruen: Foundry 14.367 behaelt diese Werte auch nach
+  // der Bruecke unter demselben Blattnamen (gemessen beim Bau). Diese drei
+  // belegt die Aufrufprobe mit --without-bridge weiter unten.
+  { bench: "v14-import", ziel: ["ROT: Scene.background.anchorX", "ROT: Scene.background.anchorY"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.background\\.(offsetX|offsetY|anchorX|anchorY)$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.fog.exploration","ROT: Scene.fog.overlay"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.fog\\.(exploration|overlay)$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.templates"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.templates$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.tiles[].occlusion.mode"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.tiles\\[\\]\\.occlusion\\.mode$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.tiles[].x","ROT: Scene.tiles[].y"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.tiles\\[\\]\\.(x|y)$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Scene.tokens[].detectionModes"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Scene\\.tokens\\[\\]\\.detectionModes$/,\n", ""]] },
+  { bench: "v14-import", ziel: ["ROT: Actor.prototypeToken.detectionModes"],
+    ersetze: [[BENCHDATEI("v14-import"), "  /^Actor\\.prototypeToken\\.detectionModes$/,\n", ""]] },
+  // stre-T-019 scene-merge-token am Produkt: tokenUpdatesAufteilen.
+  { bench: "scene-merge-token", ziel: ["fixed linked update is accepted by Foundry","linked pack token loses delta"],
+    ersetze: [[TD, "    zuerst.push(ohne)\n", "    zuerst.push(e)\n"]] },
+  { bench: "scene-merge-token", ziel: ["unlinked pack token over linked world token"],
+    ersetze: [[TD, "    const kreuz = !e.actorLink && weltVerknuepft(String(e._id))\n", "    const kreuz = false\n"]] },
+  { bench: "scene-merge-token", ziel: ["cross case is accepted"],
+    ersetze: [[TD, "    if (kreuz && delta) danach.push({ _id: e._id, delta })\n", ""]] },
+  // An der Bench: lehnt Foundry ab und die Bench sieht es nicht, faellt die Gegenprobe.
+  { bench: "scene-merge-token", ziel: ["counter check"],
+    ersetze: [[BENCHDATEI("scene-merge-token"), "    catch (_) { return null }\n", "    catch (_) { return welt }\n"]] },
 ]
 
 /*
  * AUFRUFPROBEN: kein Modulcode geaendert, nur ein Argument. v15-globale mit
  * `--foundry` auf einen leeren Ordner muss "nicht messbar" sagen (Wiki-
- * Sabotage c zu TC-312). `<LEER>` wird ein frischer leerer Ordner.
+ * Sabotage c zu TC-312). `<LEER>` wird ein frischer leerer Ordner, `<FEHLT>`
+ * ein Pfad darin, den es nicht gibt.
+ *
+ * `env` legt Umgebungsvariablen dazu. `BENEOS_FOUNDRY_ORTE` leer ist eine
+ * Maschine ohne Foundry (tools/foundry-orte.mjs, stre-T-019).
+ *
+ * `ziel` sind Zeilenanfaenge, die der Lauf alle zeigen muss.
+ *
+ * `gegen` ist eine Ersetzung, unter der dieselbe Probe NICHT mehr ihren
+ * Ausgang liefern darf. Sie baut den Vorgabeweg ein, der aus "nicht gemessen"
+ * ein Gruen macht. Bleibt der Ausgang trotzdem gleich, sieht die Probe diesen
+ * Weg nicht, und das ist ein Befund.
  */
+const LEER_ORTE = { BENEOS_FOUNDRY_ORTE: "" }
 export const AUFRUFPROBEN = [
-  { bench: "v15-globale", args: ["--foundry", "<LEER>"], rc: 2 },
+  { bench: "v15-globale", args: ["--foundry", "<LEER>"], rc: 2,
+    gegen: [[V15, "return findeFoundry({ gesetzt: wertVon(\"--foundry\"),", "return findeFoundry({ gesetzt: null,"]] },
+  { bench: "v15-globale", args: [], env: LEER_ORTE, rc: 2,
+    gegen: [[V15, "merkmale: [\"public/scripts/foundry.mjs\", \"scripts/foundry.mjs\"] })", "merkmale: [\"public/scripts/foundry.mjs\", \"scripts/foundry.mjs\"], umgebung: {} })"]] },
+  { bench: "v14-import", args: [], env: LEER_ORTE, rc: 2,
+    gegen: [[BENCHDATEI("v14-import"), "merkmale: [\"common/documents/_module.mjs\"] })", "merkmale: [\"common/documents/_module.mjs\"], umgebung: {} })"]] },
+  { bench: "v14-import", args: ["--packs", "<FEHLT>"], rc: 2,
+    gegen: [[BENCHDATEI("v14-import"), "const SOURCE = arg.packs ?? TEST_SOURCE", "const SOURCE = arg.packs && fs.existsSync(arg.packs) ? arg.packs : TEST_SOURCE"]] },
+  // Ohne Bruecke rot, je Muster in BRIDGE_MOVES eine Zeile. Nur tiles x/y
+  // fehlt: die verschiebt allein die Bruecke, Foundry laesst sie stehen. Das
+  // Muster belegt die Sabotage an seinem Eintrag oben.
+  { bench: "v14-import", args: ["--without-bridge"], rc: 1,
+    ziel: ["ROT: Scene.background.offsetX", "ROT: Scene.background.anchorX", "ROT: Scene.backgroundColor",
+      "ROT: Scene.foregroundElevation", "ROT: Scene.fog.exploration", "ROT: Scene.fog.overlay", "ROT: Scene.templates",
+      "ROT: Scene.tiles[].occlusion.mode", "ROT: Scene.tokens[].detectionModes", "ROT: Actor.prototypeToken.detectionModes"],
+    gegen: [[BENCHDATEI("v14-import"), "a.withoutBridge = true", "a.withoutBridge = false"]] },
+  { bench: "v14-import", args: ["--packs", "<LEER>"], rc: 2,
+    gegen: [[BENCHDATEI("v14-import"), "if (packs.length < MIN_PACKS || documentCount < MIN_DOCUMENTS) {", "if (false) {"]] },
+  { bench: "scene-merge-token", args: [], env: LEER_ORTE, rc: 2,
+    gegen: [[BENCHDATEI("scene-merge-token"), "merkmale: [\"common/server.mjs\"] })", "merkmale: [\"common/server.mjs\"], umgebung: {} })"]] },
+  { bench: "scene-merge-token", args: ["--foundry", "<LEER>"], rc: 2,
+    gegen: [[BENCHDATEI("scene-merge-token"), "const GESETZT = arg >= 0 ? process.argv[arg + 1] ?? \"\" : null", "const GESETZT = null"]] },
 ]
+
+/**
+ * Urteil ueber eine Aufrufprobe. `r` ist der Lauf, `g` der Lauf unter
+ * `gegen` (`{ r }` oder `{ fehler }`), wenn es eine gibt.
+ * @returns {{art: "ok"|"befund"|"nichtpruefbar", text: string}}
+ */
+export function aufrufUrteil(a, r, g = null) {
+  if (r.getoetet) return { art: "nichtpruefbar", text: erklaere(r) }
+  if (r.rc !== a.rc) return { art: "befund", text: `rc ${r.rc} statt ${a.rc}` }
+  const fehlt = (a.ziel ?? []).filter((z) => treffer(zeilenVon(r), z) === 0)
+  if (fehlt.length) return { art: "befund", text: `rc ${r.rc}, aber ohne: ${fehlt.join(" | ")}` }
+  if (!a.gegen) return { art: "ok", text: `rc ${r.rc}` }
+  if (!g || g.fehler) return { art: "nichtpruefbar", text: `Gegenprobe: ${g?.fehler ?? "nicht gefahren"}` }
+  if (g.r.getoetet) return { art: "nichtpruefbar", text: `Gegenprobe: ${erklaere(g.r)}` }
+  if (g.r.rc === a.rc) {
+    return { art: "befund", text: `unter der Gegenprobe weiter rc ${g.r.rc}: die Probe sieht den Vorgabeweg nicht` }
+  }
+  return { art: "ok", text: `rc ${r.rc}, unter der Gegenprobe rc ${g.r.rc}` }
+}
 
 // ------------------------------------------------------------- Bewertung
 
@@ -460,7 +560,7 @@ async function abbrechen(rc) {
  * Ablehnung in `Promise.all` liesse die Geschwister weiterlaufen, waehrend
  * `finally` ihre Kopien abraeumt (EBUSY, Kalt-Review stre-T-015).
  */
-async function mitSabotage(kopie, bench, liste) {
+async function mitSabotage(kopie, bench, liste, extra = {}) {
   try {
     const lies = (datei) => readFileSync(join(WURZEL, datei), "utf8")
     const e = ersetze(lies, liste, (datei) => existsSync(join(WURZEL, datei)))
@@ -470,7 +570,7 @@ async function mitSabotage(kopie, bench, liste) {
     try {
       for (const [datei, text] of e.neu) writeFileSync(join(kopie, datei), text)
       if (baum) git(kopie, "add", "-A", "-f", "--", ...dateien)
-      return { r: await fahre(kopie, bench) }
+      return { r: await fahre(kopie, bench, extra) }
     } finally {
       for (const datei of dateien) {
         if (existsSync(join(WURZEL, datei))) writeFileSync(join(kopie, datei), lies(datei))
@@ -585,16 +685,21 @@ async function main() {
     const aufrufe = selbstprobe ? [] : AUFRUFPROBEN.filter((a) => grund[a.bench])
     for (const a of aufrufe) {
       const leer = neueKopie("bench-sabotage-leer-")
-      const args = a.args.map((x) => (x === "<LEER>" ? leer : x))
-      const r = await fahre(kopieFuer(a.bench), a.bench, { args })
-      if (r.getoetet) {
+      const args = a.args.map((x) => (x === "<LEER>" ? leer : x === "<FEHLT>" ? join(leer, "fehlt") : x))
+      const extra = { args, ...(a.env ? { env: a.env } : {}) }
+      const kopie = kopieFuer(a.bench)
+      const r = await fahre(kopie, a.bench, extra)
+      const g = a.gegen && !r.getoetet && r.rc === a.rc ? await mitSabotage(kopie, a.bench, a.gegen, extra) : null
+      const urteil = aufrufUrteil(a, r, g)
+      const kopf = `Aufruf ${a.bench} ${[...a.args, ...Object.keys(a.env ?? {}).map((k) => `${k}=${a.env[k]}`)].join(" ")}`
+      if (urteil.art === "nichtpruefbar") {
         nichtPruefbar += 1
-        log(`  NICHT PRUEFBAR Aufruf ${a.bench} ${a.args.join(" ")}: ${erklaere(r)}`)
-      } else if (r.rc !== a.rc) {
+        log(`  NICHT PRUEFBAR ${kopf}: ${urteil.text}`)
+      } else if (urteil.art === "befund") {
         befund += 1
-        log(`  BEFUND Aufruf ${a.bench} ${a.args.join(" ")}: rc ${r.rc} statt ${a.rc}`)
+        log(`  BEFUND ${kopf}: ${urteil.text}`)
       } else if (zeig) {
-        log(`  ok Aufruf ${a.bench} ${a.args.join(" ")}: rc ${r.rc}`)
+        log(`  ok ${kopf}: ${urteil.text}`)
       }
     }
 

@@ -1,0 +1,106 @@
+[
+  {
+    "_id": "probeSceneA00001",
+    "name": "Probe Scene A",
+    "width": 2000,
+    "height": 1500,
+    "padding": 0.25,
+    "grid": { "type": 1, "size": 100, "distance": 5, "units": "ft" },
+    "background": {
+      "src": "probe/map-a.webp",
+      "offsetX": -37,
+      "offsetY": 23,
+      "anchorX": 0.25,
+      "anchorY": 0.75,
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "fit": "fill"
+    },
+    "foreground": "probe/top-a.webp",
+    "foregroundElevation": 15,
+    "backgroundColor": "#123456",
+    "fog": { "exploration": true, "overlay": "probe/fog-a.webp" },
+    "tiles": [
+      {
+        "_id": "probeTileA000001",
+        "x": 200,
+        "y": 300,
+        "width": 400,
+        "height": 200,
+        "texture": { "src": "probe/tile-a.webp" },
+        "occlusion": { "mode": 3 }
+      }
+    ],
+    "tokens": [
+      {
+        "_id": "probeTokenA00001",
+        "name": "Probe Token A",
+        "x": 100,
+        "y": 100,
+        "width": 1,
+        "height": 1,
+        "actorLink": false,
+        "detectionModes": [{ "id": "feelTremor", "range": 15, "enabled": true }]
+      }
+    ],
+    "templates": [
+      {
+        "_id": "probeTemplateA01",
+        "t": "circle",
+        "x": 500,
+        "y": 500,
+        "distance": 10,
+        "direction": 0,
+        "angle": 0,
+        "width": 0,
+        "borderColor": "#000000",
+        "fillColor": "#ff0000"
+      }
+    ],
+    "_stats": { "coreVersion": "13.351" }
+  },
+  {
+    "_id": "probeSceneB00001",
+    "name": "Probe Scene B",
+    "width": 1200,
+    "height": 800,
+    "padding": 0,
+    "grid": { "type": 1, "size": 50, "distance": 5, "units": "ft" },
+    "background": { "src": "probe/map-b.webp", "offsetX": 12, "offsetY": -8 },
+    "fog": { "exploration": false },
+    "tiles": [
+      {
+        "_id": "probeTileB000001",
+        "x": 100,
+        "y": 50,
+        "width": 300,
+        "height": 300,
+        "texture": { "src": "probe/tile-b.webp", "anchorX": 0, "anchorY": 0 },
+        "occlusion": { "mode": 1 }
+      }
+    ],
+    "_stats": { "coreVersion": "13.351" }
+  },
+  {
+    "_id": "probeSceneC00001",
+    "name": "Probe Scene C",
+    "width": 1000,
+    "height": 1000,
+    "padding": 0,
+    "grid": { "type": 1, "size": 100, "distance": 5, "units": "ft" },
+    "tokens": [
+      {
+        "_id": "probeTokenC00001",
+        "name": "Probe Token C",
+        "x": 300,
+        "y": 300,
+        "width": 2,
+        "height": 2,
+        "actorLink": false,
+        "detectionModes": [{ "id": "seeInvisibility", "range": 30, "enabled": true }]
+      }
+    ],
+    "_stats": { "coreVersion": "13.351" }
+  }
+]

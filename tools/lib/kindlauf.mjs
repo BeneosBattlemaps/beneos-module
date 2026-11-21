@@ -71,13 +71,15 @@ function kappe(zeilen) {
  * @param {string[]} [rotPraefixe] Zeilenanfaenge einer roten Probe.
  * @param {string[]} [okPraefixe] Zeilenanfaenge einer gruenen Probe.
  * @param {string[]} [args] Argumente hinter dem Skript.
+ * @param {object} [env] Zusaetzliche Umgebungsvariablen fuer das Kind, ueber
+ *   die eigene Umgebung gelegt (stre-T-019).
  * @returns {Promise<{rc:number, rot:Set<string>, gruen:Set<string>,
  *   doppelt:Set<string>, ms:number, signal:string|null, getoetet:boolean,
  *   stderr:string[], ausgabe:string[]}>}
  */
 export function fahreKind(verzeichnis, datei, {
   zeitgrenze = ZEITGRENZE_MS, kinder = null, puffer = 16 * 1024 * 1024,
-  rotPraefixe = ROT_PRAEFIXE, okPraefixe = OK_PRAEFIXE, args = [],
+  rotPraefixe = ROT_PRAEFIXE, okPraefixe = OK_PRAEFIXE, args = [], env = null,
 } = {}) {
   // Der Name ist der Rest der Zeile hinter dem ersten passenden Praefix.
   const nach = (z, praefixe) => {
@@ -87,7 +89,8 @@ export function fahreKind(verzeichnis, datei, {
   return new Promise((ok) => {
     const t0 = Date.now()
     const kind = execFile(process.execPath, ["--no-warnings", datei, ...args],
-      { cwd: verzeichnis, timeout: zeitgrenze, maxBuffer: puffer },
+      { cwd: verzeichnis, timeout: zeitgrenze, maxBuffer: puffer,
+        ...(env ? { env: { ...process.env, ...env } } : {}) },
       (fehler, stdout, stderr) => {
         kinder?.delete(kind)
         const rot = new Set()
