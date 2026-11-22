@@ -31,9 +31,11 @@
  *   - `shared` (nur /2) streamt von genau der `url` des Eintrags.
  *   - /4 traegt keine `url`, also auch keine Rolle `shared`.
  * LUECKE, ausgegeben statt verschwiegen: eine Rolle der Weiche, die in keiner
- * Vorlage steht (heute `local`, die Rolle jedes Portraits), misst dieser Satz
- * nicht; er meldet sie als Zeile "NICHT GEMESSEN: Rolle ...". Geschlossen wird
- * sie beim Erzeuger, mit je einem Eintrag dieser Rolle in der Goldvorlage.
+ * Vorlage steht (heute keine, gemessen am 2026-11-22), misst dieser Satz nicht; er meldet sie als
+ * Zeile "NICHT GEMESSEN: Rolle ...". Geschlossen wird sie beim Erzeuger, mit je
+ * einem Eintrag dieser Rolle in der Goldvorlage. Fuer `local` ist das seit
+ * stre-T-182 geschehen: die /4-Vorlage traegt ein Actor-Portrait und ein
+ * Tokenbild, und eine Sabotage am Zweig `entry.role === "local"` wird rot.
  * Gegenprobe: eine unbekannte Rolle in einer Kopie der Vorlage MUSS warnen,
  * sonst waere die zweite Probe gruen, weil niemand hinsieht.
  *
