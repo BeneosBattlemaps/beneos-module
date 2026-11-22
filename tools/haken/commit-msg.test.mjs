@@ -70,8 +70,13 @@ function ohneHakenumgebung(env) {
   e.GIT_CEILING_DIRECTORIES = tmpdir()
   return e
 }
+// Eine leere globale Konfiguration: commit.cleanup oder core.commentChar des
+// Entwicklers duerfen die Rautenproben nicht verschieben (Kalt-Review stre-T-047).
+const LEER_KONFIG = join(wegwerf("kennung-konfig-"), "leer.gitconfig")
+writeFileSync(LEER_KONFIG, "")
 const UMGEBUNG = {
   ...ohneHakenumgebung(process.env),
+  GIT_CONFIG_GLOBAL: LEER_KONFIG,
   GIT_AUTHOR_NAME: "Probe", GIT_AUTHOR_EMAIL: "probe@invalid", GIT_COMMITTER_NAME: "Probe", GIT_COMMITTER_EMAIL: "probe@invalid",
   GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0",
 }
@@ -201,6 +206,17 @@ p.gleich("ein Merge geht ohne Kennung durch", pruefeBetreff("merge: x", true).ok
 p.gleich("ohne Merge sperrt derselbe Betreff", pruefeBetreff("merge: x", false).ok, false)
 p.gleich("eine leere Nachricht geht durch", pruefeBetreff("").ok, true)
 p.gleich("eine reine Kommentarnachricht geht durch", pruefeBetreff("# nur Kommentar\n").ok, true)
+// Gleichlauf mit der Python-Regel in beneos-stream-beta (tools/commit_kennung.py):
+// dieselbe Tabelle steht dort in test_commit_kennung.py. Zeilen nur an LF und
+// CRLF wie git, Leerraum und Ziffern nur ASCII.
+for (const [name, nachricht, editor, soll] of [
+  ["Kommentarzeile mit CR, mit Editor", "# c\rfix(stre-T-047): y\nchore: x\n", true, false],
+  ["Kommentarzeile mit U+2028, mit Editor", "# c fix(stre-T-047): y\nchore: x\n", true, false],
+  ["Seitenvorschub vor dem Betreff, ohne Editor", "\ffix(stre-T-047): y\n", false, false],
+  ["Unicode-Ziffern in der Kennung", "fix(stre-T-٠٤٧): x\n", true, false],
+  ["Zeile nur aus BOM vor dem Betreff", "﻿\nfix(stre-T-047): x\n", true, false],
+  ["geschuetztes Leerzeichen nach dem Doppelpunkt", "fix(stre-T-047):  x\n", true, true],
+]) p.gleich(`Gleichlauf ${soll ? "geht durch" : "sperrt"}: ${name}`, pruefeBetreff(nachricht, false, editor).ok, soll)
 
 p.abschnitt("Echte Commits, die durchgehen")
 {
@@ -247,6 +263,15 @@ p.abschnitt("Echte Commits, die durchgehen")
   const f = join(wegwerf("kennung-nachricht-"), "n.txt")
   writeFileSync(f, "# Hinweis\nfix(stre-T-047): x\n")
   p.gleich("mit Editor geht eine Rautenzeile vor gueltigem Betreff durch", durch(git(w, ["commit", "-q", "-e", "-F", f], { GIT_EDITOR: "true" })), true)
+}
+{
+  // Gegenwert zu commit.cleanup=whitespace: der ausdrueckliche Standard aendert nichts.
+  const w = depot()
+  writeFileSync(join(w, "a.txt"), "editor\n")
+  mussGit(w, ["add", "a.txt"])
+  const f = join(wegwerf("kennung-nachricht-"), "n.txt")
+  writeFileSync(f, "# Hinweis\nfix(stre-T-047): x\n")
+  p.gleich("mit Editor und commit.cleanup=default geht eine Rautenzeile vor gueltigem Betreff durch", durch(git(w, ["-c", "commit.cleanup=default", "commit", "-q", "-e", "-F", f], { GIT_EDITOR: "true" })), true)
 }
 {
   const w = depot()
@@ -299,6 +324,27 @@ for (const betreff of ["fix: x", "fix(stream): stre-T-154 x", "fix(stre-T-47): x
   const w = depot()
   mussGit(w, ["tag", "MERGE_HEAD"])
   p.gleich("echter Commit sperrt bei einer Marke namens MERGE_HEAD", sperrt(commit(w, "fix: x")), true)
+}
+// Mit Editor, aber einer Einstellung, unter der git die Rautenzeile behaelt:
+// dann ist sie der gespeicherte Betreff (Kalt-Review stre-T-047, zweite Runde).
+for (const [name, konfig] of [["commit.cleanup=whitespace", "commit.cleanup=whitespace"], ["commit.cleanup=verbatim", "commit.cleanup=verbatim"], ["core.commentChar=;", "core.commentChar=;"]]) {
+  const w = depot()
+  writeFileSync(join(w, "a.txt"), "editor\n")
+  mussGit(w, ["add", "a.txt"])
+  const f = join(wegwerf("kennung-nachricht-"), "n.txt")
+  writeFileSync(f, "# ohne Kennung\nfix(stre-T-047): x\n")
+  p.gleich(`echter Commit mit Editor sperrt unter ${name}: Rautenzeile bleibt Betreff`, sperrt(git(w, ["-c", konfig, "commit", "-q", "-e", "-F", f], { GIT_EDITOR: "true" })), true)
+}
+{
+  // Die Sperrmeldung nennt die Nachrichtendatei des Arbeitsbaums, im
+  // verknuepften Arbeitsbaum also .git/worktrees/<name>/COMMIT_EDITMSG.
+  const w = depot()
+  const haupt = commit(w, "fix: x")
+  p.gleich("die Sperrmeldung nennt im Hauptbaum .git/COMMIT_EDITMSG", sperrt(haupt) && haupt.aus.includes(".git/COMMIT_EDITMSG"), true)
+  const baum = join(wegwerf("kennung-meldung-baum-"), "zelle")
+  mussGit(w, ["worktree", "add", "-q", "-b", "zelle", baum, "stream-beta"])
+  const r = commit(baum, "fix: x")
+  p.gleich("die Sperrmeldung nennt im verknuepften Arbeitsbaum dessen COMMIT_EDITMSG", sperrt(r) && r.aus.includes("worktrees/zelle/COMMIT_EDITMSG"), true)
 }
 {
   const w = depot()

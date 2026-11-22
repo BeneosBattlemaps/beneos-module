@@ -2399,10 +2399,10 @@ const SABOTAGEN = [
   { satz: "betreffkennung", ziel: ["nach merge --squash ist der Commit kein Merge und sperrt"], ersetze: [[KMSG_SH, "MERGE=0\n", "MERGE=1\n"]] },
   { satz: "betreffkennung", ziel: ["sperrt: fix(stream): stre-T-154 x", "echter Commit sperrt: fix(stream): stre-T-154 x"], ersetze: [[KMSG, "  const teile = m[2].split(\",\")", "  const teile = b.split(/[\\s,()]+/)"]] },
   { satz: "betreffkennung", ziel: ["sperrt: x [stre-T-156]", "sperrt: stre-T-134: x", "sperrt: OP-PRJ-046: x", "sperrt: Fix(stre-T-047): x", "sperrt: fix(stre-T-047):x", "sperrt: fix: x", "Kommentarzeilen zaehlen nicht als Betreff", "echter Commit sperrt: fix: x"], ersetze: [[KMSG, "  if (!m) return { ok: false", "  if (!m) return { ok: true"]] },
-  { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-047):x"], ersetze: [[KMSG, ")!?: \\S/", ")!?:\\s*\\S/"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-047):x"], ersetze: [[KMSG, ")!?: [^ \\t\\n\\v\\f\\r]/", ")!?:\\s*[^ \\t\\n\\v\\f\\r]/"]] },
   { satz: "betreffkennung", ziel: ["sperrt: Fix(stre-T-047): x"], ersetze: [[KMSG, "const KOPF = /^([a-z][a-z0-9]*)", "const KOPF = /^([A-Za-z][a-z0-9]*)"]] },
   { satz: "betreffkennung", ziel: ["geht durch: i18n(stre-T-120): x"], ersetze: [[KMSG, "const KOPF = /^([a-z][a-z0-9]*)", "const KOPF = /^([a-z]+)"]] },
-  { satz: "betreffkennung", ziel: ["geht durch: fix(stre-T-047)!: x"], ersetze: [[KMSG, ")!?: \\S/", "): \\S/"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(stre-T-047)!: x"], ersetze: [[KMSG, ")!?: [^ \\t\\n\\v\\f\\r]/", "): [^ \\t\\n\\v\\f\\r]/"]] },
   { satz: "betreffkennung", ziel: ["sperrt: fix(T-056): x"], ersetze: [[KMSG, "/^(?:[a-z]{2,5}-T-", "/^(?:(?:[a-z]{2,5}-)?T-"]] },
   { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-47): x", "echter Commit sperrt: fix(stre-T-47): x"], ersetze: [[KMSG, "-T-\\d{3,}|", "-T-\\d+|"]] },
   { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-122-review): x"], ersetze: [[KMSG, "(?:-[A-Z]+)*-\\d+)$/", "(?:-[A-Z]+)*-\\d+)/"]] },
@@ -2442,6 +2442,19 @@ const SABOTAGEN = [
   { satz: "betreffkennung", ziel: ["sperrt: fix(stream stre-T-165): x"], ersetze: [[KMSG, "m[2].split(\",\")", "m[2].split(/[, ]+/)"]] },
   { satz: "betreffkennung", ziel: ["die Bruecke ruft den versionierten Riegel des Stands"], ersetze: [[BRUECKE_KMSG, "exec \"$H\" \"$@\"\n", "exit 0\n"]] },
   { satz: "betreffkennung", ziel: ["eine geerbte GIT_DIR erreicht das echte Repositorium nicht"], ersetze: [[KENNUNG_SATZ, "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) delete e[k]\n", "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) void k\n"]] },
+  // Zweite Nacharbeit stre-T-047: Cleanup-Modus, Kommentarzeichen, Sperrmeldung, Gleichlauf mit Python.
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff", "echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "    && [\"\", \"default\", \"strip\"].includes(env.BENEOS_CLEANUP ?? \"\")\n", ""]] },
+  { satz: "betreffkennung", ziel: ["mit Editor und commit.cleanup=default geht eine Rautenzeile vor gueltigem Betreff durch"], ersetze: [[KMSG, "[\"\", \"default\", \"strip\"]", "[\"\", \"strip\"]"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "    && /^#*$/.test(env.BENEOS_KOMMENTAR ?? \"\")", "    && true"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff", "echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "CLEANUP=$(git config --get commit.cleanup 2>/dev/null)\n", "CLEANUP=\n"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "KOMMENTAR=\"$(git config --get core.commentChar 2>/dev/null)$(git config --get core.commentString 2>/dev/null)\"\n", "KOMMENTAR=\n"]] },
+  { satz: "betreffkennung", ziel: ["die Sperrmeldung nennt im verknuepften Arbeitsbaum dessen COMMIT_EDITMSG"], ersetze: [[KMSG, "git([\"rev-parse\", \"--git-path\", \"COMMIT_EDITMSG\"]) || \".git/COMMIT_EDITMSG\"", "\".git/COMMIT_EDITMSG\""]] },
+  { satz: "betreffkennung", ziel: ["die Sperrmeldung nennt im Hauptbaum .git/COMMIT_EDITMSG", "die Sperrmeldung nennt im verknuepften Arbeitsbaum dessen COMMIT_EDITMSG"], ersetze: [[KMSG, "git([\"rev-parse\", \"--git-path\", \"COMMIT_EDITMSG\"]) || \".git/COMMIT_EDITMSG\"", "\"COMMIT_EDITMSG\""]] },
+  { satz: "betreffkennung", ziel: ["Gleichlauf sperrt: Kommentarzeile mit CR, mit Editor", "Gleichlauf sperrt: Kommentarzeile mit U+2028, mit Editor", "Gleichlauf sperrt: Seitenvorschub vor dem Betreff, ohne Editor"], ersetze: [[KMSG, ".split(/\\r?\\n/)) {", ".split(/\\r\\n|[\\n\\r\\f\\u2028]/)) {"]] },
+  { satz: "betreffkennung", ziel: ["Gleichlauf sperrt: Unicode-Ziffern in der Kennung"], ersetze: [[KMSG, "-T-\\d{3,}|", "-T-[0-9\\u0660-\\u0669]{3,}|"]] },
+  { satz: "betreffkennung", ziel: ["Gleichlauf sperrt: Zeile nur aus BOM vor dem Betreff"], ersetze: [[KMSG, "zeile.replace(/[ \\t\\n\\v\\f\\r]+$/, \"\")", "zeile.trimEnd()"]] },
+  { satz: "betreffkennung", ziel: ["Gleichlauf sperrt: Zeile nur aus BOM vor dem Betreff"], ersetze: [[KMSG, "if (/[^ \\t\\n\\v\\f\\r]/.test(z)) return z", "if (z.trim()) return z"]] },
+  { satz: "betreffkennung", ziel: ["Gleichlauf geht durch: geschuetztes Leerzeichen nach dem Doppelpunkt"], ersetze: [[KMSG, ")!?: [^ \\t\\n\\v\\f\\r]/", ")!?: \\S/"]] },
   // ---- vertrag-manifest (stre-T-021): beide Manifest-Vorlagen der Erzeuger
   // durch loadStreamManifest und buildStreamPack. Nur auf Zuruf.
   { satz: "vertrag-manifest", ziel: VM_PROBE("loadStreamManifest nimmt sie an"),
@@ -2780,7 +2793,7 @@ if (process.argv.includes("--alle-saetze")) {
 // sobald der Push-Riegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz vorpush.
 // betreffkennung (stre-T-047) macht je Sabotage echte Commits in Wegwerfdepots,
-// allein gemessen 271 s fuer 55 Sabotagen. Der Satz selbst laeuft im Vorhaken,
+// allein gemessen 485 s fuer 67 Sabotagen. Der Satz selbst laeuft im Vorhaken,
 // sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz betreffkennung.
 const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
