@@ -169,6 +169,17 @@
  * Rueckfall, und bei AUS bleibt alles wie vorher. An der Basis gibt es ihn
  * nicht.
  *
+ * Seit stre-T-028 dazu `vorpush` (`tools/haken/vorpush.test.mjs`): der
+ * Push-Riegel auf stream-beta laesst einen Push ohne Versionssprung durch und
+ * sperrt einen, der ausliefern wuerde, ohne dass Version, Tag und Adressen in
+ * module.json zusammenpassen. Der Satz pusht in Wegwerfdepots wirklich und
+ * gehoert zu den langsamen. An der Basis gibt es ihn nicht.
+ *
+ * Ebenfalls seit stre-T-028 `betazip` (`tools/pruefe-beta-zip.test.mjs`): das
+ * Messwerkzeug fuer das Tag-ZIP der Beta meldet jede Abweichung zwischen
+ * Manifest, Tag-ZIP und der module.json darin. Ohne Netz, mit einer Attrappe
+ * fuer fetch. An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -208,7 +219,9 @@ try {
 // Grenze). Im
 // Grundlauf gilt die Satzgrenze immer (er liest --zeitgrenze nicht), in den
 // Sabotagelaeufen geht eine ausdrueckliche --zeitgrenze vor.
-const GRENZE_SATZ = { doppelwache: 1500000 };
+// vorpush pusht je Fall wirklich und lag nach dem Kalt-Review von stre-T-028
+// knapp ueber der Vorgabegrenze; unter Last mehr.
+const GRENZE_SATZ = { doppelwache: 1500000, vorpush: 600000 };
 const grenzeFuer = (satz, sonst) => (arg("--zeitgrenze") == null && GRENZE_SATZ[satz]) || sonst;
 
 // Ein Satz liegt unter scripts/stream, ausser er steht in dieser Tabelle.
@@ -219,6 +232,8 @@ const SATZ_AUSSERHALB = {
   kennung: "scripts/cloud-login-kennung.test.mjs",
   kodexreiter: "scripts/codex2/codex-sheet-wiring.test.mjs",
   doppelwache: "tools/haken/vorhaken.test.mjs",
+  vorpush: "tools/haken/vorpush.test.mjs",
+  betazip: "tools/pruefe-beta-zip.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -282,6 +297,12 @@ const DOPPELBENCH = "tools/doppelnamen-bench/bench.mjs";
 const DOPPELCONFIG = "tools/doppelnamen-bench/eslint.doppelnamen.mjs";
 const LADEFORM = "tools/haken/ladeform.mjs";
 const VORHAKEN = "tools/haken/vorhaken.test.mjs";
+const PREPUSH = "tools/haken/pre-push.mjs";
+const PREPUSH_SH = "tools/haken/pre-push";
+const BRUECKE_PUSH = "tools/haken/bruecke-pre-push";
+const MODULJSON = "module.json";
+const BETAZIP = "tools/pruefe-beta-zip.mjs";
+const VORPUSH_SATZ = "tools/haken/vorpush.test.mjs";
 const DEINST = "scripts/cloud-v2/beneos-native-uninstaller.mjs";
 const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
 const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
@@ -2279,6 +2300,58 @@ const SABOTAGEN = [
   { satz: "offline-geteilt", ziel: ["AUS: die eigene Datei bleibt gehalten"], ersetze: [[FETCH, "  if (!an || hit?.headers.get(KEEP_HEADER)) return hit\n", "  if (!an) return undefined\n  if (hit?.headers.get(KEEP_HEADER)) return hit\n"]] },
   { satz: "offline-geteilt", ziel: ["Eintrag ohne Pruefsumme: kein Treffer","andere Variante, gleicher Name: kein Treffer"], ersetze: [[FETCH, "  if (!schluessel) return hit\n", "  if (!schluessel) {\n    const name = routenName(ohneAbfrage(url))\n    for (const r of await store.keys()) if (geteilterName(r.url) === name) return store.match(r.url, opts)\n    return hit\n  }\n"]] },
   { satz: "offline-geteilt", ziel: ["der nicht gehaltene Eintrag bleibt liegen"], ersetze: [[FETCH, "  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n", "  if (geteilt && !geteilt.headers.get(KEEP_HEADER)) await store.delete(schluessel, opts)\n  return geteilt?.headers.get(KEEP_HEADER) ? geteilt : hit\n"]] },
+
+  // ---------------------------------------------------------------- vorpush (stre-T-028)
+  { satz: "vorpush", ziel: ["der Haken selbst laesst main durch, auch ohne die Huelle"], ersetze: [[PREPUSH, "    if (fernRef !== ZWEIG) continue\n", "\n"]] },
+  { satz: "vorpush", ziel: ["ein Push auf main geht durch, gleich was in module.json steht"], ersetze: [[PREPUSH, "    if (fernRef !== ZWEIG) continue\n", "\n"], [PREPUSH_SH, "  *) exit 0 ;;\n", "  *) ;;\n"]] },
+  { satz: "vorpush", ziel: ["Fast-Forward ohne Versionssprung geht durch"], ersetze: [[PREPUSH, "  if (altVersion !== null && neu.version === altVersion) return gruende\n", "\n"]] },
+  { satz: "vorpush", ziel: ["download auf dem Zweig-ZIP sperrt", "download auf einem anderen Tag als der Version sperrt", "der Notweg steht mit Begruendung im Log", "der Notweg nennt im Log den Sperrgrund", "Notweg ohne Begruendung sperrt", "Notweg ohne schreibbares Log sperrt"], ersetze: [[PREPUSH, "  if (neu.download !== tagZip(neu.version)) {\n", "  if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["unlesbare module.json sperrt"], ersetze: [[PREPUSH, "  if (!neu) return [\"[S1] module.json am gepushten Stand fehlt oder ist nicht lesbar\"]\n", "  if (!neu) return []\n"]] },
+  { satz: "vorpush", ziel: ["geaendertes manifest sperrt"], ersetze: [[PREPUSH, "  if (neu.manifest !== MANIFEST) gruende.push(", "  if (false) gruende.push("]] },
+  { satz: "vorpush", ziel: ["unbekannter Fernstand sperrt"], ersetze: [[PREPUSH, "    if (!bekannt(fernSha)) {\n", "    if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["Loeschen von stream-beta sperrt"], ersetze: [[PREPUSH, "  if (NULL.test(lokal)) return [\"[S5] stream-beta soll geloescht werden\"]\n", "  if (NULL.test(lokal)) return []\n"]] },
+  { satz: "vorpush", ziel: ["niedrigere Version sperrt", "dieselbe Zahl anders geschrieben sperrt", "14.5.0 nach 14.5.0-beta.12 sperrt, Foundry saehe kein Update"], ersetze: [[PREPUSH, "  if (altVersion !== null && !istNeuer(neu.version, altVersion)) {\n", "  if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["dieselbe Zahl anders geschrieben sperrt"], ersetze: [[PREPUSH, "      if (p1 !== p0) return parseInt(p1) > parseInt(p0)\n", "      if (p1 !== p0) return parseInt(p1) >= parseInt(p0)\n"]] },
+  { satz: "vorpush", ziel: ["14.5.0 nach 14.5.0-beta.12 sperrt, Foundry saehe kein Update"], ersetze: [[PREPUSH, "    } else if (p1 !== p0) return p1 > p0\n", "    } else if (p1 !== p0) return true\n"]] },
+  { satz: "vorpush", ziel: ["Versionssprung ohne Tag sperrt"], ersetze: [[PREPUSH, "  if (!tagCommit) {\n    gruende.push(", "  if (!tagCommit) {\n    void ("]] },
+  { satz: "vorpush", ziel: ["Tag auf einem Commit mit anderer Version sperrt"], ersetze: [[PREPUSH, "  } else if (modulAm(tagCommit)?.version !== neu.version) {\n", "  } else if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["Tag ausserhalb der gepushten Geschichte sperrt"], ersetze: [[PREPUSH, "  } else if (!vorfahr(tagCommit, lokal)) {\n", "  } else if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["Versionssprung mit Tag im selben Push geht durch", "von der Beta zur naechsten Freigabe ist ein Sprung", "Tag im Push auf einem Vorfahren des Kopfs geht durch"], ersetze: [[PREPUSH, "  let tagCommit = tagsPush.get(neu.version) || \"\"\n", "  let tagCommit = \"\"\n"]] },
+  { satz: "vorpush", ziel: ["Versionssprung mit Tag schon auf origin geht durch", "Tag im Push, auf origin aber auf anderem Commit, sperrt"], ersetze: [[PREPUSH, "  const fern = holeTagsFern().get(neu.version)\n", "  const fern = undefined\n"]] },
+  { satz: "vorpush", ziel: ["Tag im Push, auf origin aber auf anderem Commit, sperrt"], ersetze: [[PREPUSH, "  if (fern && tagCommit && fern !== tagCommit) {\n", "  if (false) {\n"]] },
+  { satz: "vorpush", ziel: ["Notweg ohne Begruendung sperrt"], ersetze: [[PREPUSH, "  const notweg = String(env.BENEOS_PUSH_NOTWEG ?? \"\").trim()\n", "  const notweg = String(env.BENEOS_PUSH_NOTWEG ?? \"\")\n"]] },
+  { satz: "vorpush", ziel: ["der Notweg steht mit Begruendung im Log", "der Notweg nennt im Log den Sperrgrund"], ersetze: [[PREPUSH, "    try { appendFileSync(log, zeile) } catch (e) {\n", "    try { void zeile } catch (e) {\n"]] },
+  { satz: "vorpush", ziel: ["Notweg ohne schreibbares Log sperrt"], ersetze: [[PREPUSH, "Push bleibt gesperrt`)\n      return 1\n", "Push bleibt gesperrt`)\n      return 0\n"]] },
+  { satz: "vorpush", ziel: ["Notweg mit Begruendung geht durch"], ersetze: [[PREPUSH, "    for (const g of gruende) console.error(`  ${g}`)\n    return 0\n", "    for (const g of gruende) console.error(`  ${g}`)\n    return 1\n"]] },
+  { satz: "vorpush", ziel: ["der Notweg nennt im Log den Sperrgrund"], ersetze: [[PREPUSH, " | ${gruende.join(\"; \")} | Begruendung", " | Begruendung"]] },
+  { satz: "vorpush", ziel: ["Versionssprung ohne Tag sperrt", "Loeschen von stream-beta sperrt", "Notweg ohne Begruendung sperrt"], ersetze: [[PREPUSH_SH, "printf '%s\\n' \"$EINGABE\" | node \"$(dirname \"$0\")/pre-push.mjs\" \"$@\"\n", "exit 0\n"]] },
+  { satz: "vorpush", ziel: ["Versionssprung ohne Tag sperrt", "Loeschen von stream-beta sperrt"], ersetze: [[PREPUSH_SH, "  *\" refs/heads/stream-beta \"*) ;;\n", "  *\" refs/heads/anderer \"*) ;;\n"]] },
+  { satz: "vorpush", ziel: ["ohne node geht ein Push auf main durch"], ersetze: [[PREPUSH_SH, "  *) exit 0 ;;\n", "  *) ;;\n"]] },
+  { satz: "vorpush", ziel: ["ohne node sperrt ein Push auf stream-beta"], ersetze: [[PREPUSH_SH, "if ! command -v node >/dev/null 2>&1; then\n", "if false; then\n"]] },
+  { satz: "vorpush", ziel: ["die Bruecke schweigt auf einem Stand ohne den Haken"], ersetze: [[BRUECKE_PUSH, "[ -x \"$H\" ] || exit 0\n", "\n"]] },
+  { satz: "vorpush", ziel: ["die Bruecke ruft den Haken des Stands"], ersetze: [[BRUECKE_PUSH, "H=\"$(git rev-parse --show-toplevel)/tools/haken/pre-push\"", "H=\"$(git rev-parse --show-toplevel)/tools/haken/pre-commit\""]] },
+  { satz: "vorpush", ziel: ["die Bruecke ruft den Haken des Stands"], ersetze: [[BRUECKE_PUSH, "exec \"$H\" \"$@\"\n", "exit 0\n"]] },
+  { satz: "vorpush", ziel: ["eine geerbte GIT_DIR erreicht das echte Repositorium nicht"], ersetze: [[VORPUSH_SATZ, "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) delete e[k]\n", "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) void k\n"]] },
+  // Die Anker tragen keine Versionsnummer, damit sie den naechsten Sprung ueberstehen.
+  { satz: "vorpush", ziel: ["[Struktur] module.json: download zeigt auf das Tag-ZIP der Version"], ersetze: [[MODULJSON, "\"download\": \"https://github.com/BeneosBattlemaps/beneos-module/archive/refs/tags/", "\"download\": \"https://github.com/BeneosBattlemaps/beneos-module/archive/refs/heads/stream-beta.zip#"]] },
+  { satz: "vorpush", ziel: ["[Struktur] module.json: eine Beta-Version zeigt auf das Beta-Manifest"], ersetze: [[MODULJSON, "beneos-module/stream-beta/module.json\"", "beneos-module/main/module.json\""]] },
+  // ---------------------------------------------------------------- betazip (stre-T-028)
+  { satz: "betazip", ziel: ["Tag-ZIP erreichbar, gleiche Version, alle Dateien: Austritt 0", "ungepacktes ZIP wird gelesen"], ersetze: [[BETAZIP, "  return { rc: befund ? 1 : 0, zeilen }\n", "  return { rc: 1, zeilen }\n"]] },
+  { satz: "betazip", ziel: ["die Ausgabe nennt den HTTP-Status des ZIP"], ersetze: [[BETAZIP, "${m.download} -> HTTP ${r.status}, ", "${m.download} -> ${r.status}, "]] },
+  { satz: "betazip", ziel: ["ungepacktes ZIP wird gelesen"], ersetze: [[BETAZIP, "      if (methode === 0) return roh\n", "      if (methode === 0) return Buffer.alloc(0)\n"]] },
+  { satz: "betazip", ziel: ["Tag-ZIP fehlt (404): Befund"], ersetze: [[BETAZIP, "    if (!r.ok) { rot(`ZIP nicht erreichbar", "    if (false) { rot(`ZIP nicht erreichbar"]] },
+  { satz: "betazip", ziel: ["download auf dem Zweig-ZIP: Befund"], ersetze: [[BETAZIP, "  if (m.download === soll) ok(", "  if (true) ok("]] },
+  { satz: "betazip", ziel: ["andere Version im ZIP: Befund"], ersetze: [[BETAZIP, "  if (z.version === m.version) ok(", "  if (true) ok("]] },
+  { satz: "betazip", ziel: ["andere id im ZIP: Befund"], ersetze: [[BETAZIP, "  if (z.id === \"beneos-module\") ok(", "  if (true) ok("]] },
+  { satz: "betazip", ziel: ["fehlende Ladedatei im ZIP: Befund"], ersetze: [[BETAZIP, "  const fehlt = dateien.filter((d) => !eintraege.has(ordner + d))\n", "  const fehlt = []\n"]] },
+  { satz: "betazip", ziel: ["ZIP ohne module.json: Befund"], ersetze: [[BETAZIP, "  if (!pfadM) { rot(\"keine module.json im ZIP\"); return { rc: 1, zeilen } }\n", "  if (!pfadM) return { rc: 0, zeilen }\n"]] },
+  { satz: "betazip", ziel: ["kein ZIP: Befund"], ersetze: [[BETAZIP, "catch (e) { rot(e.message); return { rc: 1, zeilen } }", "catch (e) { return { rc: 0, zeilen } }"]] },
+  { satz: "betazip", ziel: ["Manifest noch auf alter Version (--erwarte): Befund"], ersetze: [[BETAZIP, "  if (erwarte && m.version !== erwarte) rot(", "  if (false) rot("]] },
+  { satz: "betazip", ziel: ["Manifest nicht erreichbar: Befund"], ersetze: [[BETAZIP, "    if (!r.ok) { rot(`Manifest nicht erreichbar", "    if (false) { rot(`Manifest nicht erreichbar"]] },
+  { satz: "betazip", ziel: ["Manifest erreichbar, aber kein JSON: Befund"], ersetze: [[BETAZIP, "catch (e) { rot(`Manifest ist kein JSON: ${e.message}`); return { rc: 1, zeilen } }", "catch (e) { return { rc: 2, zeilen } }"]] },
+  { satz: "betazip", ziel: ["ZIP-Abruf scheitert nach einem Befund: der Befund bleibt"], ersetze: [[BETAZIP, "    return { rc: befund ? 1 : 2, zeilen }\n", "    return { rc: 2, zeilen }\n"]] },
+  { satz: "betazip", ziel: ["ZIP-Abruf scheitert ohne Befund davor: nicht messbar"], ersetze: [[BETAZIP, "    return { rc: befund ? 1 : 2, zeilen }\n", "    return { rc: 1, zeilen }\n"]] },
+  { satz: "betazip", ziel: ["kein Netz: nicht messbar"], ersetze: [[BETAZIP, "    zeilen.push(`NICHT MESSBAR  Manifest: ${e.message}`)\n    return { rc: 2, zeilen }\n", "    zeilen.push(`NICHT MESSBAR  Manifest: ${e.message}`)\n    return { rc: 1, zeilen }\n"]] },
 ];
 
 /*
@@ -2437,6 +2510,10 @@ const EIGENPROBEN = {
     "die Adresse hat keinen Platz mehr bekommen":
       "Vorbedingung des Pruefsatzes (stre-T-175): sie stellt fest, dass die Kartenadresse jenseits des Deckels liegt und shaZuAdresse sie nicht kennt. Den Manifestvorrang dort bewacht \"Manifest geladen, Deckel erreicht: keine alten Bytes\".",
   },
+  vorpush: {
+    "ein Tag allein geht durch":
+      "Vorbedingung des Falls \"Versionssprung mit Tag schon auf origin geht durch\" (stre-T-028): sie stellt fest, dass der Tag vor dem Zweig auf dem Ferndepot liegt. Tag-Pushes laufen am Riegel vorbei, weil nur refs/heads/stream-beta geprueft wird; diesen Fruehausgang bewacht \"ein Push auf main geht durch\".",
+  },
   zusage: {
     "Zusage B gelingt":
       "Vorbedingung des Abschnitts (stre-T-175): ohne gelungene Zusage sagen die Proben zu Eintrag, Stand und Loesen nichts. Die drei Fixes bewachen je eine eigene Sabotage an diesen Proben.",
@@ -2529,8 +2606,12 @@ if (process.argv.includes("--alle-saetze")) {
 // neben anderer Last 459 s. Im vollen Lauf kaeme das je Sabotage dazu, mit
 // vier Kopien zugleich ueber eine Stunde. Er laeuft mit `--satz doppelwache`
 // und im Vorhaken, sobald tools/haken oder einer der Bench-Ordner vorgemerkt ist.
-const NUR_AUF_ZURUF = ["doppelwache"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "doppelwache"]
+// vorpush (stre-T-028) pusht je Sabotage in Wegwerfdepots und braucht allein
+// ein Vielfaches eines anderen Satzes. Der Satz selbst laeuft im Vorhaken,
+// sobald der Push-Riegel oder module.json vorgemerkt ist; seine Sabotagen auf
+// Zuruf mit --satz vorpush.
+const NUR_AUF_ZURUF = ["doppelwache", "vorpush"];
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "vorpush", "doppelwache"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

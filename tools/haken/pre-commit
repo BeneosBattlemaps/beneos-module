@@ -696,6 +696,43 @@ then
   fi
 fi
 
+# DER PUSH-RIEGEL (stre-T-028). Wird er angefasst, faehrt sein Satz mit: er
+# pusht in Wegwerfdepots und haelt fest, dass stream-beta ohne Versionssprung
+# durchgeht und mit Versionssprung nur samt passendem Tag. Er ist langsam,
+# deshalb nur bei Aenderung am Riegel, seiner Bruecke oder der module.json, deren
+# Adressen er prueft. Seine Sabotagen: `tools/stream-sabotagen.mjs --satz vorpush`.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/haken/pre-push tools/haken/pre-push.mjs tools/haken/bruecke-pre-push \
+        tools/haken/vorpush.test.mjs module.json \
+   | grep -q .
+then
+  meld "pre-commit: Push-Riegel oder module.json vorgemerkt, sein Satz laeuft mit"
+  if [ -f "tools/haken/vorpush.test.mjs" ]; then
+    node "tools/haken/vorpush.test.mjs" > "$TMP/lauf" 2>&1
+    werte_aus "$?" "vorpush.test.mjs"
+  elif git cat-file -e "HEAD:tools/haken/vorpush.test.mjs" 2>/dev/null; then
+    meld "pre-commit: vorpush.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+    ROT=$((ROT + 1))
+  fi
+fi
+
+# Das Messwerkzeug fuer das Tag-ZIP der Beta (stre-T-028) misst nach einem
+# Push, ob Betatester das Modul bekommen. Sein Satz laeuft ohne Netz und
+# schnell. Seine Sabotagen: `tools/stream-sabotagen.mjs --satz betazip`.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/pruefe-beta-zip.mjs tools/pruefe-beta-zip.test.mjs \
+   | grep -q .
+then
+  meld "pre-commit: Messwerkzeug Beta-ZIP vorgemerkt, sein Satz laeuft mit"
+  if [ -f "tools/pruefe-beta-zip.test.mjs" ]; then
+    node "tools/pruefe-beta-zip.test.mjs" > "$TMP/lauf" 2>&1
+    werte_aus "$?" "pruefe-beta-zip.test.mjs"
+  elif git cat-file -e "HEAD:tools/pruefe-beta-zip.test.mjs" 2>/dev/null; then
+    meld "pre-commit: pruefe-beta-zip.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+    ROT=$((ROT + 1))
+  fi
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""

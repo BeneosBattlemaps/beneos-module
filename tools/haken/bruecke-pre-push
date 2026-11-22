@@ -1,0 +1,13 @@
+#!/bin/sh
+# Bruecke auf den Push-Riegel im Repositorium (stre-T-028). Vorlage fuer
+# .git/hooks/pre-push, nach dem Muster der pre-commit-Bruecke.
+#
+# Bewusst kein core.hooksPath: der haette pre-commit und prepare-commit-msg
+# geraeuschlos getoetet.
+#
+# Das `[ -x ]` ist kein Schmuck. Worktrees teilen sich den Hakenordner, und
+# Staende vor stre-T-028 tragen tools/haken/pre-push nicht. Ohne die Abfrage
+# scheiterte dort jeder Push.
+H="$(git rev-parse --show-toplevel)/tools/haken/pre-push"
+[ -x "$H" ] || exit 0
+exec "$H" "$@"

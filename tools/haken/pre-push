@@ -1,0 +1,18 @@
+#!/bin/sh
+# Riegel vor dem Push auf stream-beta (stre-T-028). Die Logik und ihre
+# Begruendung stehen in pre-push.mjs daneben; diese Datei ruft sie nur.
+# git uebergibt Fernname und -adresse als Argumente und die Refs auf stdin.
+#
+# Erst stdin lesen: betrifft der Push stream-beta nicht, endet der Haken hier,
+# ohne node zu brauchen. Sonst sperrte ein fehlendes node (schmale Shell,
+# grafischer Client) auch Pushes auf main und Tags (Kalt-Review stre-T-028).
+EINGABE=$(cat)
+case "$EINGABE" in
+  *" refs/heads/stream-beta "*) ;;
+  *) exit 0 ;;
+esac
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node fehlt, der Push auf stream-beta ist nicht pruefbar und bleibt gesperrt (stre-T-028)" >&2
+  exit 1
+fi
+printf '%s\n' "$EINGABE" | node "$(dirname "$0")/pre-push.mjs" "$@"
