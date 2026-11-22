@@ -26,11 +26,12 @@ MERGE=0
 if [ -f "$(git rev-parse --git-path MERGE_HEAD)" ]; then
   MERGE=1
 fi
-# Ob git Rautenzeilen wegraeumt, entscheidet sein Cleanup-Modus, nicht allein
-# der Editor: unter commit.cleanup=whitespace, verbatim oder scissors und bei
-# einem anderen Kommentarzeichen bleibt eine "#"-Zeile stehen. Die Regel
-# behandelt jeden Nicht-Standard wie "kein Editor". Das Kommandozeilenflag
-# --cleanup sieht ein Haken nicht.
+# Ob git Rautenzeilen wegraeumt, entscheiden sein Cleanup-Modus und das
+# wirksame Kommentarzeichen, nicht allein der Editor (raeumtRauten in der
+# Regel). core.commentChar und core.commentString sind fuer git dieselbe
+# Einstellung, der zuletzt gesetzte Eintrag gilt; deshalb die letzte Zeile von
+# --get-regexp statt beider Werte aneinander. Das Kommandozeilenflag --cleanup
+# sieht ein Haken nicht.
 CLEANUP=$(git config --get commit.cleanup 2>/dev/null)
-KOMMENTAR="$(git config --get core.commentChar 2>/dev/null)$(git config --get core.commentString 2>/dev/null)"
+KOMMENTAR=$(git config --get-regexp '^core\.comment(char|string)$' 2>/dev/null | tail -n 1 | cut -d' ' -f2-)
 BENEOS_IST_MERGE=$MERGE BENEOS_CLEANUP=$CLEANUP BENEOS_KOMMENTAR=$KOMMENTAR node "$(dirname "$0")/commit-msg.mjs" "$@"

@@ -2434,7 +2434,7 @@ const SABOTAGEN = [
   { satz: "betreffkennung", ziel: ["eine Kommentarzeile vor dem Betreff stoert nicht", "mit Editor geht eine Rautenzeile vor gueltigem Betreff durch"], ersetze: [[KMSG, "    if (mitEditor && zeile.startsWith(\"#\")) continue\n", "\n"]] },
   // Nacharbeit stre-T-047: ohne Editor bleibt eine Rautenzeile der gespeicherte Betreff.
   { satz: "betreffkennung", ziel: ["ohne Editor zaehlt eine Rautenzeile als Betreff", "echter Commit sperrt: #ohne Kennung"], ersetze: [[KMSG, "    if (mitEditor && zeile.startsWith(\"#\")) continue\n", "    if (zeile.startsWith(\"#\")) continue\n"]] },
-  { satz: "betreffkennung", ziel: ["echter Commit sperrt: #ohne Kennung"], ersetze: [[KMSG, "const mitEditor = env.GIT_EDITOR !== \":\"", "const mitEditor = true"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit sperrt: #ohne Kennung"], ersetze: [[KMSG, "const mitEditor = raeumtRauten(env)", "const mitEditor = true"]] },
   { satz: "betreffkennung", ziel: ["Commit mit Kennung geht durch", "fixup per git commit -m geht durch", "Revert per git commit -m geht durch", "ein echter Merge 'merge: x' im Arbeitsbaum geht durch"], ersetze: [[KMSG, "  if (r.ok) return 0\n", "  if (r.ok) return 1\n"]] },
   { satz: "betreffkennung", ziel: ["auf einem Stand mit main-Manifest geht ein Commit ohne Kennung durch", "nach der Freigabe geht auf main ein Commit ohne Kennung durch", "nach der Freigabe sperrt auf stream-beta ein Commit ohne Kennung"], ersetze: [[KMSG_SH, "if ! git show :module.json 2>/dev/null | grep -qF \"$MARKE\"; then\n", "if git show :module.json 2>/dev/null | grep -qF \"$MARKE\"; then\n"]] },
   { satz: "betreffkennung", ziel: ["auf einem Stand mit main-Manifest geht ein Commit ohne Kennung durch", "nach der Freigabe geht auf main ein Commit ohne Kennung durch"], ersetze: [[KMSG_SH, "MARKE='BeneosBattlemaps/beneos-module/stream-beta/module.json'\n", "MARKE='BeneosBattlemaps/beneos-module/'\n"]] },
@@ -2460,11 +2460,22 @@ const SABOTAGEN = [
   { satz: "betreffkennung", ziel: ["die Bruecke ruft den versionierten Riegel des Stands"], ersetze: [[BRUECKE_KMSG, "exec \"$H\" \"$@\"\n", "exit 0\n"]] },
   { satz: "betreffkennung", ziel: ["eine geerbte GIT_DIR erreicht das echte Repositorium nicht"], ersetze: [[KENNUNG_SATZ, "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) delete e[k]\n", "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) void k\n"]] },
   // Zweite Nacharbeit stre-T-047: Cleanup-Modus, Kommentarzeichen, Sperrmeldung, Gleichlauf mit Python.
-  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff", "echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "    && [\"\", \"default\", \"strip\"].includes(env.BENEOS_CLEANUP ?? \"\")\n", ""]] },
-  { satz: "betreffkennung", ziel: ["mit Editor und commit.cleanup=default geht eine Rautenzeile vor gueltigem Betreff durch"], ersetze: [[KMSG, "[\"\", \"default\", \"strip\"]", "[\"\", \"strip\"]"]] },
-  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "    && /^#*$/.test(env.BENEOS_KOMMENTAR ?? \"\")", "    && true"]] },
-  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff", "echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "CLEANUP=$(git config --get commit.cleanup 2>/dev/null)\n", "CLEANUP=\n"]] },
-  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "KOMMENTAR=\"$(git config --get core.commentChar 2>/dev/null)$(git config --get core.commentString 2>/dev/null)\"\n", "KOMMENTAR=\n"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff","echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "  return [\"\", \"default\"].includes(cleanup) && env.GIT_EDITOR !== \":\"", "  return env.GIT_EDITOR !== \":\""]] },
+  { satz: "betreffkennung", ziel: ["mit Editor und commit.cleanup=default geht eine Rautenzeile vor gueltigem Betreff durch"], ersetze: [[KMSG, "return [\"\", \"default\"].includes(cleanup)", "return [\"\"].includes(cleanup)"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG, "  if (![\"\", \"#\"].includes(env.BENEOS_KOMMENTAR ?? \"\")) return false\n", ""]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter commit.cleanup=whitespace: Rautenzeile bleibt Betreff","echter Commit mit Editor sperrt unter commit.cleanup=verbatim: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "CLEANUP=$(git config --get commit.cleanup 2>/dev/null)\n", "CLEANUP=\n"]] },
+  { satz: "betreffkennung", ziel: ["echter Commit mit Editor sperrt unter core.commentChar=;: Rautenzeile bleibt Betreff"], ersetze: [[KMSG_SH, "KOMMENTAR=$(git config --get-regexp '^core\\.comment(char|string)$' 2>/dev/null | tail -n 1 | cut -d' ' -f2-)\n", "KOMMENTAR=\n"]] },
+  // Dritte Runde stre-T-047, nach dem Worker be36f67: wirksames Kommentarzeichen und strip ohne Editor.
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter core.commentString=## mit -e"], ersetze: [[KMSG, "if (![\"\", \"#\"].includes(env.BENEOS_KOMMENTAR ?? \"\"))", "if (!/^#*$/.test(env.BENEOS_KOMMENTAR ?? \"\"))"]] },
+  { satz: "betreffkennung", ziel: ["der Haken laesst durch unter core.commentChar=; dann core.commentString=# mit -e"], ersetze: [[KMSG_SH, "KOMMENTAR=$(git config --get-regexp '^core\\.comment(char|string)$' 2>/dev/null | tail -n 1 | cut -d' ' -f2-)\n", "KOMMENTAR=\"$(git config --get core.commentChar 2>/dev/null)$(git config --get core.commentString 2>/dev/null)\"\n"]] },
+  { satz: "betreffkennung", ziel: ["der Haken laesst durch unter core.commentChar=; dann core.commentString=# mit -e","der Haken sperrt unter core.commentString=# dann core.commentChar=; mit -e"], ersetze: [[KMSG_SH, "2>/dev/null | tail -n 1 | cut", "2>/dev/null | head -n 1 | cut"]] },
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter core.commentString=## mit -e"], ersetze: [[KMSG_SH, "'^core\\.comment(char|string)$'", "'^core\\.commentchar$'"]] },
+  { satz: "betreffkennung", ziel: ["der Haken laesst durch unter commit.cleanup=strip mit -F","der Haken laesst durch unter commit.cleanup=strip mit -m"], ersetze: [[KMSG, "  if (cleanup === \"strip\") return true\n", ""]] },
+  { satz: "betreffkennung", ziel: ["der Haken laesst durch unter core.commentString=# mit -e", "der Haken laesst durch unter core.commentChar=; dann core.commentString=# mit -e"], ersetze: [[KMSG, 'if (!["", "#"].includes(env.BENEOS_KOMMENTAR ?? ""))', 'if (!["", "#"].includes(env.BENEOS_KOMMENTAR || "#") || env.BENEOS_KOMMENTAR)']] },
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter core.commentChar=; dann commit.cleanup=strip mit -F"], ersetze: [[KMSG, '  if (!["", "#"].includes(env.BENEOS_KOMMENTAR ?? "")) return false\n  const cleanup = env.BENEOS_CLEANUP ?? ""\n  if (cleanup === "strip") return true\n', '  const cleanup = env.BENEOS_CLEANUP ?? ""\n  if (cleanup === "strip") return true\n  if (!["", "#"].includes(env.BENEOS_KOMMENTAR ?? "")) return false\n']] },
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter core.commentChar=auto mit -e"], ersetze: [[KMSG, '  if (!["", "#"].includes(env.BENEOS_KOMMENTAR ?? "")) return false\n', '  if (!["", "#", "auto"].includes(env.BENEOS_KOMMENTAR ?? "")) return false\n']] },
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter commit.cleanup=scissors mit -e"], ersetze: [[KMSG, 'return ["", "default"].includes(cleanup)', 'return ["", "default", "scissors"].includes(cleanup)']] },
+  { satz: "betreffkennung", ziel: ["der Haken sperrt unter commit.cleanup=whitespace mit -F"], ersetze: [[KMSG, "if (cleanup === \"strip\")", "if ([\"strip\", \"whitespace\"].includes(cleanup))"]] },
   { satz: "betreffkennung", ziel: ["die Sperrmeldung nennt im verknuepften Arbeitsbaum dessen COMMIT_EDITMSG"], ersetze: [[KMSG, "git([\"rev-parse\", \"--git-path\", \"COMMIT_EDITMSG\"]) || \".git/COMMIT_EDITMSG\"", "\".git/COMMIT_EDITMSG\""]] },
   { satz: "betreffkennung", ziel: ["die Sperrmeldung nennt im Hauptbaum .git/COMMIT_EDITMSG", "die Sperrmeldung nennt im verknuepften Arbeitsbaum dessen COMMIT_EDITMSG"], ersetze: [[KMSG, "git([\"rev-parse\", \"--git-path\", \"COMMIT_EDITMSG\"]) || \".git/COMMIT_EDITMSG\"", "\"COMMIT_EDITMSG\""]] },
   { satz: "betreffkennung", ziel: ["Gleichlauf sperrt: Kommentarzeile mit CR, mit Editor", "Gleichlauf sperrt: Kommentarzeile mit U+2028, mit Editor", "Gleichlauf sperrt: Seitenvorschub vor dem Betreff, ohne Editor"], ersetze: [[KMSG, ".split(/\\r?\\n/)) {", ".split(/\\r\\n|[\\n\\r\\f\\u2028]/)) {"]] },
@@ -2732,6 +2743,14 @@ const EIGENPROBEN = {
     "Zusage B gelingt":
       "Vorbedingung des Abschnitts (stre-T-175): ohne gelungene Zusage sagen die Proben zu Eintrag, Stand und Loesen nichts. Die drei Fixes bewachen je eine eigene Sabotage an diesen Proben.",
   },
+  // stre-T-047, dritte Runde: die Gitverhaltensproben messen git ohne Haken.
+  betreffkennung: Object.fromEntries([
+    "core.commentString=## mit -e: true", "core.commentString=# mit -e: false",
+    "core.commentChar=; dann core.commentString=# mit -e: false", "core.commentString=# dann core.commentChar=; mit -e: true",
+    "commit.cleanup=strip mit -F: false", "commit.cleanup=strip mit -m: false", "commit.cleanup=whitespace mit -F: true",
+    "core.commentChar=; dann commit.cleanup=strip mit -F: true", "core.commentChar=auto mit -e: true", "commit.cleanup=scissors mit -e: true",
+  ].map((s) => [`git behaelt die Rautenzeile als Betreff unter ${s}`,
+    "Aussage ueber git ohne Haken, nicht ueber den Riegel: keine Sabotage am Modul kann sie rot machen. Sie haelt den Sollwert der Riegelprobe daneben fest; aendert git sein Verhalten, wird sie hier rot."])),
 };
 
 // ------------------------------------------------------------- Werkzeug

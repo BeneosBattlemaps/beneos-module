@@ -335,6 +335,46 @@ for (const [name, konfig] of [["commit.cleanup=whitespace", "commit.cleanup=whit
   writeFileSync(f, "# ohne Kennung\nfix(stre-T-047): x\n")
   p.gleich(`echter Commit mit Editor sperrt unter ${name}: Rautenzeile bleibt Betreff`, sperrt(git(w, ["-c", konfig, "commit", "-q", "-e", "-F", f], { GIT_EDITOR: "true" })), true)
 }
+/*
+ * Wirksames Kommentarzeichen und strip ohne Editor (stre-T-047, dritte Runde,
+ * nach der Vorlage be36f67 im Worker). Jede Einstellung laeuft zweimal: einmal
+ * ohne Haken, um den Betreff zu lesen, den git wirklich speichert, einmal durch
+ * den Haken. Der Haken muss genau dann sperren, wenn git die Rautenzeile
+ * behaelt. Paare: ## gegen #, ";" dann "#" gegen "#" dann ";", strip gegen
+ * whitespace ohne Editor.
+ */
+{
+  const f = join(wegwerf("kennung-nachricht-"), "n.txt")
+  writeFileSync(f, "# ohne Kennung\nfix(stre-T-047): x\n")
+  for (const [konfigs, art, bleibt] of [
+    [["core.commentString=##"], "-e", true],
+    [["core.commentString=#"], "-e", false],
+    [["core.commentChar=;", "core.commentString=#"], "-e", false],
+    [["core.commentString=#", "core.commentChar=;"], "-e", true],
+    [["commit.cleanup=strip"], "-F", false],
+    [["commit.cleanup=strip"], "-m", false],
+    [["commit.cleanup=whitespace"], "-F", true],
+    // Kreuzung der beiden Achsen, und Einstellungen, unter denen git die Zeile behaelt.
+    [["core.commentChar=;", "commit.cleanup=strip"], "-F", true],
+    [["core.commentChar=auto"], "-e", true],
+    [["commit.cleanup=scissors"], "-e", true],
+  ]) {
+    const vorn = konfigs.flatMap((k) => ["-c", k])
+    const nach = art === "-m" ? ["-m", "# ohne Kennung\nfix(stre-T-047): x"] : art === "-F" ? ["-F", f] : ["-e", "-F", f]
+    const name = `${konfigs.join(" dann ")} mit ${art}`
+    const w = depot()
+    writeFileSync(join(w, "a.txt"), "ohne Haken\n")
+    mussGit(w, ["add", "a.txt"])
+    const roh = git(w, ["-c", "core.hooksPath=", ...vorn, "commit", "-q", ...nach], { GIT_EDITOR: "true" })
+    // %s fuegte die Zeilen des ersten Absatzes zusammen; die erste Zeile von %B ist die Betreffzeile.
+    const gespeichert = (git(w, ["log", "-1", "--format=%B"]).aus.split(/\r?\n/)[0])
+    p.gleich(`git behaelt die Rautenzeile als Betreff unter ${name}: ${bleibt}`, roh.rc === 0 && (gespeichert === "# ohne Kennung") === bleibt, true)
+    writeFileSync(join(w, "a.txt"), "mit Haken\n")
+    mussGit(w, ["add", "a.txt"])
+    const r = git(w, [...vorn, "commit", "-q", ...nach], { GIT_EDITOR: "true" })
+    p.gleich(`der Haken ${bleibt ? "sperrt" : "laesst durch"} unter ${name}`, bleibt ? sperrt(r) : durch(r), true)
+  }
+}
 {
   // Die Sperrmeldung nennt die Nachrichtendatei des Arbeitsbaums, im
   // verknuepften Arbeitsbaum also .git/worktrees/<name>/COMMIT_EDITMSG.

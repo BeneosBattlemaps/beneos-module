@@ -22,15 +22,19 @@
  * `fixup! `, `squash! `, `amend! `, `Revert "` und eine leere Nachricht, bei
  * der git selbst abbricht.
  *
- * KOMMENTARZEILEN (`#`) gelten nur dann als Kommentar, wenn ein Editor lief:
- * dann raeumt git sie nach dem Haken weg. Ohne Editor (`-m`, `-F`) setzt git
- * fuer den Haken GIT_EDITOR=":", raeumt nur Leerraum auf, und eine Rautenzeile
- * bleibt der gespeicherte Betreff; dann zaehlt sie hier auch als Betreff. Ein
- * Editor zaehlt nur unter dem Standard-Cleanup: steht commit.cleanup auf etwas
- * anderem als leer, default oder strip, oder core.commentChar bzw.
- * core.commentString auf etwas anderem als "#", behaelt git die Rautenzeile,
- * und sie zaehlt hier wie ohne Editor (die Huelle liest beides). Nachgezogen
- * nach dem Kalt-Review des Worker-Riegels (stre-T-047, 22.11.2026).
+ * KOMMENTARZEILEN (`#`) gelten nur dann als Kommentar, wenn git sie nach dem
+ * Haken wegraeumt (raeumtRauten). Das tut es nur, wenn das wirksame
+ * Kommentarzeichen "#" ist: core.commentChar und core.commentString sind fuer
+ * git dieselbe Einstellung, der zuletzt gesetzte Wert gilt, und unter "##" oder
+ * ";" bleibt eine "#"-Zeile stehen. Dann raeumt commit.cleanup=strip sie immer
+ * weg, auch bei `-m` und `-F`; leer oder default nur mit Editor (ohne Editor
+ * setzt git fuer den Haken GIT_EDITOR=":"); whitespace, verbatim, scissors nie.
+ * Bleibt die Rautenzeile stehen, ist sie der gespeicherte Betreff und zaehlt
+ * hier auch so. Die Huelle liest beide Einstellungen. Nachgezogen nach dem
+ * Worker-Riegel be36f67 (stre-T-047, 22.11.2026). Grenze, in der sicheren
+ * Richtung: unter einem anderen Kommentarzeichen als "#" (etwa "# " oder ";")
+ * raeumt git dessen Zeilen weg, die Regel aber nicht; eine solche Zeile vor dem
+ * Betreff sperrt hier zu viel.
  *
  * ZEILEN UND ZEICHEN wie git und gleich wie tools/commit_kennung.py in
  * beneos-stream-beta: Zeilen enden an LF oder CRLF, Leerraum und Ziffern sind
@@ -90,15 +94,27 @@ function git(args) {
   return (r.status === 0 ? r.stdout || "" : "").trim()
 }
 
+/**
+ * Ob git eine "#"-Zeile nach dem Haken wegraeumt, gleich wie im Worker (be36f67)
+ * und raeumt_rauten in beneos-stream-beta. Nur wenn das wirksame
+ * Kommentarzeichen "#" ist (nicht gesetzt oder genau "#"; die Huelle liefert den
+ * zuletzt gesetzten Wert), und dann unter strip immer, unter leer oder default
+ * nur mit Editor, unter allem anderen nie.
+ */
+export function raeumtRauten(env) {
+  if (!["", "#"].includes(env.BENEOS_KOMMENTAR ?? "")) return false
+  const cleanup = env.BENEOS_CLEANUP ?? ""
+  if (cleanup === "strip") return true
+  return ["", "default"].includes(cleanup) && env.GIT_EDITOR !== ":"
+}
+
 export function hauptlauf(datei, env = process.env) {
   let nachricht = ""
   try { nachricht = readFileSync(datei, "utf8") } catch (e) {
     console.error(`commit-msg: Nachricht nicht lesbar (${e.message}), Commit gesperrt (stre-T-047)`)
     return 1
   }
-  const mitEditor = env.GIT_EDITOR !== ":"
-    && ["", "default", "strip"].includes(env.BENEOS_CLEANUP ?? "")
-    && /^#*$/.test(env.BENEOS_KOMMENTAR ?? "")
+  const mitEditor = raeumtRauten(env)
   const r = pruefeBetreff(nachricht, env.BENEOS_IST_MERGE === "1", mitEditor)
   if (r.ok) return 0
 
