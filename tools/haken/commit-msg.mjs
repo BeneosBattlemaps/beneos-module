@@ -17,9 +17,17 @@
  * `OP-XXX-n`, `RG-n` und `TC-...-n`. Ein blosses `T-n` ist mehrdeutig und
  * gilt nicht.
  *
- * OHNE PRUEFUNG: Merge-Commits (MERGE_HEAD, von der Huelle ermittelt, oder ein
- * Betreff `Merge ...`), `fixup! `, `squash! `, `amend! `, `Revert "` und eine
- * leere Nachricht, bei der git selbst abbricht.
+ * OHNE PRUEFUNG: Merge-Commits (allein an der Datei MERGE_HEAD erkannt, von
+ * der Huelle; ein Betreff `Merge ...` ohne Merge ist KEINE Ausnahme),
+ * `fixup! `, `squash! `, `amend! `, `Revert "` und eine leere Nachricht, bei
+ * der git selbst abbricht.
+ *
+ * KOMMENTARZEILEN (`#`) gelten nur dann als Kommentar, wenn ein Editor lief:
+ * dann raeumt git sie nach dem Haken weg. Ohne Editor (`-m`, `-F`) setzt git
+ * fuer den Haken GIT_EDITOR=":", raeumt nur Leerraum auf, und eine Rautenzeile
+ * bleibt der gespeicherte Betreff; dann zaehlt sie hier auch als Betreff. Ein
+ * umgestelltes core.commentChar kennt der Riegel nicht. Nachgezogen nach dem
+ * Kalt-Review des Worker-Riegels (stre-T-047, 22.11.2026).
  *
  * WANN DER HAKEN GILT, entscheidet allein die sh-Huelle `commit-msg`: nur wenn
  * die vorgemerkte module.json das Manifest von stream-beta traegt. main und die
@@ -40,20 +48,20 @@ import { spawnSync } from "node:child_process"
 
 const KOPF = /^([a-z][a-z0-9]*)\(([^()]*)\)!?: \S/
 const KENNUNG = /^(?:[a-z]{2,5}-T-\d{3,}|OP-[A-Z]{2,4}-\d+|RG-\d+|TC-[A-Z]+(?:-[A-Z]+)*-\d+)$/
-const AUSNAHME = /^(?:Merge |fixup! |squash! |amend! |Revert ")/
+const AUSNAHME = /^(?:fixup! |squash! |amend! |Revert ")/
 
-/** Die erste Zeile, die keine Kommentarzeile und nicht leer ist. */
-export function betreffAus(nachricht) {
+/** Die erste nicht leere Zeile; Rautenzeilen nur ueberspringen, wenn ein Editor lief. */
+export function betreffAus(nachricht, mitEditor = true) {
   for (const zeile of String(nachricht ?? "").split(/\r?\n/)) {
-    if (zeile.startsWith("#")) continue
+    if (mitEditor && zeile.startsWith("#")) continue
     const z = zeile.trimEnd()
     if (z.trim()) return z
   }
   return ""
 }
 
-export function pruefeBetreff(nachricht, istMerge = false) {
-  const b = betreffAus(nachricht)
+export function pruefeBetreff(nachricht, istMerge = false, mitEditor = true) {
+  const b = betreffAus(nachricht, mitEditor)
   if (!b) return { ok: true, grund: "leere Nachricht, git bricht selbst ab" }
   if (istMerge) return { ok: true, grund: "Merge-Commit" }
   if (AUSNAHME.test(b)) return { ok: true, grund: "Ausnahme" }
@@ -75,14 +83,15 @@ export function hauptlauf(datei, env = process.env) {
     console.error(`commit-msg: Nachricht nicht lesbar (${e.message}), Commit gesperrt (stre-T-047)`)
     return 1
   }
-  const r = pruefeBetreff(nachricht, env.BENEOS_IST_MERGE === "1")
+  const mitEditor = env.GIT_EDITOR !== ":"
+  const r = pruefeBetreff(nachricht, env.BENEOS_IST_MERGE === "1", mitEditor)
   if (r.ok) return 0
 
   const notweg = String(env.BENEOS_COMMIT_NOTWEG ?? "").trim()
   if (notweg) {
     const log = join(resolve(git(["rev-parse", "--git-common-dir"]) || ".git"), "beneos-commit-notweg.log")
     const zweig = git(["rev-parse", "--abbrev-ref", "HEAD"]) || "?"
-    const zeile = `${new Date().toISOString()} | ${git(["rev-parse", "--show-toplevel"])} | ${zweig} | ${betreffAus(nachricht)} | ${r.grund} | Begruendung: ${notweg.replace(/\s+/g, " ")}\n`
+    const zeile = `${new Date().toISOString()} | ${git(["rev-parse", "--show-toplevel"])} | ${zweig} | ${betreffAus(nachricht, mitEditor)} | ${r.grund} | Begruendung: ${notweg.replace(/\s+/g, " ")}\n`
     try { appendFileSync(log, zeile) } catch (e) {
       console.error(`commit-msg: Notweg nicht mitschreibbar (${e.message}), Commit bleibt gesperrt`)
       return 1

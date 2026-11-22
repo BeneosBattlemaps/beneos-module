@@ -165,7 +165,8 @@ for (const [betreff, soll] of [
   ["merge(stre-T-028): x", true],
   ["chore(stre-T-047): 14.5.0-beta.13", true],
   ["fix(cla-T-005): x", true],
-  ["Merge branch 'seite' into stream-beta", true],
+  // Ein Merge-Betreff ist ohne MERGE_HEAD keine Ausnahme (Nacharbeit stre-T-047).
+  ["Merge branch 'seite' into stream-beta", false],
   ["fixup! fix: x", true],
   ["squash! fix: x", true],
   ["amend! fix: x", true],
@@ -194,6 +195,8 @@ for (const [betreff, soll] of [
 ]) p.gleich(`${soll ? "geht durch" : "sperrt"}: ${betreff}`, pruefeBetreff(betreff).ok, soll)
 p.gleich("Kommentarzeilen zaehlen nicht als Betreff", pruefeBetreff("# fix(stre-T-047): x\nfix: x\n").ok, false)
 p.gleich("eine Kommentarzeile vor dem Betreff stoert nicht", pruefeBetreff("# Hinweis\n\nfix(stre-T-047): x\n").ok, true)
+p.gleich("ohne Editor zaehlt eine Rautenzeile als Betreff", pruefeBetreff("# Hinweis\n\nfix(stre-T-047): x\n", false, false).ok, false)
+p.gleich("ein Merge-Betreff mit MERGE_HEAD geht durch", pruefeBetreff("Merge branch 'seite' into stream-beta", true).ok, true)
 p.gleich("ein Merge geht ohne Kennung durch", pruefeBetreff("merge: x", true).ok, true)
 p.gleich("ohne Merge sperrt derselbe Betreff", pruefeBetreff("merge: x", false).ok, false)
 p.gleich("eine leere Nachricht geht durch", pruefeBetreff("").ok, true)
@@ -226,6 +229,26 @@ p.abschnitt("Echte Commits, die durchgehen")
   p.gleich("ein echter Merge 'merge: x' im Arbeitsbaum geht durch", durch(git(baum, ["merge", "--no-ff", "-q", "-m", "merge: x", "seite"])), true)
 }
 {
+  // Gegenwert zu "Merge irgendwas ohne Kennung": derselbe Betreffanfang als
+  // echter Merge mit dem Standardbetreff von git geht ueber MERGE_HEAD durch.
+  const w = depot()
+  mussGit(w, ["checkout", "-q", "-b", "seite"])
+  vorbei(w, "a.txt", "seite\n", "fix(stre-T-002): seite")
+  mussGit(w, ["checkout", "-q", "stream-beta"])
+  vorbei(w, "b.txt", "b\n", "fix(stre-T-003): haupt")
+  p.gleich("ein echter Merge mit Standardbetreff geht durch", durch(git(w, ["merge", "--no-ff", "--no-edit", "-q", "seite"])), true)
+}
+{
+  // Gegenwert zu "-m '#ohne Kennung'": mit Editor raeumt git die Rautenzeile
+  // nach dem Haken weg, ein gueltiger Betreff darunter geht durch.
+  const w = depot()
+  writeFileSync(join(w, "a.txt"), "editor\n")
+  mussGit(w, ["add", "a.txt"])
+  const f = join(wegwerf("kennung-nachricht-"), "n.txt")
+  writeFileSync(f, "# Hinweis\nfix(stre-T-047): x\n")
+  p.gleich("mit Editor geht eine Rautenzeile vor gueltigem Betreff durch", durch(git(w, ["commit", "-q", "-e", "-F", f], { GIT_EDITOR: "true" })), true)
+}
+{
   const w = depot()
   mussGit(w, ["checkout", "-q", "-b", "main"])
   writeFileSync(join(w, "module.json"), modul(MAIN))
@@ -255,7 +278,9 @@ p.abschnitt("Echte Commits, die durchgehen")
 }
 
 p.abschnitt("Echte Commits, die sperren")
-for (const betreff of ["fix: x", "fix(stream): stre-T-154 x", "fix(stre-T-47): x", "chore(version): 14.5.0-beta.13"]) {
+// "#ohne Kennung" und "Merge irgendwas ohne Kennung": Nacharbeit stre-T-047,
+// beide kamen vorher durch (nachgestellt am 22.11.2026 auf 372c876).
+for (const betreff of ["fix: x", "fix(stream): stre-T-154 x", "fix(stre-T-47): x", "chore(version): 14.5.0-beta.13", "#ohne Kennung", "Merge irgendwas ohne Kennung"]) {
   const w = depot()
   p.gleich(`echter Commit sperrt: ${betreff}`, sperrt(commit(w, betreff)), true)
 }
@@ -268,6 +293,12 @@ for (const betreff of ["fix: x", "fix(stream): stre-T-154 x", "fix(stre-T-47): x
   const r = git(w, ["merge", "--squash", "-q", "seite"])
   if (r.rc !== 0) nichtMessbar(`merge --squash: ${r.aus.trim()}`)
   p.gleich("nach merge --squash ist der Commit kein Merge und sperrt", sperrt(git(w, ["commit", "-q", "-m", "merge: x"])), true)
+}
+{
+  // Eine Marke namens MERGE_HEAD ist kein Merge (Nacharbeit stre-T-047).
+  const w = depot()
+  mussGit(w, ["tag", "MERGE_HEAD"])
+  p.gleich("echter Commit sperrt bei einer Marke namens MERGE_HEAD", sperrt(commit(w, "fix: x")), true)
 }
 {
   const w = depot()

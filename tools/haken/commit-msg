@@ -18,10 +18,12 @@ if ! command -v node >/dev/null 2>&1; then
   echo "commit-msg: node fehlt, der Betreff ist nicht pruefbar und der Commit bleibt gesperrt (stre-T-047)" >&2
   exit 1
 fi
-# MERGE_HEAD ueber rev-parse: im verknuepften Arbeitsbaum liegt die Datei in
-# .git/worktrees/<name>/, nicht im gemeinsamen git-Ordner.
+# MERGE_HEAD als DATEI des Arbeitsbaums, ueber --git-path: im verknuepften
+# Arbeitsbaum liegt sie in .git/worktrees/<name>/. Nicht ueber
+# `rev-parse --verify`: das loest auch eine Marke namens MERGE_HEAD auf, und
+# jeder Commit galte als Merge (Kalt-Review Worker-Riegel, nachgestellt hier).
 MERGE=0
-if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+if [ -f "$(git rev-parse --git-path MERGE_HEAD)" ]; then
   MERGE=1
 fi
 BENEOS_IST_MERGE=$MERGE node "$(dirname "$0")/commit-msg.mjs" "$@"
