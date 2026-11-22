@@ -347,6 +347,13 @@ p.gleich("der echte Haken faehrt jeden Pflichtsatz per Namen",
   PFLICHT.filter((s) => !GERUFEN.includes(s)).join(", "), "")
 p.gleich("der echte Haken faehrt die Streamsaetze aus dem Index",
   HAKENTEXT.includes("git ls-files -- 'scripts/*.test.mjs'") && /^\s*fahre "\$datei"/m.test(HAKENTEXT), true)
+// Die Weiche der Schleife (stre-T-021): Rueckgabe 2 ist NUR bei den
+// Vertragssaetzen nicht gemessen, jeder andere Satz bleibt bei fahre.
+p.gleich("der echte Haken wertet nur die Vertragssaetze ueber werte_aus",
+  /^\s*scripts\/stream\/stream-vertrag-\*\.test\.mjs\)\s*$/m.test(HAKENTEXT)
+    && HAKENTEXT.split('werte_aus "$?" "$(basename "$datei")"').length === 2, true)
+p.gleich("der echte Haken faehrt jeden anderen Streamsatz ueber fahre",
+  /^\s*\*\)\s*\n\s*fahre "\$datei" "\$\(basename "\$datei"\)"\s*\n\s*;;/m.test(HAKENTEXT), true)
 p.gleich("der echte Haken faehrt die zwei Wachen echt aus dem Index",
   ["doppelnamen-bench", "v15-globale-bench"].every((w) => HAKENTEXT.includes(`fahre_weich "tools/${w}/bench.mjs"`)), true)
 const streamsaetze = struktur.git(["ls-files", "--", "scripts/*.test.mjs"]).split("\n").filter(Boolean)

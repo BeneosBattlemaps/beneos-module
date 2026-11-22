@@ -359,9 +359,25 @@ then
     meld "            bestandene Pruefung."
     exit 1
   fi
+  # DIE VERTRAGSSAETZE (stream-vertrag-*, stre-T-021) lesen einen Nachbarklon
+  # per git show und geben 2 zurueck, wenn er fehlt: nicht gemessen, kein
+  # Befund, aber gemeldet (werte_aus). Jeder andere Stand bleibt bei fahre,
+  # wo jeder Austritt ungleich 0 ROT ist.
   for datei in $STAENDE
   do
-    fahre "$datei" "$(basename "$datei")"
+    case "$datei" in
+      scripts/stream/stream-vertrag-*.test.mjs)
+        if [ -f "$datei" ]; then
+          node "$datei" > "$TMP/lauf" 2>&1
+          werte_aus "$?" "$(basename "$datei")"
+        else
+          fahre "$datei" "$(basename "$datei")"
+        fi
+        ;;
+      *)
+        fahre "$datei" "$(basename "$datei")"
+        ;;
+    esac
   done
 fi
 
