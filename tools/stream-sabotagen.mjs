@@ -241,6 +241,7 @@ const SATZ_AUSSERHALB = {
   vorpush: "tools/haken/vorpush.test.mjs",
   betazip: "tools/pruefe-beta-zip.test.mjs",
   betreffkennung: "tools/haken/commit-msg.test.mjs",
+  wachen: "tools/haken/wachen.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -298,6 +299,11 @@ const KENNUNG = "scripts/cloud-login-kennung.mjs";
 const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
 const TOUR = "scripts/beneos_tours.js";
 const HAKEN = "tools/haken/pre-commit";
+// Die Wachen des Hakens je Domaene (stre-T-070). Der Kern oben laedt sie.
+const WACHE_BASIS = "tools/haken/wachen/basis.sh";
+const WACHE_MODUL = "tools/haken/wachen/modul.sh";
+const WACHE_STRE = "tools/haken/wachen/stre.sh";
+const WACHEN_TEST = "tools/haken/wachen.test.mjs";
 const HINWEIS = "scripts/stream/stream-hinweis.mjs";
 const TEST = "scripts/stream/stream-hinweis.test.mjs";
 const DOPPELBENCH = "tools/doppelnamen-bench/bench.mjs";
@@ -2108,13 +2114,13 @@ const SABOTAGEN = [
   { satz: "platzhalter", ziel: ["ein fuehrender Schraegstrich im Pfad faellt"], ersetze: [[SETTINGS, "  const clean = String(path).replace(/^\\/+/, \"\")", "  const clean = String(path)"]] }, // G5
   // ---------------------------------------------------------------- doppelwache (stre-T-157, stre-T-158)
   { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  node \"$TMP/index/$datei\" > \"$TMP/lauf\" 2>&1", "  node \"$datei\" > \"$TMP/lauf\" 2>&1"]] },
-  { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[HAKEN, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
-  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[HAKEN, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Globale nur im Index sperrt", "fremde Globale auf der Platte sperrt nicht", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[WACHE_MODUL, "  fahre_weich \"tools/v15-globale-bench/bench.mjs\" \\", "  fahre \"tools/v15-globale-bench/bench.mjs\" \\"]] },
+  { satz: "doppelwache", ziel: ["Doppelname nur im Index sperrt", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "Parserfehler im Index: Doppelnamenwache nicht gemessen", "der echte Haken faehrt die zwei Wachen echt aus dem Index"], ersetze: [[WACHE_MODUL, "  fahre_weich \"tools/doppelnamen-bench/bench.mjs\" \\", "  fahre \"tools/doppelnamen-bench/bench.mjs\" \\"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Doppelnamenwache nicht gemessen"], ersetze: [[HAKEN, "  elif [ \"$code\" -eq 2 ]; then", "  elif [ \"$code\" -eq 99 ]; then"]] },
   { satz: "doppelwache", ziel: ["mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"]] },
   // Die Weiche der Schleife (stre-T-021): Muster geweitet, anderer Zweig geleert.
-  { satz: "doppelwache", ziel: ["der echte Haken wertet nur die Vertragssaetze ueber werte_aus"], ersetze: [[HAKEN, "      scripts/stream/stream-vertrag-*.test.mjs)", "      scripts/*.test.mjs)"]] },
-  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden anderen Streamsatz ueber fahre"], ersetze: [[HAKEN, "      *)\n        fahre \"$datei\" \"$(basename \"$datei\")\"\n        ;;", "      *)\n        ;;"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken wertet nur die Vertragssaetze ueber werte_aus"], ersetze: [[WACHE_STRE, "      scripts/stream/stream-vertrag-*.test.mjs)", "      scripts/*.test.mjs)"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden anderen Streamsatz ueber fahre"], ersetze: [[WACHE_STRE, "      *)\n        fahre \"$datei\" \"$(basename \"$datei\")\"\n        ;;", "      *)\n        ;;"]] },
   { satz: "doppelwache", ziel: ["Doppelname mit skip-worktree im Index sperrt", "mit skip-worktree liest die Bench den Indexinhalt"], ersetze: [[HAKEN, " --stdin --ignore-skip-worktree-bits \\", " --stdin \\"], [HAKEN, "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n  then", "          --prefix=\"$TMP/index/\" < \"$TMP/indexliste\" 2>\"$TMP/fehler\"\n     && false\n  then"]] },
   { satz: "doppelwache", ziel: ["Parserfehler im Index: Syntaxpruefung sperrt", "Parserfehler im Index: Haken endet rot"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if false; then"]] },
   { satz: "doppelwache", ziel: ["sauberer Index mit sauberer Platte geht durch", "sauberer Index geht durch, Globalenwache", "fremde Datei auf der Platte sperrt einen sauberen Index nicht", "fremde Globale auf der Platte sperrt nicht"], ersetze: [[HAKEN, "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ok  $name\"", "  if [ \"$code\" -eq 0 ]; then\n    meld \"pre-commit: ROT  $name\""]] },
@@ -2132,14 +2138,17 @@ const SABOTAGEN = [
   { satz: "doppelwache", ziel: ["module.json kaputt: Ladeform unbekannt sperrt","module.json kaputt: Haken endet rot"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  Ladeform unbekannt, die Syntax der .js unter scripts/ ist nicht pruefbar\"\n    sed -n '1,6p' \"$TMP/fehler\" >&2\n    ROT=$((ROT + 1))\n", "    sed -n '1,6p' \"$TMP/fehler\" >&2\n"]] },
   { satz: "doppelwache", ziel: ["nur importiert, nicht gelistet: ist Modul"], ersetze: [[LADEFORM, "    offen.push(posix.normalize(posix.join(posix.dirname(pfad), m[1])))", "    void m"]] },
   { satz: "doppelwache", ziel: ["klassisch und zugleich unter esmodules: bleibt klassisch"], ersetze: [[LADEFORM, "menge.has(pfad) || klassisch.has(pfad) || !inhalt.has(pfad)", "menge.has(pfad) || !inhalt.has(pfad)"]] },
-  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden Pflichtsatz per Namen"], ersetze: [[HAKEN, "\nfahre \"scripts/creature-installer/anker.test.mjs\"", "\n: fahre \"scripts/creature-installer/anker.test.mjs\""]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt jeden Pflichtsatz per Namen"], ersetze: [[WACHE_BASIS, "\nfahre \"scripts/creature-installer/anker.test.mjs\"", "\n: fahre \"scripts/creature-installer/anker.test.mjs\""]] },
   { satz: "doppelwache", ziel: ["die Stubs liegen nur in der Kopie, nicht im eigenen Baum"], ersetze: [[VORHAKEN, "  for (const p of stubs) writeFileSync(join(wt, p), STUB)", "  for (const p of stubs) { writeFileSync(join(wt, p), STUB); writeFileSync(join(WURZEL, p), STUB) }"]] },
   { satz: "doppelwache", ziel: ["der Ladeform-Helfer ist in der Kopie echt","Doppelparameter im esmodule sperrt"], ersetze: [[VORHAKEN, "    .filter((p) => p !== \"tools/haken/ladeform.mjs\" && existsSync(join(wt, p)))", "    .filter((p) => existsSync(join(wt, p))).concat([\"tools/haken/ladeform.mjs\"])"]] },
   { satz: "doppelwache", ziel: ["zwei Fundorte: immer der erste nach Namen"], ersetze: [[DOPPELBENCH, "readdirSync(npxOrdner).sort()", "readdirSync(npxOrdner)"]] },
   { satz: "doppelwache", ziel: ["falsche Fassung im Zwischenspeicher: Rueckfall npx"], ersetze: [[DOPPELBENCH, "      if (JSON.parse(readFileSync(join(paket, \"package.json\"), \"utf8\")).version !== fassung) continue\n", "      JSON.parse(readFileSync(join(paket, \"package.json\"), \"utf8\"))\n"]] },
   { satz: "doppelwache", ziel: ["richtige Fassung im Zwischenspeicher: Direktstart","zwei Fundorte: immer der erste nach Namen"], ersetze: [[DOPPELBENCH, "const ESLINT_BIN = eslintAusSpeicher()", "const ESLINT_BIN = null"]] },
-  { satz: "doppelwache", ziel: ["der Haken in der Kopie ist bytegleich mit dem eigenen"], ersetze: [[VORHAKEN, "  const stubs = stubListe(wt)\n", "  const stubs = stubListe(wt)\n  writeFileSync(join(wt, \"tools/haken/pre-commit\"), HAKENTEXT + \"\\n\")\n"]] },
-  { satz: "doppelwache", ziel: ["der echte Haken faehrt die Streamsaetze aus dem Index"], ersetze: [[HAKEN, "STAENDE=$(git ls-files -- 'scripts/*.test.mjs'", "STAENDE=$(git ls-files -- 'scripts/*.test.mjx'"]] },
+  { satz: "doppelwache", ziel: ["Kern und Wachendateien in der Kopie sind bytegleich mit den eigenen"], ersetze: [[VORHAKEN, "  const stubs = stubListe(wt)\n", "  const stubs = stubListe(wt)\n  writeFileSync(join(wt, \"tools/haken/pre-commit\"), HAKENTEXT + \"\\n\")\n"]] },
+  // stre-T-070: ohne Wachendateien in der Liste, und ohne sie im Index der Kopie.
+  { satz: "doppelwache", ziel: ["es gibt Wachendateien fuer basis, modul und stre"], ersetze: [[VORHAKEN, ".filter((n) => n.endsWith(\".sh\")).sort()", ".filter((n) => n.endsWith(\".shx\")).sort()"]] },
+  { satz: "doppelwache", ziel: ["im Lauf der Kopie laedt der Kern jede Wachendatei", "im Lauf der Kopie faehrt basis seine Wache auf jeden Commit", "im Lauf der Kopie faehrt stre seine Wache auf jeden Commit", "im Lauf der Kopie faehrt modul die Doppelnamenwache"], ersetze: [[VORHAKEN, "\"tools/foundry-orte.mjs\", \"tools/haken/wachen\"]", "\"tools/foundry-orte.mjs\"]"]] },
+  { satz: "doppelwache", ziel: ["der echte Haken faehrt die Streamsaetze aus dem Index"], ersetze: [[WACHE_STRE, "STAENDE=$(git ls-files -- 'scripts/*.test.mjs'", "STAENDE=$(git ls-files -- 'scripts/*.test.mjx'"]] },
   { satz: "doppelwache", ziel: ["es gibt Streamsaetze, und jeder ist in der Kopie ein Stub"], ersetze: [[VORHAKEN, "  return { wt, env, git, stubs }", "  return { wt, env, git, stubs: stubs.filter((s) => !s.startsWith(\"scripts/\")) }"]] },
   { satz: "doppelwache", ziel: ["jeder per Namen gefahrene Satz ist in der Kopie ein Stub"], ersetze: [[VORHAKEN, "  return { wt, env, git, stubs }", "  return { wt, env, git, stubs: stubs.filter((s) => !GERUFEN.includes(s)) }"]] },
   { satz: "doppelwache", ziel: ["Regex mit v-Flag im esmodule: kein Syntaxbefund","Regex mit v-Flag im esmodule: Haken endet gruen"], ersetze: [[HAKEN, "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\"; then", "  if ! node --check \"$ziel\" 2>\"$TMP/fehler\" || grep -q '/v\\.' \"$ziel\"; then"]] },
@@ -2147,6 +2156,31 @@ const SABOTAGEN = [
   { satz: "doppelwache", ziel: ["Helfer endet mit 0"], ersetze: [[LADEFORM, "console.log([...menge].sort().join(\"\\n\"))", "console.log([...menge].sort().join(\"\\n\")); process.exit(3)"]] },
   { satz: "doppelwache", ziel: ["esmodule: ist Modul","nur importiert, nicht gelistet: ist Modul","Doppelparameter im esmodule sperrt"], ersetze: [[LADEFORM, "const offen = modul.esmodules.filter((p) => typeof p === \"string\")", "const offen = []"]] },
   { satz: "doppelwache", ziel: ["klassisch: ist kein Modul","Doppelparameter in der klassischen Datei: kein Syntaxbefund"], ersetze: [[LADEFORM, "console.log([...menge].sort().join(\"\\n\"))", "console.log([...menge, ...[...inhalt.keys()].filter((p) => p.startsWith(\"scripts/\"))].sort().join(\"\\n\"))"]] },
+  // ---------------------------------------------------------------- wachen (stre-T-070)
+  // W1 bis W3: je Domaene verliert ihre Datei eine Wache. W4 bis W6: der Lader im Kern.
+  { satz: "wachen", ziel: ["jeder alte Satz steht in Kern oder Wachendatei", "basis.sh faehrt mindestens 3 Saetze"], ersetze: [[WACHE_BASIS, "fahre \"tools/v14-import-bench/unit.mjs\"", ": fahre \"tools/v14-import-bench/unit.mjs\""]] }, // W1
+  { satz: "wachen", ziel: ["jeder alte Satz steht in Kern oder Wachendatei", "modul.sh faehrt mindestens 6 Saetze"], ersetze: [[WACHE_MODUL, "  fahre \"tools/paket-grenze-bench/bench.mjs\" \"paket-grenze-bench\"", "  : fahre \"tools/paket-grenze-bench/bench.mjs\" \"paket-grenze-bench\""]] }, // W2
+  { satz: "wachen", ziel: ["jeder alte Satz steht in Kern oder Wachendatei", "stre.sh faehrt mindestens 12 Saetze"], ersetze: [[WACHE_STRE, "  fahre \"tools/waisen-adressform-bench/bench.mjs\" \"waisen-adressform-bench\"", "  : fahre \"tools/waisen-adressform-bench/bench.mjs\" \"waisen-adressform-bench\""]] }, // W3
+  { satz: "wachen", ziel: ["Syntaxfehler: die Meldung nennt die Datei", "Syntaxfehler: nichts aus der Datei laeuft an"], ersetze: [[HAKEN, "  if ! sh -n \"$wache_ziel\" 2>\"$TMP/fehler\"; then", "  if false; then"]] }, // W4
+  { satz: "wachen", ziel: ["alle Wachendateien laufen", "rote Wache in einer Wachendatei: Haken endet rot"], ersetze: [[HAKEN, "git ls-files -- 'tools/haken/wachen/*.sh'", "git ls-files -- 'tools/haken/wachen/basis.sh'"]] }, // W5
+  { satz: "wachen", ziel: ["HEAD kennt die Wachendatei, der Index nicht: Haken endet rot", "HEAD kennt, Index nicht: die Meldung nennt die Datei"], ersetze: [[HAKEN, "  if ! grep -qxF \"$wache_pfad\" \"$TMP/wachen-index\"; then", "  if false; then"]] }, // W6
+  // W7 bis W19: Erhalt, Domaenen und jede Lage des Laders; im ersten Lauf standen 20 Proben ohne Sabotage.
+  { satz: "wachen", ziel: ["kein Satz steht zweimal"], ersetze: [[WACHE_STRE, "fahre \"scripts/cloud-login-kennung.test.mjs\"      \"cloud-login-kennung.test.mjs\"", "fahre \"scripts/cloud-login-kennung.test.mjs\"      \"cloud-login-kennung.test.mjs\"\nfahre \"scripts/cloud-login-kennung.test.mjs\"      \"cloud-login-kennung.test.mjs\""]] }, // W7
+  { satz: "wachen", ziel: ["der Kern faehrt keine Wache selbst"], ersetze: [[HAKEN, "wache_nr=0\n", "fahre \"tools/haken/wachen.test.mjs\" \"x\"\nwache_nr=0\n"]] }, // W8
+  { satz: "wachen", ziel: ["basis.sh faehrt nur Saetze seiner Domaene"], ersetze: [[WACHE_BASIS, "fahre \"scripts/creature-installer/anker.test.mjs\" \"anker.test.mjs, 22 Saetze\"", "fahre \"scripts/creature-installer/anker.test.mjs\" \"anker.test.mjs, 22 Saetze\"\nfahre \"tools/doppelnamen-bench/bench.mjs\" \"x\""]] }, // W9
+  { satz: "wachen", ziel: ["modul.sh faehrt nur Saetze seiner Domaene"], ersetze: [[WACHE_MODUL, "  fahre \"tools/paket-grenze-bench/bench.mjs\" \"paket-grenze-bench\"", "  fahre \"tools/paket-grenze-bench/bench.mjs\" \"paket-grenze-bench\"\n  fahre \"scripts/creature-installer/anker.test.mjs\" \"x\""]] }, // W10
+  { satz: "wachen", ziel: ["stre.sh faehrt nur Saetze seiner Domaene"], ersetze: [[WACHE_STRE, "fahre \"scripts/cloud-login-kennung.test.mjs\"      \"cloud-login-kennung.test.mjs\"", "fahre \"scripts/cloud-login-kennung.test.mjs\"      \"cloud-login-kennung.test.mjs\"\nfahre \"tools/v14-import-bench/unit.mjs\" \"x\""]] }, // W11
+  { satz: "wachen", ziel: ["jeder alte Block steht zeichengleich und in alter Reihenfolge"], ersetze: [[WACHE_BASIS, "  meld \"pre-commit: Katalogdateien vorgemerkt, die 10s-Pruefung laeuft mit\"", "  meld \"pre-commit: Katalogdateien vorgemerkt\""]] }, // W12
+  { satz: "wachen", ziel: ["rote Wache: die Meldung nennt sie"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  $name\"\n    tail -n 25", "    meld \"pre-commit: rot $name\"\n    tail -n 25", 2, 1]] }, // W13
+  { satz: "wachen", ziel: ["rote Wache: die andere Datei laeuft trotzdem","alle Wachendateien laufen"], ersetze: [[HAKEN, "wache_nr=0\n", "tail -n 1 \"$TMP/wachen-index\" > \"$TMP/wachen-letzte\"\nwache_nr=0\n"], [HAKEN, "done 3< \"$TMP/wachen-index\"", "done 3< \"$TMP/wachen-letzte\""]] }, // W14
+  { satz: "wachen", ziel: ["ohne die rote Wache: Haken endet gruen","alle Wachendateien laufen: Haken endet gruen","geaenderte Wachendatei: Haken endet gruen"], ersetze: [[HAKEN, "  meld \"pre-commit: Wachen aus $wache_pfad\"", "  meld \"pre-commit: Wachen aus $wache_pfad\"; ROT=$((ROT + 1))"]] }, // W15
+  { satz: "wachen", ziel: ["ohne die rote Wache: die gruene laeuft","geaenderte Wachendatei: die vorgemerkte Fassung laeuft"], ersetze: [[HAKEN, "  . \"$wache_ziel\"\n", "  :\n"]] }, // W16
+  { satz: "wachen", ziel: ["Syntaxfehler: Haken endet rot"], ersetze: [[HAKEN, "    meld \"pre-commit: ROT  Syntaxfehler in der Wachendatei $wache_pfad\"\n    sed -n '1,6p' \"$TMP/fehler\" >&2\n    ROT=$((ROT + 1))\n", "    meld \"pre-commit: ROT  Syntaxfehler in der Wachendatei $wache_pfad\"\n    sed -n '1,6p' \"$TMP/fehler\" >&2\n"]] }, // W17
+  { satz: "wachen", ziel: ["unverfolgte Wachendatei laeuft nicht","unverfolgte Wachendatei: die rote verfolgte sperrt weiter"], ersetze: [[HAKEN, "git ls-files -- 'tools/haken/wachen/*.sh'", "ls tools/haken/wachen/*.sh"], [HAKEN, "if ! git show \":$wache_pfad\" > \"$wache_ziel\"", "if ! cat \"$wache_pfad\" > \"$wache_ziel\""]] }, // W18
+  { satz: "wachen", ziel: ["geaenderte Wachendatei: die Fassung der Platte laeuft nicht","geaenderte Wachendatei: Haken endet gruen"], ersetze: [[HAKEN, "if ! git show \":$wache_pfad\" > \"$wache_ziel\"", "if ! cat \"$wache_pfad\" > \"$wache_ziel\""]] }, // W19
+  // W20 und W21: die zwei Proben ueber cf5ddc5 lesen ein Git-Objekt; rot werden sie an der Zaehlung dieses Satzes.
+  { satz: "wachen", ziel: ["der alte Haken zerfaellt in 19 Wachenbloecke"], ersetze: [[WACHEN_TEST, "      if (l === \"fi\") { out.push(akt); akt = null }", "      if (l === \"fi\") { akt = null }"]] }, // W20
+  { satz: "wachen", ziel: ["der alte Haken faehrt 20 Saetze"], ersetze: [[WACHEN_TEST, "(?:fahre|fahre_weich|node)", "(?:fahre|node)"]] }, // W21
   // ---------------------------------------------------------------- hinweis
   // stre-T-165/T-166: Meldestelle, Kartenschild, Anschlussstellen und Sprachen.
   { satz: "hinweis", ziel: ["zweite Abweisung derselben Sitzung: keine weitere","zweimal offline: keine weitere"], ersetze: [[HINWEIS, "  if (gemeldet.has(grund)) return false\n", "\n"]] },
@@ -2869,7 +2903,7 @@ if (process.argv.includes("--alle-saetze")) {
 // sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz betreffkennung.
 const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

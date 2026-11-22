@@ -55,7 +55,7 @@
  *
  * NACHBAR FEHLT HEISST NICHT GEMESSEN (Rueckgabe 2), nie gruen. Der Haken
  * dieses Repositoriums meldet 2 bei den Saetzen stream-vertrag-* als
- * "NICHT GEMESSEN" (tools/haken/pre-commit, Schleife ueber die Staende).
+ * "NICHT GEMESSEN" (tools/haken/wachen/stre.sh, Schleife ueber die Staende).
  *
  * Ohne Foundry (nur `game.settings.get` als Attrappe), ohne Netz, ohne
  * Geheimnis. Der Schluessel ist erfunden.

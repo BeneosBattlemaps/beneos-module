@@ -29,7 +29,9 @@
 # fuer den ein Tor regelmaessig mit `--no-verify` umgangen wird, und ein Tor,
 # das man umgeht, ist keines. Sie laeuft deshalb genau dann, wenn eine der
 # zwei Dateien vorgemerkt ist, die sie laedt. Die anderen beiden kosten
-# zusammen 0,34 Sekunden und laufen immer.
+# zusammen 0,34 Sekunden und laufen immer. Alle drei stehen seit stre-T-070 in
+# `tools/haken/wachen/basis.sh`, wie jede Wache in der Datei ihrer Domaene
+# (Abschnitt "Wachen" unten).
 #
 # WARUM DIE VORGEMERKTE FASSUNG GEPRUEFT WIRD UND NICHT DIE IM BAUM
 #
@@ -213,562 +215,75 @@ werte_aus() {
   fi
 }
 
-fahre "scripts/creature-installer/anker.test.mjs" "anker.test.mjs, 22 Saetze"
-fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetze"
-
-# Die Anmeldung mit der Weltkennung (stre-T-135). Der Satz liegt direkt unter
-# `scripts/` und damit ausserhalb der Sammlung der Streamsaetze weiter unten;
-# ohne diese Zeile liefe er in keinem Tor. Unter einer Sekunde, kein Netz.
-fahre "scripts/cloud-login-kennung.test.mjs"      "cloud-login-kennung.test.mjs"
-
-# Die Pruefsaetze des Streamings, und nur wenn ihr Gegenstand angefasst wird.
+# ----------------------------------------------------------------- Wachen ---
+# DIE WACHEN STEHEN JE DOMAENE IN EINER EIGENEN DATEI (stre-T-070), unter
+# `tools/haken/wachen/<domaene>.sh`. Bis dahin standen sie alle hier, und jede
+# neue Wache war ein Edit an dieser einen Datei; beim Trennen von Commits fuer
+# einen Push hing jeder Schnitt an ihr. Dieser Kern faehrt selbst keine Wache.
+# Eine neue Domaene ist eine neue Datei, eine Liste der Domaenen gibt es nicht.
 #
-# WARUM ERST SEIT DEM 08.11.2026. Sie lagen in genau der Lage, die diese Datei
-# oben beschreibt: fuenf Saetze, die gruen laufen, ohne Netz, ohne Foundry, und
-# die niemand fuhr. `stream-sperre.test.mjs` kam am 07.11.2026 dazu und
-# `stream-geteilt.test.mjs` am 08.11.2026 und `stream-posen.test.mjs` am
-# 07.11.2026; alle drei hingen in keinem Tor.
+# GELADEN WIRD DIE VORGEMERKTE FASSUNG, aus demselben Grund wie bei der Syntax
+# oben. Die Liste kommt aus dem Index, eine unverfolgte Datei laeuft also nie,
+# und von einer nur auf der Platte geaenderten Datei laeuft die vorgemerkte.
+# Die Reihenfolge ist die des Index, also nach Namen.
 #
-# `stream-weiche.test.mjs` kam am 08.11.2026 dazu, mit `OP-PRJ-052`. Sie
-# sichert `buildStreamPack`, also die Weiche, die je Datei entscheidet, ob sie
-# auf die Platte des Kunden geschrieben wird oder eine Adresse bleibt. Sie hing
-# in NULL von sieben Saetzen, obwohl 18,98 GB an ihr haengen.
+# EINE KAPUTTE WACHENDATEI LAEUFT GAR NICHT AN. `sh -n` prueft sie vor dem
+# Laden. Ohne das liefe sie bis zum Fehler, die Wachen davor waeren gefahren,
+# die dahinter still nicht, und der Haken koennte gruen enden.
 #
-# WARUM NICHT AUF JEDEN COMMIT. Gemessen am 07.11.2026 kosten die sieben
-# zusammen rund 9 Sekunden, und das ist fast alles Node-Start. Dieselbe Abwaegung
-# wie bei der Katalogpruefung darunter: ein Tor, das man regelmaessig mit
-# --no-verify umgeht, ist keines. Sie laufen deshalb, wenn eine Datei unter
-# `scripts/stream/` oder `scripts/loot/` vorgemerkt ist, und das ist genau die
-# Menge, die sie messen.
+# KENNT HEAD EINE WACHENDATEI UND DER INDEX NICHT, IST DAS ROT. Dann hat
+# jemand eine ganze Domaene aus dem Tor genommen, geloescht oder mit
+# `git rm --cached`. Dieselbe Regel wie bei `fahre`: was HEAD kennt, darf
+# nicht still verschwinden.
 #
-# WARUM DER INSTALLER MIT IN DEN AUSLOESER MUSS, seit dem 08.11.2026. Der neue
-# Satz prueft die Vorabsonde `#preflightSizeCheck` (bis 15.11.2026 als
-# Quelltextprobe, seit stre-T-108 als Lauf bis zur Sonde), und die steht in
-# `scripts/cloud-v2/beneos-native-installer.mjs`. Ohne diese Zeile
-# laeuft der Satz nicht, wenn genau die geprobte Datei geaendert wird, und das
-# ist die Lage, in der er gebraucht wird. Es kostet die rund 10 Sekunden auch
-# bei einer Installeraenderung, und das ist der Preis dafuer, dass die Probe
-# kein blinder Fleck ist.
-#
-# AM 08.11.2026 IST `scripts/codex2/item-companion.mjs` DAZUGEKOMMEN, und zwar
-# aus demselben Grund. `stream-beute.test.mjs` prueft seit `OP-PRJ-141` Teil 2
-# am Quelltext, dass das Begleitfenster `karteFuerBlatt()` ruft und wartet.
-# Dieser Satz lief in keinem Tor: `scripts/codex2` stand in keiner Liste, also
-# haette eine Aenderung genau dort den Satz nicht ausgeloest. Ein Pruefer, der
-# bei der Aenderung seines Gegenstands nicht laeuft, ist kein Pruefer.
-# DER AUSLOESER DECKT DEN LESEBEREICH, UND DAS WAR ER NICHT.
-#
-# Gemessen am 09.11.2026 ueber alle `readFileSync`-Stellen der Saetze
-# in `scripts/stream` und `scripts/loot`: sie lesen ausserdem
-# `scripts/beneos_cloud.js`, `scripts/beneos_utility.js` und
-# `lang/*.json`. Keine der drei stand hier. Wer die Streamweiche des
-# Item-Installers in `beneos_cloud.js` aendert, haette das Tor also
-# nicht geweckt, obwohl `stream-beute.test.mjs` genau diese Datei
-# liest. Derselbe Befund zum dritten Mal, nach `OP-PRJ-216` am 08.11.
-# und `OP-PRJ-151` am 09.11.: ein Ausloeser, der schmaler ist als der
-# Lesebereich seines Satzes, ist eine Luecke und wird nie rot.
-#
-# SEIT stre-T-017 (15.11.2026) LADEN posen UND beute DIE GANZE IMPORTKETTE von
-# `beneos_utility.js` und `beneos_cloud.js`, und vier Saetze laden die
-# Attrappe in `tools/lib/`. Gemessen lagen 13 Dateien dieser Kette ausserhalb
-# der alten Liste. Der Ausloeser ist deshalb `scripts` als Ganzes, dazu
-# `lang`, `tools/lib` und, was stream-ersatzbild liest, `ui` und der Erzeuger
-# `tools/ersatzbilder.py`. Geloeschte und umbenannte Dateien zaehlen mit
-# (Filter ACMRD): eine geloeschte Datei der Importkette bricht posen und beute
-# beim Laden.
-#
-# DER PREIS, gemessen am 15.11.2026: die zwoelf Saetze nacheinander rund 8 s
-# (7,9 s hier, 8,3 bis 8,7 s in der Kaltdurchsicht). Den zahlt jetzt jeder
-# Commit an einer Moduldatei. Das ist bewusst: eine schmalere Liste war
-# dreimal die Luecke (siehe oben), und 8 s liegen unter den 10 s der
-# Katalogpruefung, die hier als Schwelle fuer "wird umgangen" steht.
-#
-# SEIT stre-T-144 (19.11.2026) GEHOERT `templates` DAZU. cloud-kaufknopf.test.mjs
-# liest `templates/cloud-v2/parts/results-pane.hbs`; eine Aenderung nur an
-# dieser Vorlage weckte das Tor nicht. Derselbe Befund wie oben, zum vierten Mal.
-if git diff --cached --name-only --diff-filter=ACMRD \
-     -- scripts lang templates tools/lib ui tools/ersatzbilder.py \
-   | grep -q .
-then
-  meld "pre-commit: Streamdateien vorgemerkt, die Streampruefsaetze laufen mit"
-  # DIE LISTE KOMMT AUS DEM VERZEICHNIS UND IST NICHT AUFGEZAEHLT, seit dem
-  # 08.11.2026.
-  #
-  # Bis dahin standen die Staende hier namentlich, und genau das ist am selben
-  # Tag aufgefallen: `stream-platzhalter.test.mjs` entstand mit `OP-PRJ-137`,
-  # lag im selben Commit, traf den Ausloeser `scripts/stream/` und lief
-  # TROTZDEM nicht, weil niemand die Aufzaehlung erweitert hatte. Der Commit
-  # meldete acht gruene Staende und nannte den neunten nicht; nichts war rot.
-  #
-  # Eine Aufzaehlung dessen, was laufen SOLL, kann nie bemerken, dass etwas
-  # Neues dazugekommen ist. Sie ist beim naechsten Stand wieder zu kurz. Die
-  # Gesamtmenge dagegen nimmt jeden neuen Stand von selbst mit.
-  #
-  # DIE MINDESTZAHL IST KEIN SCHMUCK. Eine Suche, die nichts findet, ist von
-  # einer kaputten Suche nicht zu unterscheiden, und dann liefe dieser Block
-  # still durch und meldete nur seine Kopfzeile. Die Zahl ist der Stand vom
-  # 08.11.2026, also elf Staende; sie wird nach UNTEN gesichert und nicht
-  # nach oben, damit ein neuer Stand sie nicht bricht. Sie stand bis zum
-  # Nachmittag des 08.11.2026 auf neun und ist mit `stream-bilder.test.mjs`
-  # und `stream-ersatzbild.test.mjs` nachgezogen; wer sie stehen laesst,
-  # laesst den Verlust zweier Staende durchgehen.
-  #
-  # WAS EIN STAND HIER ERFUELLEN MUSS: ohne Netz, ohne Foundry, ohne
-  # Datenbank, und in rund einer Sekunde. Wer einen Stand baut, der das nicht
-  # kann, legt ihn nirgends unter `scripts/` als `*.test.mjs` ab, sonst haelt
-  # er jeden Commit an einer Moduldatei auf.
-  #
-  # BEIDE ORDNER, UND DAS WAR AM 2026-11-09 EIN BEFUND. Der Ausloeser
-  # darueber nennt `scripts/stream` UND `scripts/loot` seit `OP-PRJ-141`,
-  # diese Sammlung las aber nur den Streamordner. `OP-PRJ-216` legte den
-  # ersten Stand unter `scripts/loot/` ab, und er waere nie gefahren worden:
-  # der Commit haette den Haken ausgeloest, der Haken haette elf Staende
-  # gefahren und den zwoelften nicht gesehen. Dieselbe Klasse wie der Befund
-  # vom 2026-11-08, wo die Sammlung die Streamstaende namentlich aufzaehlte
-  # und den neuen nicht kannte; dort war es eine Liste, hier ein Ordner.
-  #
-  # ALLE ORDNER, seit stre-T-144 (19.11.2026). Zum dritten Mal dieselbe Klasse:
-  # vier Saetze unter `scripts/cloud-v2/` (cloud-kaufknopf, install-badge,
-  # item-tooltip) und `scripts/canvas/` (map-sharpen-curve) liefen in keinem
-  # Tor, weil die Sammlung zwei feste Ordner las. Ein dritter fester Ordner
-  # waere beim naechsten wieder zu kurz. Die Sammlung nimmt deshalb jeden
-  # `*.test.mjs` unter `scripts/` in jeder Tiefe; ohne `:(glob)` greift `*`
-  # in der Pfadangabe ueber Schraegstriche hinweg.
-  #
-  # AUS DEM INDEX, NICHT AUS DEM BAUM: ein vorgemerkter neuer Satz laeuft mit,
-  # ein fremder unverfolgter Satz im Arbeitsbaum haelt den Commit nicht auf
-  # (dieselbe Begruendung wie bei `git show :<pfad>` oben).
-  #
-  # Ausgenommen sind nur die zwei Saetze, die oben auf jeden Commit laufen;
-  # sonst liefen sie doppelt. Das ist eine Ausnahmeliste, keine Aufzaehlung
-  # dessen, was laufen soll. Der Preis der vier: rund 1,8 s, gemessen hier.
-  STAENDE=$(git ls-files -- 'scripts/*.test.mjs' \
-            | grep -vxF -e scripts/creature-installer/anker.test.mjs \
-                        -e scripts/cloud-login-kennung.test.mjs \
-            | sort)
-  ANZAHL=$(printf '%s\n' "$STAENDE" | grep -c 'test\.mjs$')
-  # Die Mindestzahl ist der Stand vom 19.11.2026: 23 unter `stream/`, zwei
-  # unter `loot/`, drei unter `cloud-v2/`, einer unter `canvas/`. Sie sichert
-  # nach unten und waechst mit, wenn jemand sie nachzieht; eine Suche, die
-  # nichts findet, ist von einer kaputten Suche nicht zu unterscheiden.
-  if [ "$ANZAHL" -lt 29 ]; then
-    meld "pre-commit: ABBRUCH, nur $ANZAHL Pruefsaetze unter scripts"
-    meld "            gefunden, erwartet mindestens 29."
-    meld "            Entweder ist die Suche kaputt oder ein Stand ist"
-    meld "            verschwunden; beides ist ein Befund und keine"
-    meld "            bestandene Pruefung."
-    exit 1
-  fi
-  # DIE VERTRAGSSAETZE (stream-vertrag-*, stre-T-021) lesen einen Nachbarklon
-  # per git show und geben 2 zurueck, wenn er fehlt: nicht gemessen, kein
-  # Befund, aber gemeldet (werte_aus). Jeder andere Stand bleibt bei fahre,
-  # wo jeder Austritt ungleich 0 ROT ist.
-  for datei in $STAENDE
-  do
-    case "$datei" in
-      scripts/stream/stream-vertrag-*.test.mjs)
-        if [ -f "$datei" ]; then
-          node "$datei" > "$TMP/lauf" 2>&1
-          werte_aus "$?" "$(basename "$datei")"
-        else
-          fahre "$datei" "$(basename "$datei")"
-        fi
-        ;;
-      *)
-        fahre "$datei" "$(basename "$datei")"
-        ;;
-    esac
-  done
+# Die Wachendateien lesen nichts von der Standardeingabe; die Schleife liest
+# trotzdem ueber Kanal 3, damit eine Wache, die es doch tut, die Liste nicht
+# leer liest. Die Variablen des Laders heissen `wache_*`, keine Wache benutzt
+# den Namen.
+if ! git ls-files -- 'tools/haken/wachen/*.sh' > "$TMP/wachen-index" 2>"$TMP/fehler"; then
+  meld ""
+  meld "pre-commit: ROT  Liste der Wachendateien nicht lesbar"
+  sed -n '1,6p' "$TMP/fehler" >&2
+  ROT=$((ROT + 1))
 fi
-
-# Die Sprachwache, wenn eine Sprachdatei oder eine Streamvorlage angefasst
-# wird.
-#
-# WARUM SIE DAZUKOMMEN MUSSTE. Sie existiert seit dem 29.10.2026 und hing in
-# keinem Tor. Am 07.11.2026 kam ihre vierte Aussage dazu, naemlich dass jeder
-# Streamtext in der SCHREIBWEISE seiner Sprache steht; der Anlass waren 111
-# Werte in neun Sprachen, die die ausgeschriebene Form statt des
-# Sonderzeichens trugen, "waehrend" und "Qualitaet" im Deutschen, "conexion"
-# im Spanischen, "nao" im Portugiesischen. Kein Lauf war deswegen rot, weil
-# niemand nachsah.
-#
-# AM 08.11.2026 WUCHS IHRE MENGE von 101 auf 2614 Schluessel, mit
-# `OP-PRJ-201`. Sie prueft jetzt jeden ausgelieferten Textbaustein und nicht
-# nur die des Streamings; der Anlass waren 19 weitere Werte, darunter die
-# Meldung "Beneos Cloud ist nicht erreichbar" in ALLEN acht Sprachen. Deshalb
-# damals 16 Saetze statt 14.
-#
-# AM 08.11.2026 KAM DER PLATZHALTERSATZ DAZU, `OP-PRJ-151`. Er prueft, dass
-# jeder Platzhalter in jeder Sprache zeichengleich steht, und zwar in BEIDEN
-# Formen: die geschweifte von Foundry mit 198 Schluesseln und die aeltere
-# Prozentform mit 6. Das verlangte `OP-PRJ-151` von Anfang an; gemessen hat es
-# bis dahin niemand, und die Lage war dabei sauber. Ein falsch geschriebener
-# Platzhalter laesst den Satz richtig aussehen und zeigt an der Stelle des
-# Werts woertlich `{name}` oder gar nichts. Deshalb 37 Saetze statt 16.
-#
-# AM 09.11.2026 KAM DIE ANDERE RICHTUNG DAZU, Abschnitt 6, `OP-PRJ-151`.
-# Abschnitt 5 vergleicht die dreizehn Uebersetzungen GEGENEINANDER. Steht
-# in allen dreizehn dasselbe `{seconds}`, das kein Aufrufer liefert, ist er
-# gruen und der Kunde liest woertlich `{seconds}`. Abschnitt 6 fragt
-# deshalb, ob der Aufrufer jeden Platzhalter seines Textes nennt: gemessen
-# 166 Schluessel, 0 Befunde, 12 von 12 Sabotagen gefangen. Deshalb 55
-# Saetze statt 37.
-#
-# UND DER AUSLOESER MUSSTE MITWACHSEN, sonst waere der neue Satz tot.
-# Abschnitt 6 liest `scripts`, `templates` und `tools` GANZ, denn dort
-# stehen die Aufrufstellen. Der Ausloeser nannte nur `lang`,
-# `templates/stream` und den Standordner. Wer eine Aufrufstelle in
-# `scripts/beneos_cloud.js` aendert und dabei einen Platzhalter weglaesst,
-# haette das Tor nie geweckt. Dasselbe ist am 08.11.2026 bei `OP-PRJ-216`
-# gemessen worden: ein Ausloeser, der schmaler ist als der Lesebereich
-# seines Satzes, ist eine Luecke, und sie wird nie rot.
-#
-# Sie kostet gemessen 0,9 Sekunden ueber drei Laeufe, kein Netz, kein
-# Foundry. Der breitere Ausloeser weckt sie bei fast jedem Commit, und das
-# ist der Preis dafuer, dass sie den Bereich deckt, den sie liest.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- lang templates scripts tools \
-   | grep -q .
-then
-  meld "pre-commit: Sprach- oder Aufrufdateien vorgemerkt, die Sprachwache laeuft mit"
-  fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 55 Saetze"
+: > "$TMP/wachen-head"
+if git rev-parse -q --verify HEAD > /dev/null 2>&1; then
+  git ls-tree -r --name-only HEAD -- tools/haken/wachen/ > "$TMP/wachen-head" 2>/dev/null
 fi
-
-# Die Reihenfolge der Filterlisten, wenn eine der zwei Sortierstellen oder
-# eine der festen Listen angefasst wird.
-#
-# WARUM ZWEI DATEIEN IM AUSLOESER, seit dem 08.11.2026 und mit `OP-PRJ-200`.
-# Die Reihenfolge der Gittergroesse entsteht an ZWEI Stellen in ZWEI Dateien:
-# `sortProperties` in `scripts/beneos_search_engine.js` und
-# `#orderDropdownList` in `scripts/cloud-v2/cloud-window-v2.mjs`. Die zweite
-# ueberschreibt die erste. Eine Reparatur allein in der ersten war deshalb
-# wirkungslos, und ein Tor, das nur die erste beobachtet, haette das nicht
-# gesehen.
-#
-# `scripts/cloud-v2/cloud-window-v2.mjs` loeste vor diesem Tag GAR KEINEN
-# Pruefsatz aus, obwohl das Suchfenster des Kunden darin steht. Das war die
-# Deckungsluecke, und sie ist hier zur Haelfte geschlossen: gemessen wird die
-# Listenreihenfolge, nicht die Datei.
-#
-# AM 08.11.2026 WUCHS SIE von 29 auf 46 Saetze, mit `OP-PRJ-202`: die
-# Zahlensortierung entschied am ersten Listeneintrag, und die Seltenheitsleiter
-# kam ueber die INDIZES ihres Arrays statt ueber ihre Schluessel.
-#
-# Die Satzzahl in der Beschriftung veraltet still, sobald jemand einen Satz
-# dazulegt, und sie faellt niemandem auf, weil der Lauf gruen bleibt. Dieselbe
-# Schwaeche tragen die vier Zeilen darueber. Wer eine Zahl hier liest, prueft
-# sie am Lauf.
-#
-# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/beneos_search_engine.js \
-        scripts/cloud-v2/cloud-window-v2.mjs \
-        tools/filter-reihenfolge-bench \
-   | grep -q .
-then
-  meld "pre-commit: Suchfensterdateien vorgemerkt, die Filterreihenfolge laeuft mit"
-  fahre "tools/filter-reihenfolge-bench/bench.mjs" "filter-reihenfolge-bench, 46 Saetze"
-fi
-
-# Der Satzprozess des Sabotagelaeufers (stre-T-126), wenn er oder der Laeufer
-# angefasst wird. Er faehrt den Laeufer selbst viermal und kostet gemessen
-# 10,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der
-# Sammlung oben, sondern bedingt wie die Katalogpruefung darunter.
-# Seit stre-T-015 gehoeren der Bench-Laeufer und die gemeinsame Ersetzung
-# dazu, mit dem Satz des Bench-Laeufers (seine Selbstprobe, rund 5 s). Die
-# Laeufer selbst faehrt der Haken nicht, sie brauchen Minuten.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- tools/lib/kindlauf.mjs tools/lib/kindlauf.test.mjs \
-        tools/lib/ersetze.mjs tools/stream-sabotagen.mjs \
-        tools/bench-sabotagen.mjs tools/bench-sabotagen.test.mjs \
-   | grep -q .
-then
-  meld "pre-commit: Sabotagelaeufer vorgemerkt, die Saetze kindlauf und bench-sabotagen laufen mit"
-  fahre "tools/lib/kindlauf.test.mjs" "kindlauf.test.mjs, 57 Saetze"
-  fahre "tools/bench-sabotagen.test.mjs" "bench-sabotagen.test.mjs"
-fi
-
-# Die teure nur, wenn ihr Gegenstand angefasst wird.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/beneos_search_engine.js scripts/beneos_utility.js \
-   | grep -q .
-then
-  meld "pre-commit: Katalogdateien vorgemerkt, die 10s-Pruefung laeuft mit"
-  fahre "tools/pruefe-katalog-offline.mjs" "pruefe-katalog-offline.mjs, 7 Saetze"
-fi
-
-# Die Dateipruefung des Kreaturen-Installers, wenn sie angefasst wird.
-#
-# WARUM SIE DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-170`.
-# `scripts/beneos_cloud.js` loeste bis zu diesem Tag GAR KEINEN Pruefsatz aus,
-# obwohl der Kreaturen-Installer darin steht. Das ist dieselbe Deckungsluecke,
-# die `scripts/cloud-v2/cloud-window-v2.mjs` bis zum selben Tag hatte.
-#
-# WAS DARIN UNGESCHUETZT LAG. Die Waisenpruefung probte bis zum 05.11.2026 jede
-# Texturadresse auf der Platte und baute dazu `"/" + protoSrc`. Aus einer
-# Toradresse wurde `/https://gate...`, das antwortet 404, und JEDE gestreamte
-# Kreatur bekam `missing_files`; das Fenster legte dem Spielleiter dann die
-# Dokumente zum Loeschen vor, die in Ordnung sind. Dieselbe Zeile schickte den
-# Streamschluessel in das Zugriffsprotokoll des eigenen Servers. Behoben in
-# `7e96c69`, und bis zum 08.11.2026 hing daran kein Pruefsatz: eine entfernte
-# Zeile und der Fehler waere zurueck, ohne dass etwas rot wird.
-#
-# Der Stand zaehlt auch die ANZAHL der HEAD-Proben in der Datei, heute genau
-# eine. Eine zweite macht ihn rot, denn so ist der Fehler entstanden: die gute
-# Probe lag schon in derselben Datei, die Waisenpruefung hat sie nicht benutzt.
-#
-# Die Satzzahl in der Beschriftung veraltet still. Dieselbe Schwaeche tragen
-# die Zeilen darueber. Wer eine Zahl hier liest, prueft sie am Lauf.
-#
-# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/beneos_cloud.js tools/waisen-adressform-bench \
-   | grep -q .
-then
-  meld "pre-commit: Kreaturen-Installer vorgemerkt, die Adressform laeuft mit"
-  fahre "tools/waisen-adressform-bench/bench.mjs" "waisen-adressform-bench"
-fi
-
-# Der Bildweg des Installers, wenn er angefasst wird.
-#
-# WARUM ER DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-146`. Der Installer
-# hat jede Bilddatei als base64 AUS DEM JSON gelesen, Maximum gemessen 20,4 MB
-# in EINER Antwort. Der Server liefert sie seit `9f0a9cf` auf Verlangen als
-# Adresse.
-#
-# WAS DARIN DER GEFAEHRLICHSTE TEIL IST, und es ist nicht der Abruf. Drei
-# Stellen fragten vor dem Hochladen `if (!X.image64) continue`. Mit Adressen
-# ist `image64` dort IMMER null, und die Bedingung waere immer wahr gewesen:
-# der Installer haette jede Datei uebersprungen, ohne eine Zeile zu meckern.
-# Eine Reparatur haette "nichts zu reparieren" gemeldet, und ein Kunde haette
-# eine Kreatur ohne Bilder bekommen. Der Stand zaehlt deshalb die Vorkommen
-# von `image64` nach; die ZAHL ist der Satz, nicht die Abwesenheit.
-#
-# Der Stand faehrt `_beneosBildDa()` und `_beneosBildDatei()` WIRKLICH, mit
-# geschnittenem Code und nachgebautem `fetch`. Zwei Lagen haengen am
-# Verhalten, vier am Quelltext.
-#
-# `A2` ist absichtlich scharf: er wird rot, sobald `BILDFORM_ADRESSE_AN` auf
-# `true` steht. Das Umstellen ist eine Betreiberentscheidung nach einem Deploy
-# und einem gesehenen Lauf, und wer sie trifft, aendert den Satz mit.
-#
-# Die Satzzahl in der Beschriftung veraltet still. Wer eine Zahl hier liest,
-# prueft sie am Lauf.
-#
-# Sie kostet gemessen unter einer Sekunde, kein Netz, kein Foundry.
-if git diff --cached --name-only --diff-filter=ACM      -- scripts/beneos_cloud.js tools/bildform-adresse-bench    | grep -q .
-then
-  meld "pre-commit: Bildweg des Installers vorgemerkt, der Stand laeuft mit"
-  fahre "tools/bildform-adresse-bench/bench.mjs" "bildform-adresse-bench, 32 Saetze"
-fi
-
-# Die Grenze des Kundenpakets, wenn die Bauvorgabe oder die Ladeliste
-# angefasst wird.
-#
-# WARUM SIE DAZUKOMMEN MUSSTE, am 08.11.2026 mit `OP-PRJ-217`. Die
-# `.gitattributes` entscheidet, was im Kundenpaket landet, und loeste bis zu
-# diesem Tag GAR KEINEN Pruefsatz aus. Sie trug seit dem 03.09.2026 eine
-# Sperre und darueber den Kommentar "NOCH NICHT AM ARCHIV NACHGEMESSEN"
-# samt dem Befehl fuer die Probe; die Probe hat niemand gefahren. Als sie
-# lief, trug die Sperre, aber sie war die einzige: `tools/` fuhr mit 66
-# Dateien ins Paket.
-#
-# WAS DER GEFAEHRLICHE FALL IST, und es ist nicht die vergessene Sperre.
-# Eine Sperre mit zu weitem Muster nimmt dem Kunden Teile des Produkts, und
-# das faellt beim Bauen NICHT auf: das Archiv entsteht ohne Fehler, es ist
-# nur kleiner. Der Stand prueft deshalb beide Richtungen, und sein zweiter
-# Abschnitt ist der wichtigere.
-#
-# WARUM `module.json` MIT IN DEN AUSLOESER MUSS. Der dritte Abschnitt haelt
-# jeden Ladepfad gegen das Archiv. Kommt ein esmodule aus einem gesperrten
-# Ordner dazu, installiert das Paket und schweigt dann; ohne diese Zeile
-# liefe der Satz genau bei der Aenderung nicht, die ihn braucht.
-#
-# Er faehrt `git write-tree` und messt damit den VORGEMERKTEN Stand, nicht
-# HEAD. Gemessen 0,6 Sekunden, kein Netz, kein Foundry.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- .gitattributes module.json tools/paket-grenze-bench \
-   | grep -q .
-then
-  meld "pre-commit: Bauvorgabe vorgemerkt, die Paketgrenze laeuft mit"
-  fahre "tools/paket-grenze-bench/bench.mjs" "paket-grenze-bench"
-fi
-
-# Der Satz gegen die Globalen, die Foundry 15 entfernt.
-#
-# Foundry 13 hat 378 Namen in Namensraeume verschoben und den alten globalen
-# Namen als Uebergangshilfe stehen gelassen, `until: 15`. Gemessen am
-# 09.11.2026: 31 davon sind in der installierten Foundry 14 schon ganz weg,
-# und das Modul nutzt keinen dieser 31 ohne Rueckfall. Offen sind 24 Stellen
-# an acht anderen Namen, und die Obergrenze haelt die Zahl.
-#
-# WARUM EIN STATISCHER SATZ: Foundry meldet den Zugriff nur EINMAL je Name
-# und Sitzung (`once: true`). Eine Messung im Browser zeigte am 09.11.2026
-# genau eine der damals sechs offenen renderTemplate-Stellen, ein zweiter
-# Durchgang im selben Browser zeigte null. Der Satz findet alle sechs.
-#
-# Der Ausloeser deckt `scripts` GANZ, denn genau das liest der Satz. Ein
-# Ausloeser, der schmaler ist als der Lesebereich seines Satzes, ist eine
-# Luecke und wird nie rot; dasselbe stand am 08.11. bei `OP-PRJ-216` und am
-# 09.11. bei `OP-PRJ-151`.
-#
-# Die Ortsliste fuer Foundry steht seit stre-T-019 in tools/foundry-orte.mjs
-# und gehoert damit zum Lesebereich, also in den Ausloeser.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts module.json tools/v15-globale-bench tools/foundry-orte.mjs \
-   | grep -q .
-then
-  meld "pre-commit: Modulcode vorgemerkt, die Globalenwache laeuft mit"
-  # KEINE ZAHL IN DIESER BESCHRIFTUNG. Sie stand hier als "Obergrenze 24" und
-  # war nach dem ersten Senken der Grenze falsch, ohne dass etwas rot wurde.
-  # Eine Zahl an zwei Stellen laeuft auseinander, und die Beschriftung ist die
-  # Stelle, die niemand nachmisst. Die Grenze steht in `bench.mjs` und nur da.
-  fahre_weich "tools/v15-globale-bench/bench.mjs" \
-              "v15-globale-bench" tools/foundry-orte.mjs
-fi
-
-# Die zwei Benches, die Foundry selbst laden (stre-T-019). Bis dahin brachen
-# beide ohne Argument mit Austritt 2 ab und liefen in keinem Tor.
-#
-# v14-import liest ohne --packs die synthetische Pruefquelle neben sich und
-# prueft die V13-zu-V14-Bruecke gegen das Datenmodell der installierten
-# Foundry. scene-merge-token prueft die Aufteilung der Token-Updates gegen
-# den Foundry-Kern. Beide finden Foundry ueber tools/foundry-orte.mjs.
-#
-# fahre_weich, denn ohne Foundry enden beide mit 2: "nicht gemessen", gemeldet,
-# kein Commit gesperrt und nie gruen. Der Ausloeser deckt, was der Satz liest:
-# die Bruecke bzw. die Aufteilung, den Ordner der Bench und die Ortsliste.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/cloud-v2/beneos-v14-scene-migration.mjs tools/v14-import-bench \
-        tools/foundry-orte.mjs \
-   | grep -q .
-then
-  meld "pre-commit: V14-Bruecke vorgemerkt, die Importbench laeuft mit"
-  fahre_weich "tools/v14-import-bench/bench.mjs" \
-              "v14-import-bench" tools/foundry-orte.mjs
-fi
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts/cloud-v2/token-delta.mjs tools/scene-merge-token-bench \
-        tools/foundry-orte.mjs \
-   | grep -q .
-then
-  meld "pre-commit: Token-Aufteilung vorgemerkt, ihre Bench laeuft mit"
-  fahre_weich "tools/scene-merge-token-bench/unit.mjs" \
-              "scene-merge-token-bench" tools/foundry-orte.mjs
-fi
-
-# DOPPELNAMEN IM GANZEN BESTAND, und dieser Stand geht die Gegenrichtung zu
-# `lint-diff.mjs`.
-#
-# Gefunden am 09.11.2026: `BeneosSetupTour` trug `async complete()` ZWEIMAL,
-# Zeile 1347 und 1580, und JavaScript nimmt still den spaeteren. Die Folge war
-# verkehrt herum: beim Abbrechen der Tour lief die Aufraeumung, beim normalen
-# Beenden nicht. Dazu zwei doppelte `default`-Schluessel in
-# `beneos_utility.js`.
-#
-# DAS WERKZEUG DAFUER WAR DA UND HAT NICHT GEGRIFFEN. `no-dupe-class-members`
-# steht seit `OP-PRJ-195` auf `error`, aber `lint-diff.mjs` liest bewusst nur
-# die Dateien des eigenen Diffs, und `beneos_tours.js` war monatelang in
-# keinem. Der Fehler fiel erst, als die Datei aus einem anderen Grund in einen
-# Diff geriet. Darum liest dieser Stand den ganzen Ordner `scripts` und dafuer
-# nur drei Regeln.
-#
-# `fahre_weich`, denn der Stand holt ESLint ueber `npx` und endet ohne
-# Netz und ohne Zwischenspeicher mit 2. Eine Pruefung, die nicht laufen
-# konnte, darf weder gruen aussehen noch einen Commit blockieren. Seit
-# stre-T-157 liest er die vorgemerkte Fassung, nicht die Platte.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- scripts tools/doppelnamen-bench \
-   | grep -q .
-then
-  meld "pre-commit: Modulcode vorgemerkt, die Doppelnamenwache laeuft mit"
-  fahre_weich "tools/doppelnamen-bench/bench.mjs" \
-              "doppelnamen-bench, erlaubt 0"
-fi
-
-# DER HAKEN SELBST (stre-T-157). Wird er angefasst, faehrt sein eigener Satz
-# mit: er baut einen eigenen Index und haelt fest, dass die zwei Waechter
-# darueber den Index lesen und nicht die Platte und dass die Syntax in der
-# Ladeform geprueft wird. Seine Sabotagen stehen in
-# `tools/stream-sabotagen.mjs`, Satz `doppelwache`.
-#
-# Der Ausloeser deckt alles, was der Satz liest: auch die zwei Benches und
-# den Pruefstand, sonst liefe eine Aenderung an der Bench ohne die Proben von
-# stre-T-158. Austritt 2 sperrt nicht, wie bei `fahre_weich`. Der Satz faehrt
-# diesen Haken in einer Wegwerfkopie, in der jeder hier gefahrene Satz, auch
-# dieser, ein Stub ist; er ruft sich darum nicht selbst wieder auf.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- tools/haken tools/doppelnamen-bench tools/v15-globale-bench \
-        tools/lib/foundry-attrappe.mjs tools/foundry-orte.mjs \
-   | grep -q .
-then
-  meld "pre-commit: Vorhaken oder seine Benches vorgemerkt, sein Satz laeuft mit"
-  if [ -f "tools/haken/vorhaken.test.mjs" ]; then
-    node "tools/haken/vorhaken.test.mjs" > "$TMP/lauf" 2>&1
-    werte_aus "$?" "vorhaken.test.mjs"
-  elif git cat-file -e "HEAD:tools/haken/vorhaken.test.mjs" 2>/dev/null; then
-    meld "pre-commit: vorhaken.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+while IFS= read -r wache_pfad; do
+  case "$wache_pfad" in
+    *.sh) ;;
+    *) continue ;;
+  esac
+  if ! grep -qxF "$wache_pfad" "$TMP/wachen-index"; then
+    meld ""
+    meld "pre-commit: ROT  $wache_pfad fehlt im Index, HEAD kennt sie aber"
     ROT=$((ROT + 1))
   fi
-fi
+done < "$TMP/wachen-head"
 
-# DER PUSH-RIEGEL (stre-T-028). Wird er angefasst, faehrt sein Satz mit: er
-# pusht in Wegwerfdepots und haelt fest, dass stream-beta ohne Versionssprung
-# durchgeht und mit Versionssprung nur samt passendem Tag. Er ist langsam,
-# deshalb nur bei Aenderung am Riegel, seiner Bruecke oder der module.json, deren
-# Adressen er prueft. Seine Sabotagen: `tools/stream-sabotagen.mjs --satz vorpush`.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- tools/haken/pre-push tools/haken/pre-push.mjs tools/haken/bruecke-pre-push \
-        tools/haken/vorpush.test.mjs module.json \
-   | grep -q .
-then
-  meld "pre-commit: Push-Riegel oder module.json vorgemerkt, sein Satz laeuft mit"
-  if [ -f "tools/haken/vorpush.test.mjs" ]; then
-    node "tools/haken/vorpush.test.mjs" > "$TMP/lauf" 2>&1
-    werte_aus "$?" "vorpush.test.mjs"
-  elif git cat-file -e "HEAD:tools/haken/vorpush.test.mjs" 2>/dev/null; then
-    meld "pre-commit: vorpush.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+wache_nr=0
+while IFS= read -r wache_pfad <&3; do
+  [ -n "$wache_pfad" ] || continue
+  wache_nr=$((wache_nr + 1))
+  wache_ziel="$TMP/wache-$wache_nr.sh"
+  if ! git show ":$wache_pfad" > "$wache_ziel" 2>"$TMP/fehler"; then
+    meld ""
+    meld "pre-commit: ROT  Wachendatei $wache_pfad nicht aus dem Index lesbar"
+    sed -n '1,6p' "$TMP/fehler" >&2
     ROT=$((ROT + 1))
+    continue
   fi
-fi
-
-# DER KENNUNGSRIEGEL (stre-T-047). Wird er angefasst, faehrt sein Satz mit: er
-# committet in Wegwerfdepots und haelt fest, dass auf dem Stand von stream-beta
-# kein Commit ohne Kennung in der Klammer des Betreffs entsteht, und dass main
-# und Merges frei bleiben. Ausgeloest auch von module.json, an deren Manifest die
-# Huelle den Stand erkennt. Seine Sabotagen:
-# `tools/stream-sabotagen.mjs --satz betreffkennung`.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- tools/haken/commit-msg tools/haken/commit-msg.mjs tools/haken/bruecke-commit-msg \
-        tools/haken/commit-msg.test.mjs module.json \
-   | grep -q .
-then
-  meld "pre-commit: Kennungsriegel oder module.json vorgemerkt, sein Satz laeuft mit"
-  if [ -f "tools/haken/commit-msg.test.mjs" ]; then
-    node "tools/haken/commit-msg.test.mjs" > "$TMP/lauf" 2>&1
-    werte_aus "$?" "commit-msg.test.mjs"
-  elif git cat-file -e "HEAD:tools/haken/commit-msg.test.mjs" 2>/dev/null; then
-    meld "pre-commit: commit-msg.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+  if ! sh -n "$wache_ziel" 2>"$TMP/fehler"; then
+    meld ""
+    meld "pre-commit: ROT  Syntaxfehler in der Wachendatei $wache_pfad"
+    sed -n '1,6p' "$TMP/fehler" >&2
     ROT=$((ROT + 1))
+    continue
   fi
-fi
-
-# Das Messwerkzeug fuer das Tag-ZIP der Beta (stre-T-028) misst nach einem
-# Push, ob Betatester das Modul bekommen. Sein Satz laeuft ohne Netz und
-# schnell. Seine Sabotagen: `tools/stream-sabotagen.mjs --satz betazip`.
-if git diff --cached --name-only --diff-filter=ACM \
-     -- tools/pruefe-beta-zip.mjs tools/pruefe-beta-zip.test.mjs \
-   | grep -q .
-then
-  meld "pre-commit: Messwerkzeug Beta-ZIP vorgemerkt, sein Satz laeuft mit"
-  if [ -f "tools/pruefe-beta-zip.test.mjs" ]; then
-    node "tools/pruefe-beta-zip.test.mjs" > "$TMP/lauf" 2>&1
-    werte_aus "$?" "pruefe-beta-zip.test.mjs"
-  elif git cat-file -e "HEAD:tools/pruefe-beta-zip.test.mjs" 2>/dev/null; then
-    meld "pre-commit: pruefe-beta-zip.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
-    ROT=$((ROT + 1))
-  fi
-fi
+  meld "pre-commit: Wachen aus $wache_pfad"
+  . "$wache_ziel"
+done 3< "$TMP/wachen-index"
 
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then

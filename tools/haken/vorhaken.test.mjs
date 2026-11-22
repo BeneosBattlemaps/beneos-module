@@ -14,7 +14,8 @@
  * Objektspeicher des echten Repositoriums (`GIT_DIR`). Der echte Index und der
  * echte Arbeitsbaum bleiben unberuehrt; liegen gebliebene Objekte raeumt `git gc`.
  * Der Haken kommt aus der EIGENEN Kopie dieses Satzes, damit eine Sabotage am
- * Haken greift. Unter `tools/stream-sabotagen.mjs` liegt die Kopie ohne `.git`;
+ * Haken greift. Seit stre-T-070 heisst das: der Kern von der Platte der Kopie,
+ * die Wachendateien vorgemerkt aus derselben Kopie (`merkeBenches`). Unter `tools/stream-sabotagen.mjs` liegt die Kopie ohne `.git`;
  * der Laeufer nennt das Repositorium dann in `VORHAKEN_GIT_DIR`.
  *
  * T-158. `bench.mjs` zaehlte jeden Fehler von ESLint, auch einen Parserfehler,
@@ -117,7 +118,13 @@ process.once("SIGTERM", () => abbrechen(143))
 // Umgebungsvariable schaltet im echten Haken etwas ab. Weil auch dieser Satz in
 // der Kopie ein Stub ist, faehrt der innere Haken ihn nicht noch einmal.
 
-const HAKENTEXT = readFileSync(join(HIER, "pre-commit"), "utf8")
+// Seit stre-T-070 ist der Haken ein Kern und je Domaene eine Wachendatei unter
+// `tools/haken/wachen/`. Der Kern laedt sie aus dem Index; `merkeBenches` merkt
+// deshalb die eigenen Fassungen vor, sonst liefe der innere Haken mit denen aus
+// HEAD oder ganz ohne Wachen. HAKENTEXT ist Kern und alle Wachendateien.
+const HAKENDATEIEN = ["tools/haken/pre-commit",
+  ...readdirSync(join(HIER, "wachen")).filter((n) => n.endsWith(".sh")).sort().map((n) => `tools/haken/wachen/${n}`)]
+const HAKENTEXT = HAKENDATEIEN.map((f) => readFileSync(join(WURZEL, f), "utf8")).join("\n")
 const STUB = "process.exit(0)\n"
 const AUFRUF = /^\s*(?:fahre|node)\s+"([^"$]+)"/gm
 const GERUFEN = [...HAKENTEXT.matchAll(AUFRUF)].map((m) => m[1])
@@ -131,7 +138,7 @@ const PFLICHT = [
   "tools/waisen-adressform-bench/bench.mjs", "tools/bildform-adresse-bench/bench.mjs",
   "tools/paket-grenze-bench/bench.mjs", "tools/haken/vorhaken.test.mjs",
   "tools/haken/vorpush.test.mjs", "tools/pruefe-beta-zip.test.mjs",
-  "tools/haken/commit-msg.test.mjs",
+  "tools/haken/commit-msg.test.mjs", "tools/haken/wachen.test.mjs",
 ]
 
 function stubListe(wt) {
@@ -163,12 +170,16 @@ function merke(b, pfad, inhalt) {
   b.git(["update-index", "--add", "--cacheinfo", `100644,${sha},${pfad}`])
 }
 
-/** Merkt die eigenen Fassungen der Benches vor, damit der Haken sie und nicht HEAD faehrt. */
+/**
+ * Merkt die eigenen Fassungen der Benches und der Wachendateien vor, damit der
+ * Haken sie und nicht HEAD faehrt. Die Wachendateien laedt der Kern nur aus dem
+ * Index (stre-T-070); eine Sabotage an ihnen greift nur, wenn sie hier landet.
+ */
 function merkeBenches(b) {
-  const liste = execFileSync("git", ["ls-files", "--others", "--cached", "--exclude-standard", "--", "tools/doppelnamen-bench", "tools/v15-globale-bench", "tools/foundry-orte.mjs"],
+  const liste = execFileSync("git", ["ls-files", "--others", "--cached", "--exclude-standard", "--", "tools/doppelnamen-bench", "tools/v15-globale-bench", "tools/foundry-orte.mjs", "tools/haken/wachen"],
     { env: b.env, cwd: b.wt, encoding: "utf8" }).split("\n").filter(Boolean)
   for (const pfad of liste) {
-    if (/\.(m?js|json)$/.test(pfad) && existsSync(join(b.wt, pfad))) {
+    if (/\.(m?js|json|sh)$/.test(pfad) && existsSync(join(b.wt, pfad))) {
       b.git(["update-index", "--add", `--`, pfad])
     }
   }
@@ -342,8 +353,18 @@ if (zeig) console.log(zeig.aus)
 if (h1.rc !== 0) console.log(`ladeform ueber HEAD: rc ${h1.rc}\n${h1.aus.slice(0, 400)}`)
 
 p.abschnitt("Kosten: Stubs nur in der Wegwerfkopie")
-p.gleich("der Haken in der Kopie ist bytegleich mit dem eigenen",
-  readFileSync(join(struktur.wt, "tools/haken/pre-commit"), "utf8") === HAKENTEXT, true)
+p.gleich("Kern und Wachendateien in der Kopie sind bytegleich mit den eigenen",
+  HAKENDATEIEN.filter((f) => !existsSync(join(struktur.wt, f))
+    || readFileSync(join(struktur.wt, f), "utf8") !== readFileSync(join(WURZEL, f), "utf8")).join(", "), "")
+p.gleich("es gibt Wachendateien fuer basis, modul und stre",
+  ["basis", "modul", "stre"].filter((d) => !HAKENDATEIEN.includes(`tools/haken/wachen/${d}.sh`)).join(", "), "")
+// Im Lauf der Kopie muss jede Wachendatei geladen sein und ihre immer laufende
+// Wache gefahren haben; sonst liefe der Haken still mit einer Domaene weniger.
+p.gleich("im Lauf der Kopie laedt der Kern jede Wachendatei",
+  HAKENDATEIEN.slice(1).filter((f) => !f2.aus.includes(`pre-commit: Wachen aus ${f}`)).join(", "), "")
+p.gleich("im Lauf der Kopie faehrt basis seine Wache auf jeden Commit", f2.aus.includes("pre-commit: ok  anker.test.mjs"), true)
+p.gleich("im Lauf der Kopie faehrt stre seine Wache auf jeden Commit", f2.aus.includes("pre-commit: ok  cloud-login-kennung.test.mjs"), true)
+p.gleich("im Lauf der Kopie faehrt modul die Doppelnamenwache", f2.doppelnamen, "ok")
 p.gleich("der echte Haken faehrt jeden Pflichtsatz per Namen",
   PFLICHT.filter((s) => !GERUFEN.includes(s)).join(", "), "")
 p.gleich("der echte Haken faehrt die Streamsaetze aus dem Index",
