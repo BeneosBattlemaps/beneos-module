@@ -743,11 +743,14 @@ function geteilterDreiklang(url, t, an = GETEILTER_VORRAT_AN) {
    * Zufall: bei gleicher Pruefsumme sind sie byteweise identisch, und bei
    * verschiedener Pruefsumme sind die Adressen verschieden.
    *
-   * Die FORM wird geprueft und nicht vorausgesetzt. Ein Name mit einem
-   * Leerzeichen oder einem Nicht-ASCII-Zeichen kommt am Tor als 400 zurueck,
-   * und bei einem Zweifel bleibt es beim Kartenschluessel: lieber zweimal
-   * gehalten als einmal unerreichbar. Dieselbe Positivliste steht in
-   * `lib/geteilt-mirror-gate.php`, `geteilt_mirror_name_ok`.
+   * Die FORM wird geprueft und nicht vorausgesetzt. Die Liste ist bewusst
+   * enger als das Tor: Leerzeichen und Umlaute nimmt das Tor unter /s/ an
+   * (200, gemessen stre-T-183 in stream-vertrag-adresse.test.mjs), `! * ~`
+   * weist es mit 400 ab (H6). Massgeblich ist der serverseitige Durchgang:
+   * dieselbe Positivliste steht in `lib/geteilt-mirror-gate.php`,
+   * `geteilt_mirror_name_ok`, und nur was er ablegt, liegt unter
+   * `geteilt/<sha256>/` im Spiegel. Bei einem Zweifel bleibt es beim
+   * Kartenschluessel: lieber zweimal gehalten als einmal unerreichbar.
    */
   const name = routenName(t.pfad)
   if (!name) return null

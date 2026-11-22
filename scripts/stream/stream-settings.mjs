@@ -1273,7 +1273,11 @@ export function adressSegmente(release, variant, path, traeger) {
    * Variantennamen. Die Route am Tor verlangt seit stre-T-052 GENAU sieben
    * Segmente, `/s/<schluessel>/<release>/<variante>/shared/<sha256>/<name>`,
    * also darf `clean` kein Schraegstrich mehr enthalten; wer hier einen
-   * Unterpfad mitgibt, bekommt eine Adresse, die das Tor mit 400 abweist.
+   * Unterpfad mitgibt, bekommt eine Adresse mit mehr als sieben Segmenten
+   * (bei einer Ebene acht), und die beantwortet das Tor mit 404 no-route, weil
+   * die Route genau sieben verlangt (gemessen stre-T-183, festgehalten in
+   * stream-vertrag-adresse.test.mjs). Im Betrieb kommt kein Unterpfad hier
+   * an, weil `routenName` in stream-fetch.mjs nur den Basisnamen durchlaesst.
    *
    * OHNE TRAEGER KEINE ADRESSE (T-056). Die alte Form ohne Release
    * beantwortet das Tor mit 404 no-route. `null` heisst: diese Datei hat

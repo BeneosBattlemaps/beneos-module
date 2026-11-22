@@ -342,6 +342,23 @@ const VA_CLEAN = "  const clean = String(path).replace(/^\\/+/, \"\").split(\"/\
 const VA_RET = "  return [\"a\", encodeURIComponent(release), encodeURIComponent(variant), clean]";
 const VA_URL = "  return `${streamBase()}/${teile[0]}/${schluessel}/${teile.slice(1).join(\"/\")}`";
 const VA_NAMEN = ["Leerzeichen", "Klammern", "Apostroph", "Plus", "Prozent", "Umlaut", "Unterordner", "Bindestrich"];
+// Die drei anderen Raeume (stre-T-183): die Zeilen in adressSegmente, die
+// /c/, /l/ und /s/ bauen, und die Proben je Raum. Die H6-Faelle aller Raeume
+// haengen an VA_CLEAN, weil alle Raeume dieselbe Pfadkodierung nehmen.
+const VA_C = "    return [\"c\", encodeURIComponent(release), clean]";
+const VA_L = "    return [\"l\", encodeURIComponent(release), clean]";
+const VA_S = "    return [\"s\", traeger.release, traeger.variant, GETEILT_RAUM, encodeURIComponent(variant), clean]";
+const VA_H6 = ["Ausrufezeichen", "Stern", "Tilde"];
+const VA_ANGENOMMEN = (r) => ["schlichter Name", ...VA_NAMEN].flatMap((n) => [`/${r}/ ${n}: 200`, `/${r}/ ${n}: genau eine Unteranfrage an den Spiegel`])
+  .concat(VA_NAMEN.map((n) => `/${r}/ ${n}: der Spiegel bekommt genau diesen Pfad`))
+  .concat([`/${r}/ die Moduladresse ist eine /${r}/-Adresse mit Schluessel`, `/${r}/ schlichter Name: Praefix ist der Raumordner`,
+    `/${r}/ Releasename mit Leerzeichen: die Adresse bleibt im Raum`,
+    `/${r}/ Releasename mit Punkt: 200`, `/${r}/ Releasename mit Punkt: der eigene Ordner`, `/${r}/ Releasename mit Bindestrich: 200`,
+    `/${r}/ Releasename mit Bindestrich: genau eine Unteranfrage an den Spiegel`]);
+// Die Pfadproben eines Namens in allen vier Raeumen; /s/ nennt sie "Namen".
+const VA_PFAD = (namen) => ["", "/c/ ", "/l/ "].flatMap((r) => namen.map((n) => `${r}${n}: der Spiegel bekommt genau diesen Pfad`))
+  .concat(namen.map((n) => `/s/ ${n}: der Spiegel bekommt genau diesen Namen`));
+const VA_S_FLACH = VA_NAMEN.filter((n) => n !== "Unterordner");
 const SABOTAGEN = [
   // ---------------------------------------------------------------- maske
   { satz: "maske", ziel: ["Kartenroute, nackte Adresse","Kreaturenroute","die gemessene Zeile des Kerns","Abfragezeichenkette dahinter bleibt","zwei Adressen in einer Zeile, beide maskiert","in Anfuehrungszeichen, der Schluessel endet am Zeichen","in spitzen Klammern","im Text: zweimal maskieren aendert nichts mehr","Schluessel direkt vor dem Anfuehrungszeichen, das Zeichen bleibt","Schluessel direkt vor der spitzen Klammer, die Klammer bleibt","Beute, nackte Adresse","Beute, die gemessene Zeile des Kerns","geteilt, nackte Adresse","geteilt, die gemessene Zeile des Kerns","alle vier Raeume in einer Zeile","Raum karte (/a/): der Schluessel steht nicht mehr darin","Raum karte (/a/): der Buchstabe steht noch darin","Raum kreatur (/c/): der Schluessel steht nicht mehr darin","Raum kreatur (/c/): der Buchstabe steht noch darin","Raum beute (/l/): der Schluessel steht nicht mehr darin","Raum beute (/l/): der Buchstabe steht noch darin","Raum geteilt (/s/): der Schluessel steht nicht mehr darin","Raum geteilt (/s/): der Buchstabe steht noch darin","Fliesstext an ohneSchluessel: der Schluessel faellt (Textmaske)","Fliesstext an ohneSchluessel: der Rest bleibt stehen"], ersetze: [[REPORT, "  return s.replace(maskeCache.muster, (_, raum) => `${basis}/${raum}/-`)", "  return s"]] },
@@ -2481,20 +2498,51 @@ const SABOTAGEN = [
   // Tor vom Integrationszweig des Workers annimmt. Nur auf `--satz vertrag-adresse`.
   { satz: "vertrag-adresse", ziel: ["die Moduladresse ist eine /a/-Adresse mit Schluessel", "schlichter Name: 200",
       "schlichter Name: genau eine Unteranfrage an den Spiegel", ...VA_NAMEN.flatMap((n) => [`${n}: 200`, `${n}: genau eine Unteranfrage an den Spiegel`]),
-      "Releasename mit Punkt: 200", "Releasename mit Punkt: das eigene Paket", "Releasename mit Bindestrich: 200"],
+      "Releasename mit Punkt: 200", "Releasename mit Punkt: das eigene Paket", "Releasename mit Bindestrich: 200",
+      "/c/ die Moduladresse ist eine /c/-Adresse mit Schluessel", "/l/ die Moduladresse ist eine /l/-Adresse mit Schluessel",
+      "/s/ die Moduladresse ist eine /s/-Adresse mit Schluessel und Traeger"],
     ersetze: [[SETTINGS, VA_URL, "  return `${streamBase()}/${teile[0]}/${teile.slice(1).join(\"/\")}/${schluessel}`"]] },
-  { satz: "vertrag-adresse", ziel: ["Leerzeichen: der Spiegel bekommt genau diesen Pfad"],
+  { satz: "vertrag-adresse", ziel: VA_PFAD(["Leerzeichen"]),
     ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(t).replace(/%20/g, \"+\"))")]] },
-  { satz: "vertrag-adresse", ziel: ["Leerzeichen", "Plus", "Prozent", "Umlaut"].map((n) => `${n}: der Spiegel bekommt genau diesen Pfad`),
+  { satz: "vertrag-adresse", ziel: VA_PFAD(["Leerzeichen", "Plus", "Prozent", "Umlaut"]),
     ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(encodeURIComponent(t)))")]] },
-  { satz: "vertrag-adresse", ziel: ["Ausrufezeichen", "Stern", "Tilde"].flatMap((n) => [`${n}: 400 bad-path (bekannt H6)`, `${n}: keine Unteranfrage`]),
+  { satz: "vertrag-adresse", ziel: ["", "/c/ ", "/l/ ", "/s/ "].flatMap((r) => VA_H6.flatMap((n) => [`${r}${n}: 400 bad-path (bekannt H6)`, `${r}${n}: keine Unteranfrage`])),
     ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".map(encodeURIComponent)", ".map((t) => encodeURIComponent(t).replace(/[!'()*~]/g, (c) => \"%\" + c.charCodeAt(0).toString(16).toUpperCase()))")]] },
-  { satz: "vertrag-adresse", ziel: ["schlichter Name: Praefix ist das Paket", ...VA_NAMEN.map((n) => `${n}: der Spiegel bekommt genau diesen Pfad`)],
+  { satz: "vertrag-adresse", ziel: ["schlichter Name: Praefix ist das Paket", ...VA_NAMEN.map((n) => `${n}: der Spiegel bekommt genau diesen Pfad`),
+      ...["c", "l"].flatMap((r) => [`/${r}/ schlichter Name: Praefix ist der Raumordner`, ...VA_NAMEN.map((n) => `/${r}/ ${n}: der Spiegel bekommt genau diesen Pfad`)]),
+      "/s/ Unterordner: die Adresse hat acht Segmente", "/s/ Unterordner: 404 no-route", "/s/ Unterordner: keine Unteranfrage"],
     ersetze: [[SETTINGS, VA_CLEAN, VA_CLEAN.replace(".replace(/^\\/+/, \"\")", ".replace(/^\\/*[^/]*\\/+/, \"\")")]] },
   { satz: "vertrag-adresse", ziel: ["Releasename mit Punkt: 200", "Releasename mit Punkt: das eigene Paket"],
     ersetze: [[SETTINGS, VA_RET, VA_RET.replace("encodeURIComponent(release)", "encodeURIComponent(release).replace(/\\./g, \"%2E\")")]] },
   { satz: "vertrag-adresse", ziel: ["Releasename mit Leerzeichen: 400 bad-path"],
     ersetze: [[SETTINGS, VA_RET, VA_RET.replace("encodeURIComponent(release)", "encodeURIComponent(release.replace(/ /g, \"_\"))")]] },
+  // ---- vertrag-adresse, die drei anderen Raeume (stre-T-183).
+  // Falscher Raumbuchstabe: das Tor weist das Release im fremden Raum ab.
+  { satz: "vertrag-adresse", ziel: VA_ANGENOMMEN("c"), ersetze: [[SETTINGS, VA_C, VA_C.replace("\"c\"", "\"a\"")]] },
+  { satz: "vertrag-adresse", ziel: VA_ANGENOMMEN("l"), ersetze: [[SETTINGS, VA_L, VA_L.replace("\"l\"", "\"c\"")]] },
+  // Release anders kodiert als das Tor es kennt.
+  { satz: "vertrag-adresse", ziel: ["/c/ Releasename mit Punkt: 200", "/c/ Releasename mit Punkt: der eigene Ordner"],
+    ersetze: [[SETTINGS, VA_C, VA_C.replace("encodeURIComponent(release)", "encodeURIComponent(release).replace(/\\./g, \"%2E\")")]] },
+  { satz: "vertrag-adresse", ziel: ["/l/ Releasename mit Punkt: 200", "/l/ Releasename mit Punkt: der eigene Ordner"],
+    ersetze: [[SETTINGS, VA_L, VA_L.replace("encodeURIComponent(release)", "encodeURIComponent(release).replace(/\\./g, \"%2E\")")]] },
+  { satz: "vertrag-adresse", ziel: ["/c/ Releasename mit Leerzeichen: 400 bad-path"],
+    ersetze: [[SETTINGS, VA_C, VA_C.replace("encodeURIComponent(release)", "encodeURIComponent(release.replace(/ /g, \"_\"))")]] },
+  { satz: "vertrag-adresse", ziel: ["/l/ Releasename mit Leerzeichen: 400 bad-path"],
+    ersetze: [[SETTINGS, VA_L, VA_L.replace("encodeURIComponent(release)", "encodeURIComponent(release.replace(/ /g, \"_\"))")]] },
+  // /s/: Traeger vertauscht, das Tor sieht die Variante als Release.
+  { satz: "vertrag-adresse", ziel: ["/s/ die Moduladresse ist eine /s/-Adresse mit Schluessel und Traeger",
+      "/s/ schlichter Name: 200", "/s/ schlichter Name: das Manifest des Traegers wird gelesen",
+      "/s/ schlichter Name: genau eine Dateianfrage an den Spiegel", "/s/ schlichter Name: Praefix ist der geteilte Ordner",
+      ...VA_S_FLACH.flatMap((n) => [`/s/ ${n}: 200`, `/s/ ${n}: genau eine Dateianfrage an den Spiegel`, `/s/ ${n}: der Spiegel bekommt genau diesen Namen`]),
+      "/s/ Traeger mit Punkt im Release: 200", "/s/ Traeger mit Punkt im Release: genau eine Dateianfrage an den Spiegel",
+      "/s/ Unterordner, derselbe Name flach: 200", "/s/ Unterordner, derselbe Name flach: der Spiegel bekommt genau diesen Namen"],
+    ersetze: [[SETTINGS, VA_S, VA_S.replace("traeger.release, traeger.variant", "traeger.variant, traeger.release")]] },
+  // /s/: der Unterordner wird zum Basisnamen, die Adresse hat sieben Segmente.
+  { satz: "vertrag-adresse", ziel: ["/s/ Unterordner: die Adresse hat acht Segmente", "/s/ Unterordner: 404 no-route", "/s/ Unterordner: keine Unteranfrage"],
+    ersetze: [[SETTINGS, VA_S, VA_S.replace("encodeURIComponent(variant), clean]", "encodeURIComponent(variant), clean.split(\"/\").pop()]")]] },
+  // /s/: ohne Traegerpruefung baut das Modul eine Adresse mit Kreaturrelease.
+  { satz: "vertrag-adresse", ziel: ["/s/ Kreaturrelease als Traeger: keine Adresse"],
+    ersetze: [[SETTINGS, "    if (!istTraeger(traeger)) return null\n    return [\"s\"", "    if (!traeger) return null\n    return [\"s\""]] },
 ];
 
 /*
@@ -2522,7 +2570,7 @@ const EIGENPROBEN = {
   },
   "vertrag-adresse": {
     "ueber alle Faelle: jede Unteranfrage geht an den Spiegel":
-      "Aussage ueber das Tor, nicht ueber das Modul: welche Unteranfragen das Tor stellt, entscheidet allein der Worker, das Modul liefert nur den Pfad. Bewacht im Worker (tools/pruefe-vertrag-adresse.mjs mit den Sabotagen in tools/pruefe-tor-sabotagen.mjs); hier wird sie rot, sobald ein solches Tor auf dem Integrationszweig liegt.",
+      "Aussage ueber das Tor, nicht ueber das Modul: welche Unteranfragen das Tor stellt, entscheidet allein der Worker, das Modul liefert nur den Pfad. Bewacht im Worker (tools/pruefe-vertrag-adresse.mjs mit den Sabotagen in tools/pruefe-tor-sabotagen.mjs; dort bis zum Worker-Commit von stre-T-183 nur fuer /a/); hier wird sie rot, sobald ein solches Tor auf dem Integrationszweig liegt.",
   },
   export: {
     "Link: href traegt den Schluessel 0 Mal":
