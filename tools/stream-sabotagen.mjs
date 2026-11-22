@@ -2503,6 +2503,11 @@ const SABOTAGEN = [
     ersetze: [[INSTALL, "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      zaehleLokal(entry.bytes)\n      pinned += 1", "      zaehleLokal(entry.bytes)\n      pinned += 1"]] },
   { satz: "vertrag-manifest", ziel: VM_PROBE("die Bytes der Weiche gehen auf", VM_PIN),
     ersetze: [[INSTALL, "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      zaehleLokal(entry.bytes)\n      pinned += 1", "      packInfo[`data/assets/${key}`] = assetUrl(release, variant, key)\n      pinned += 1"]] },
+  // local steht seit stre-T-182 in der /4-Vorlage (Actor mit Tokenbild im
+  // festen Paket der Cloud). Faellt der Zweig, landet das Portrait in der
+  // Warnung fuer unbekannte Rollen.
+  { satz: "vertrag-manifest", ziel: [...VM_PROBE("keine unbekannte Rolle", ["/4"]), ...VM_PROBE("keine unbekannte Rolle (Stills aus)", ["/4"])],
+    ersetze: [[INSTALL, "    if (entry.role === \"local\") {", "    if (entry.role === \"lokal\") {"]] },
   { satz: "vertrag-manifest", ziel: ["unbekannte Rolle: genau eine Warnung"],
     ersetze: [[INSTALL, "    console.warn(`Beneos Stream | unbekannte Rolle", "    void (`Beneos Stream | unbekannte Rolle"]] },
   // ---- vertrag-adresse (stre-T-021): dieses Modul baut /a/-Adressen, die das
