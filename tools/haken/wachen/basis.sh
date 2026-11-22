@@ -5,8 +5,9 @@
 # braucht seine Helfer `fahre`, `fahre_weich`, `werte_aus`, `meld`, dazu
 # `$TMP` und `ROT`. Geladen wird nur die vorgemerkte Fassung.
 #
-# BESITZ. Diese drei Wachen stehen auch im Haken auf main, und der gehoert dem
-# Tab modu. Mit stre-T-070 sind sie nur umgezogen, ihr Code ist zeichengleich.
+# BESITZ. Diese drei Saetze faehrt auch der Haken auf main, und der gehoert dem
+# Tab modu; die Form dort kann abweichen. Mit stre-T-070 sind sie hier nur
+# umgezogen, ihr Code ist zeichengleich mit dem Haken auf cf5ddc5.
 #
 # KOPPLUNG. `anker.test.mjs` laeuft hier auf jeden Commit. Die Schleife der
 # Streamsaetze in wachen/stre.sh nimmt ihn deshalb aus; wer ihn hier entfernt,

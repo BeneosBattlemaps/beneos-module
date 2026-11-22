@@ -409,11 +409,13 @@ fi
 # Datei seiner Domaene, und der Lader laedt nur die vorgemerkte, syntaktisch
 # heile Fassung. Geloeschte und umbenannte Dateien zaehlen mit (Filter ACMRD),
 # denn das Entfernen einer Wachendatei ist genau der Fall, den er faengt.
-# Austritt 2 heisst nicht messbar (kein git oder sh) und sperrt nicht. Rund
-# 15 s, deshalb nur bei Beruehrung. Seine Sabotagen: `tools/stream-sabotagen.mjs
-# --satz wachen`.
+# Austritt 2 heisst nicht messbar (kein git oder sh, oder cf5ddc5 fehlt im
+# Klon, etwa einem flachen) und sperrt nicht. Rund 15 s, deshalb nur bei
+# Beruehrung, auch der Pruefhilfe, aus der er importiert. Seine Sabotagen:
+# `tools/stream-sabotagen.mjs --satz wachen`.
 if git diff --cached --name-only --diff-filter=ACMRD \
      -- tools/haken/pre-commit tools/haken/wachen tools/haken/wachen.test.mjs \
+        tools/lib/foundry-attrappe.mjs \
    | grep -q .
 then
   meld "pre-commit: Kern oder Wachendatei vorgemerkt, der Satz der Teilung laeuft mit"

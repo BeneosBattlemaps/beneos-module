@@ -356,6 +356,15 @@ p.abschnitt("Kosten: Stubs nur in der Wegwerfkopie")
 p.gleich("Kern und Wachendateien in der Kopie sind bytegleich mit den eigenen",
   HAKENDATEIEN.filter((f) => !existsSync(join(struktur.wt, f))
     || readFileSync(join(struktur.wt, f), "utf8") !== readFileSync(join(WURZEL, f), "utf8")).join(", "), "")
+// merkeBenches muss die Wachendateien der Kopie vormerken, sonst faehrt der
+// Haken die von HEAD. Seit HEAD sie kennt, sieht man das nur an einer Fassung,
+// die von HEAD abweicht: darum eine Marke an basis.sh, vor dem Vormerken.
+const bMarke = baum()
+const MARKE_PFAD = "tools/haken/wachen/basis.sh"
+writeFileSync(join(bMarke.wt, MARKE_PFAD), `${readFileSync(join(bMarke.wt, MARKE_PFAD), "utf8")}# marke-vorgemerkt\n`)
+merkeBenches(bMarke)
+p.gleich("die Wachendateien der Kopie sind vorgemerkt, nicht die von HEAD",
+  bMarke.git(["ls-files", "-s", "--", MARKE_PFAD]).split(/\s+/)[1], bMarke.git(["hash-object", "--", MARKE_PFAD]).trim())
 p.gleich("es gibt Wachendateien fuer basis, modul und stre",
   ["basis", "modul", "stre"].filter((d) => !HAKENDATEIEN.includes(`tools/haken/wachen/${d}.sh`)).join(", "), "")
 // Im Lauf der Kopie muss jede Wachendatei geladen sein und ihre immer laufende

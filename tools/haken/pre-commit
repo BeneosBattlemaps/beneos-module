@@ -70,7 +70,19 @@ WURZEL=$(git rev-parse --show-toplevel) || exit 1
 cd "$WURZEL" || exit 1
 
 TMP=$(mktemp -d) || exit 1
-aufraeumen() { rm -rf "$TMP"; }
+# `wache_laedt` steht auf 1, solange eine Wachendatei laeuft (Abschnitt
+# "Wachen" unten). Endet der Haken in diesem Moment mit 0, hat ein `exit` in
+# der Datei Schlussurteil und spaetere Wachendateien uebersprungen; das ist rot.
+wache_laedt=0
+wache_pfad=""
+aufraeumen() {
+  wache_rc=$?
+  rm -rf "$TMP"
+  if [ "$wache_laedt" -eq 1 ] && [ "$wache_rc" -eq 0 ]; then
+    printf '%s\n' "pre-commit: ROT  die Wachendatei $wache_pfad hat den Haken vorzeitig beendet" >&2
+    exit 1
+  fi
+}
 trap aufraeumen EXIT
 
 ROT=0
@@ -225,7 +237,12 @@ werte_aus() {
 # GELADEN WIRD DIE VORGEMERKTE FASSUNG, aus demselben Grund wie bei der Syntax
 # oben. Die Liste kommt aus dem Index, eine unverfolgte Datei laeuft also nie,
 # und von einer nur auf der Platte geaenderten Datei laeuft die vorgemerkte.
-# Die Reihenfolge ist die des Index, also nach Namen.
+# Die Reihenfolge ist die des Index, also nach Namen. Geladen werden nur
+# Dateien direkt im Ordner (`:(glob)`, sonst griffe `*` in Unterordner).
+#
+# EIN EXIT IN EINER WACHENDATEI BEENDET DEN GANZEN HAKEN, denn sie laeuft per
+# `.` in dieser Shell. Mit Austritt 0 waere das ein gruener Haken ohne
+# Schlussurteil; der Waechter in `aufraeumen` oben macht ihn rot.
 #
 # EINE KAPUTTE WACHENDATEI LAEUFT GAR NICHT AN. `sh -n` prueft sie vor dem
 # Laden. Ohne das liefe sie bis zum Fehler, die Wachen davor waeren gefahren,
@@ -240,7 +257,7 @@ werte_aus() {
 # trotzdem ueber Kanal 3, damit eine Wache, die es doch tut, die Liste nicht
 # leer liest. Die Variablen des Laders heissen `wache_*`, keine Wache benutzt
 # den Namen.
-if ! git ls-files -- 'tools/haken/wachen/*.sh' > "$TMP/wachen-index" 2>"$TMP/fehler"; then
+if ! git ls-files -- ':(glob)tools/haken/wachen/*.sh' > "$TMP/wachen-index" 2>"$TMP/fehler"; then
   meld ""
   meld "pre-commit: ROT  Liste der Wachendateien nicht lesbar"
   sed -n '1,6p' "$TMP/fehler" >&2
@@ -248,7 +265,12 @@ if ! git ls-files -- 'tools/haken/wachen/*.sh' > "$TMP/wachen-index" 2>"$TMP/feh
 fi
 : > "$TMP/wachen-head"
 if git rev-parse -q --verify HEAD > /dev/null 2>&1; then
-  git ls-tree -r --name-only HEAD -- tools/haken/wachen/ > "$TMP/wachen-head" 2>/dev/null
+  if ! git ls-tree --name-only HEAD -- tools/haken/wachen/ > "$TMP/wachen-head" 2>"$TMP/fehler"; then
+    meld ""
+    meld "pre-commit: ROT  Wachendateien in HEAD nicht lesbar"
+    sed -n '1,6p' "$TMP/fehler" >&2
+    ROT=$((ROT + 1))
+  fi
 fi
 while IFS= read -r wache_pfad; do
   case "$wache_pfad" in
@@ -282,7 +304,9 @@ while IFS= read -r wache_pfad <&3; do
     continue
   fi
   meld "pre-commit: Wachen aus $wache_pfad"
+  wache_laedt=1
   . "$wache_ziel"
+  wache_laedt=0
 done 3< "$TMP/wachen-index"
 
 # ----------------------------------------------------------------- Ausgang ---

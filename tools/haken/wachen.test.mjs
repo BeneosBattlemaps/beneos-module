@@ -25,7 +25,12 @@
  * Datei mit Syntaxfehler laeuft gar nicht an und ist rot; eine Datei, die HEAD
  * kennt und der Index nicht, ist rot; eine unverfolgte Datei laeuft nie; von
  * einer geaenderten Datei laeuft die vorgemerkte Fassung; alle Dateien des
- * Ordners laufen, nicht nur eine.
+ * Ordners laufen, nicht nur eine. Dazu die Fehlerzweige: ohne HEAD gruen,
+ * Datei oder Liste nicht lesbar rot, `exit 0` in einer Datei rot, eine Datei
+ * in einem Unterordner laeuft nicht.
+ *
+ * Erhalt und Zeichengleichheit lesen Kern und Wachendateien aus dem Index,
+ * wie der Haken sie laedt; nur ausserhalb eines Arbeitsbaums die Platte.
  *
  * Die Sabotagen stehen in `tools/stream-sabotagen.mjs`, Satz `wachen`.
  *
@@ -127,9 +132,42 @@ function stelle(ganz, teil, ab = 0) {
   return -1
 }
 
-const KERNTEXT = readFileSync(KERN, "utf8")
-const dateien = existsSync(ORDNER) ? readdirSync(ORDNER).filter((n) => n.endsWith(".sh")).sort() : []
-const FRAGMENT = Object.fromEntries(dateien.map((n) => [n.replace(/\.sh$/, ""), readFileSync(join(ORDNER, n), "utf8")]))
+/**
+ * Kern und Wachendateien so, wie der Haken sie laedt: aus dem Index. Liefe
+ * der Satz gegen die Platte, saehe er im Haken eine andere Fassung als der
+ * Kern, und eine nur vorgemerkte Kuerzung bliebe gruen. Ist dieser Ordner
+ * nicht Teil eines Arbeitsbaums (die Sabotagekopie hat kein `.git`), gilt
+ * die Platte. Die Umgebung bleibt geerbt, samt GIT_INDEX_FILE des Hakens.
+ */
+function quelle() {
+  let top = null
+  try {
+    top = execFileSync("git", ["-C", HIER, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()
+  } catch { /* kein Arbeitsbaum: Platte */ }
+  if (top && resolve(top, "tools/haken") === resolve(HIER)) {
+    const g = (...a) => execFileSync("git", ["-C", top, ...a], { encoding: "utf8" })
+    try {
+      const namen = g("ls-files", "--", ":(glob)tools/haken/wachen/*.sh").split("\n").filter(Boolean).sort()
+      return {
+        art: "Index",
+        kern: g("show", ":tools/haken/pre-commit"),
+        fragment: Object.fromEntries(namen.map((p) => [p.replace(/^.*\//, "").replace(/\.sh$/, ""), g("show", `:${p}`)])),
+      }
+    } catch (e) {
+      nichtMessbar(`Index nicht lesbar: ${String(e.message).split("\n")[0]}`)
+    }
+  }
+  const dateien = existsSync(ORDNER) ? readdirSync(ORDNER).filter((n) => n.endsWith(".sh")).sort() : []
+  return {
+    art: "Platte",
+    kern: readFileSync(KERN, "utf8"),
+    fragment: Object.fromEntries(dateien.map((n) => [n.replace(/\.sh$/, ""), readFileSync(join(ORDNER, n), "utf8")])),
+  }
+}
+const QUELLE = quelle()
+console.log(`wachen: Kern und Wachendateien aus ${QUELLE.art === "Index" ? "dem Index" : "der Platte"}`)
+const KERNTEXT = QUELLE.kern
+const FRAGMENT = QUELLE.fragment
 const NEUTEXT = [KERNTEXT, ...Object.values(FRAGMENT)].join("\n")
 
 const alt = saetze(ALTTEXT)
@@ -157,8 +195,8 @@ const KAPUTT = `: > t/marke-kaputt\nfahre "t/gruen.mjs" "probe-kaputt"\nif true;
 const FREMD = `: > t/marke-fremd\nexit 0\n`
 const PLATTE = `: > t/marke-platte\nfahre "t/rot.mjs" "probe-platte"\n`
 
-/** Ein Wegwerf-Repositorium mit dem echten Kern und einem ersten Commit. */
-function repo() {
+/** Ein Wegwerf-Repositorium mit dem echten Kern und, ausser bei `ohneCommit`, einem ersten Commit. */
+function repo({ ohneCommit = false } = {}) {
   const d = mkdtempSync(join(tmpdir(), "wachen-repo-"))
   temp.push(d)
   const git = (...args) => execFileSync("git", ["-c", "user.name=wachen", "-c", "user.email=wachen@example.invalid",
@@ -171,10 +209,13 @@ function repo() {
   writeFileSync(join(d, "t/rot.mjs"), "process.exit(1)\n")
   writeFileSync(join(d, "t/.gitignore"), "marke-*\n")
   git("add", "tools/haken/pre-commit", "t/gruen.mjs", "t/rot.mjs", "t/.gitignore")
-  git("commit", "-q", "--no-verify", "-m", "basis")
-  const schreib = (name, text) => writeFileSync(join(d, "tools/haken/wachen", name), text)
-  const fahr = () => {
-    const r = spawnSync("sh", ["tools/haken/pre-commit"], { cwd: d, env, encoding: "utf8", timeout: 120000 })
+  if (!ohneCommit) git("commit", "-q", "--no-verify", "-m", "basis")
+  const schreib = (name, text) => {
+    mkdirSync(dirname(join(d, "tools/haken/wachen", name)), { recursive: true })
+    writeFileSync(join(d, "tools/haken/wachen", name), text)
+  }
+  const fahr = (zusatz = {}) => {
+    const r = spawnSync("sh", ["tools/haken/pre-commit"], { cwd: d, env: { ...env, ...zusatz }, encoding: "utf8", timeout: 120000 })
     if (r.error?.code === "ENOENT") nichtMessbar("sh nicht gefunden")
     return { rc: r.status, aus: `${r.stdout}${r.stderr}` }
   }
@@ -227,6 +268,36 @@ for (const d of ["basis", "modul", "stre"]) r7.schreib(`${d}.sh`, GRUEN(`probe-$
 r7.git("add", "tools/haken/wachen/basis.sh", "tools/haken/wachen/modul.sh", "tools/haken/wachen/stre.sh")
 const l7 = r7.fahr()
 
+// 8: noch kein Commit, also kein HEAD; die vorgemerkte gruene Wache laeuft.
+const r8 = repo({ ohneCommit: true })
+r8.schreib("a.sh", GRUEN("probe-a"))
+r8.git("add", "tools/haken/wachen/a.sh")
+const l8 = r8.fahr()
+
+// 9: der Index nennt eine Wachendatei, deren Inhalt es nicht gibt.
+const r9 = repo()
+r9.git("update-index", "--add", "--cacheinfo", `100644,${"1".repeat(40)},tools/haken/wachen/x.sh`)
+const l9 = r9.fahr()
+
+// 10: der Index selbst ist nicht lesbar, also auch die Liste nicht.
+const r10 = repo()
+writeFileSync(join(r10.d, "t", "kaputter-index"), "kein Index\n")
+const l10 = r10.fahr({ GIT_INDEX_FILE: join(r10.d, "t", "kaputter-index") })
+
+// 11: eine Wachendatei endet mit `exit 0`, nach einer roten Wache.
+const r11 = repo()
+r11.schreib("a.sh", ROT)
+r11.schreib("b.sh", `: > t/marke-exit\nexit 0\n`)
+r11.git("add", "tools/haken/wachen/a.sh", "tools/haken/wachen/b.sh")
+const l11 = r11.fahr()
+
+// 12: eine verfolgte .sh in einem Unterordner ist keine Domaene und laeuft nicht.
+const r12 = repo()
+r12.schreib("a.sh", GRUEN("probe-a"))
+r12.schreib("alt/x.sh", `: > t/marke-unterordner\n`)
+r12.git("add", "tools/haken/wachen/a.sh", "tools/haken/wachen/alt/x.sh")
+const l12 = r12.fahr()
+
 // ------------------------------------------------------------ Urteil
 
 const p = pruefstand("wachen: die Wachen des Vorhakens je Domaene in einer Datei (stre-T-070)")
@@ -273,6 +344,17 @@ p.gleich("geaenderte Wachendatei: die Fassung der Platte laeuft nicht", r6.marke
 p.gleich("geaenderte Wachendatei: Haken endet gruen", l6.rc, 0)
 p.gleich("alle Wachendateien laufen", ["basis", "modul", "stre"].filter((d) => !l7.aus.includes(`pre-commit: ok  probe-${d}`)).join(", "), "")
 p.gleich("alle Wachendateien laufen: Haken endet gruen", l7.rc, 0)
-if (process.env.WACHEN_ZEIG) console.log([l1, l2, l3, l4, l5, l6, l7][Number(process.env.WACHEN_ZEIG) - 1]?.aus)
+p.gleich("ohne HEAD: Haken endet gruen", l8.rc, 0)
+p.gleich("ohne HEAD: die vorgemerkte Wache laeuft", l8.aus.includes("pre-commit: ok  probe-a"), true)
+p.gleich("Wachendatei nicht aus dem Index lesbar: Haken endet rot", l9.rc, 1)
+p.gleich("nicht lesbar: die Meldung nennt die Datei", l9.aus.includes("Wachendatei tools/haken/wachen/x.sh nicht aus dem Index lesbar"), true)
+p.gleich("Index kaputt: Haken endet rot", l10.rc, 1)
+p.gleich("Index kaputt: die Liste gilt als nicht lesbar", l10.aus.includes("pre-commit: ROT  Liste der Wachendateien nicht lesbar"), true)
+p.gleich("exit 0 in einer Wachendatei: Haken endet rot", l11.rc, 1)
+p.gleich("exit 0: die Meldung nennt die Datei", l11.aus.includes("die Wachendatei tools/haken/wachen/b.sh hat den Haken vorzeitig beendet"), true)
+p.gleich("exit 0: die Datei lief wirklich", r11.marke("exit"), true)
+p.gleich("Unterordner: die Datei darin laeuft nicht", r12.marke("unterordner") || l12.aus.includes("alt/x.sh"), false)
+p.gleich("Unterordner: die Datei daneben laeuft", l12.aus.includes("pre-commit: ok  probe-a"), true)
+if (process.env.WACHEN_ZEIG) console.log([l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12][Number(process.env.WACHEN_ZEIG) - 1]?.aus)
 
 p.ende()
