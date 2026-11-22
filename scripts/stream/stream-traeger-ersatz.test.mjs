@@ -98,9 +98,26 @@ const S_B = assetUrl(GETEILT_RAUM, SHA, NAME, { release: "beneos_bm_0042", varia
 const S_C = assetUrl(GETEILT_RAUM, SHA_EINS, "kompass.webp", { release: "beneos_bm_0077", variant: "4k" })
 const S_D = assetUrl(GETEILT_RAUM, SHA_ZWEI, "rose.webp", { release: "beneos_bm_0088", variant: "4k" })
 const S_D_ABFRAGE = `${S_D}?v=2`
+// Teil 4: eine eigene Datei mit zwei Traegern, unberuehrt von Teil 1 bis 3.
+const SHA_DREI = "f".repeat(64)
+const KARTE_E = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0091/4k/map_assets/stern.webp`
+const KARTE_F = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0092/hd/map_assets/stern.webp`
+const S_E = assetUrl(GETEILT_RAUM, SHA_DREI, "stern.webp", { release: "beneos_bm_0091", variant: "4k" })
+const S_F = assetUrl(GETEILT_RAUM, SHA_DREI, "stern.webp", { release: "beneos_bm_0092", variant: "hd" })
+// Gegenwert in Teil 4: eine zweite Datei, deren erster Traeger annimmt.
+const SHA_VIER = "9".repeat(64)
+const KARTE_G = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0093/4k/map_assets/mond.webp`
+const KARTE_H = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0094/hd/map_assets/mond.webp`
+const S_G = assetUrl(GETEILT_RAUM, SHA_VIER, "mond.webp", { release: "beneos_bm_0093", variant: "4k" })
+
+// Teil 5: ein Manifest und eine Kartendatei, beide abgewiesen.
+const MANIFEST_ABGEWIESEN = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0095/4k/stream-manifest.json`
+const KARTE_ABGEWIESEN = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0096/4k/karte.webp`
+// Teil 7: ein abgewiesenes Video.
+const VIDEO_ABGEWIESEN = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0098/4k/map_assets/wasser.webm`
 
 const ohneAbfrage = (u) => String(u).split("?")[0]
-const abgewiesen = new Set([S_A, S_C, S_D].map(ohneAbfrage))
+const abgewiesen = new Set([S_A, S_C, S_D, S_E, MANIFEST_ABGEWIESEN, KARTE_ABGEWIESEN, VIDEO_ABGEWIESEN].map(ohneAbfrage))
 
 netz((adresse) => {
   if (adresse.startsWith(MODULPFAD)) {
@@ -112,7 +129,7 @@ netz((adresse) => {
   if (abgewiesen.has(ohneAbfrage(adresse))) {
     return new Response("p", { status: 200, headers: { "x-beneos-denied": "1", "content-type": "image/webp" } })
   }
-  if (adresse === S_B) {
+  if (adresse === S_B || adresse === S_G) {
     return new Response("bild", { status: 200, headers: { "content-type": "image/webp", "content-length": "4" } })
   }
   return undefined
@@ -128,6 +145,17 @@ async function versuche(fn) {
   try { return await fn() } catch (e) { return { wurf: String(e?.message || e).slice(0, 120) } }
 }
 const ruhe = () => new Promise((r) => setTimeout(r, 0))
+
+// Teil 7 faehrt diesen Satz als Kindprozess mit frischer Meldestelle: ein
+// einziger abgewiesener Abruf, danach die Warnungen als eine Zeile, dann Ende.
+if (process.env.TRAEGER_ERSATZ_KIND) {
+  const adresse = process.env.TRAEGER_ERSATZ_KIND === "video" ? VIDEO_ABGEWIESEN : KARTE_ABGEWIESEN
+  await versuche(() => globalThis.fetch(adresse))
+  await ruhe()
+  const texte = meldungen.filter((m) => m.art === "warn").map((m) => m.text)
+  process.stdout.write(`\nKIND-ERGEBNIS ${JSON.stringify(texte)}\n`)
+  process.exit(0)
+}
 
 f.merkePruefsummen([[KARTE_A, SHA], [KARTE_B, SHA], [KARTE_C, SHA_EINS], [KARTE_D, SHA_ZWEI]])
 
@@ -162,6 +190,96 @@ abschnitt("Teil 3: Abfrageteil, ein Traeger")
   await ruhe()
   gleich("genau ein Abruf, auch mit Abfrageteil", amTor().length, 1)
   gleich("mit Abfrageteil: Fehlschlag mit Grund abgewiesen", r?.gruende?.abgewiesen, 1)
+}
+
+abschnitt("Teil 4: ein Abruf ausserhalb von offlineHalten merkt den abgewiesenen Traeger")
+/*
+ * Bis stre-T-208 stand das in stream-traeger.test.mjs als Strukturprobe am
+ * Quelltext. Hier faehrt es der echte Abrufersatz: eine Kachel laedt die
+ * geteilte Datei, das Tor weist mit 200 und `x-beneos-denied` ab (ein 403
+ * erreicht den Zweig nie, er endet schon an `!response.ok`). Danach muss der
+ * Rueckweg den naechsten Traeger nennen. Gegenwert: ein angenommener Abruf
+ * aendert nichts.
+ */
+{
+  f.merkePruefsummen([[KARTE_E, SHA_DREI], [KARTE_F, SHA_DREI], [KARTE_G, SHA_VIER], [KARTE_H, SHA_VIER]])
+  const G = f.vorratsSchluessel(S_E)
+  const H = f.vorratsSchluessel(S_G)
+  gleich("Abruf: vorher nennt der Rueckweg den ersten Traeger", f.adresseAusSchluessel(G), S_E)
+  nimmAbrufe()
+  await versuche(() => globalThis.fetch(S_G))
+  await ruhe()
+  gleich("Abruf angenommen: das Tor wurde gefragt", JSON.stringify(amTor()), JSON.stringify([S_G]))
+  gleich("Abruf angenommen: der Rueckweg bleibt beim ersten Traeger", f.adresseAusSchluessel(H), S_G)
+  await versuche(() => globalThis.fetch(S_E))
+  await ruhe()
+  gleich("Abruf abgewiesen: das Tor wurde gefragt", JSON.stringify(amTor()), JSON.stringify([S_E]))
+  gleich("Abruf abgewiesen: der Rueckweg nennt den zweiten Traeger", f.adresseAusSchluessel(G), S_F)
+}
+
+/*
+ * Teil 5, STEUERDATEIEN MELDEN KEINEN AUSFALL (stre-T-208, vorher eine
+ * Textprobe in stream-hinweis). Die Meldestelle zeigt ihren Hinweis einmal je
+ * Sitzung, Teil 2 hat ihn schon ausgeloest. Gemessen wird deshalb, ob sie die
+ * Adresse als abgewiesen fuehrt: eine Szene mit ihr braucht dann das Schild.
+ * Das Manifest bleibt draussen, die Kartendatei daneben kommt hinein.
+ */
+abschnitt("Teil 5: ein abgewiesenes Manifest meldet keinen Ausfall")
+{
+  const { schildNoetig } = await import("./stream-hinweis.mjs")
+  const szeneMit = (src) => ({ name: "Pruefszene", _source: { background: { src } }, tiles: [], notes: [] })
+  await versuche(() => globalThis.fetch(MANIFEST_ABGEWIESEN))
+  await versuche(() => globalThis.fetch(KARTE_ABGEWIESEN))
+  await ruhe()
+  gleich("Manifest abgewiesen: die Meldestelle fuehrt es nicht", schildNoetig(szeneMit(MANIFEST_ABGEWIESEN)), false)
+  gleich("Gegenwert: eine abgewiesene Kartendatei fuehrt sie", schildNoetig(szeneMit(KARTE_ABGEWIESEN)), true)
+}
+
+/*
+ * Teil 6, DIE OFFLINE-ANTWORT MELDET DEN GRUND (stre-T-208, vorher eine
+ * Textprobe in stream-hinweis). Steht zuletzt, denn der Zustand bleibt danach
+ * offline.
+ */
+abschnitt("Teil 6: offline meldet der Abrufersatz den Grund")
+{
+  const online = await import("./stream-online.mjs")
+  const offlineMeldungen = () => meldungen.filter((m) => m.text.includes("there is no connection to the server")).length
+  gleich("online: keine Offline-Meldung", offlineMeldungen(), 0)
+  navigator.onLine = false
+  online.noteResult(false, "pruefsatz")
+  gleich("Vorbedingung: der Zustand ist offline", online.isOffline(), true)
+  await versuche(() => globalThis.fetch(`${BASIS}/a/${SCHLUESSEL}/beneos_bm_0097/4k/offline.webp`))
+  await ruhe()
+  gleich("offline: der Abruf bringt die Offline-Meldung", offlineMeldungen(), 1)
+}
+
+/*
+ * Teil 7, DER VIDEO-HINWEIS KOMMT VOR DER ALLGEMEINEN MELDUNG (stre-T-208,
+ * vorher eine Textprobe in stream-hinweis). Nach einem Video-Hinweis entfaellt
+ * die allgemeine Meldung "nicht im Zugang" (E3). Das zeigt sich nur in einer
+ * frischen Sitzung, denn die Meldestelle meldet je Grund einmal; jeder Fall
+ * laeuft deshalb als eigener Kindprozess dieses Satzes.
+ */
+abschnitt("Teil 7: ein abgewiesenes Video bringt nur den Video-Hinweis")
+{
+  const { execFileSync } = await import("node:child_process")
+  const kind = (art) => {
+    try {
+      const aus = execFileSync(process.execPath, [fileURLToPath(import.meta.url)], {
+        encoding: "utf8", env: { ...process.env, TRAEGER_ERSATZ_KIND: art }, stdio: ["ignore", "pipe", "pipe"],
+      })
+      const zeile = aus.split("\n").find((z) => z.startsWith("KIND-ERGEBNIS "))
+      return zeile ? JSON.parse(zeile.slice("KIND-ERGEBNIS ".length)) : null
+    } catch (e) { return { wurf: String(e?.message || e).slice(0, 120) } }
+  }
+  const istVideoHinweis = (t) => t.includes("animated maps")
+  const video = kind("video")
+  gleich("Video abgewiesen: genau ein Hinweis", Array.isArray(video) ? video.length : video, 1)
+  gleich("Video abgewiesen: es ist der Video-Hinweis, keine allgemeine Meldung",
+    Array.isArray(video) ? video.filter((t) => !istVideoHinweis(t)).length : video, 0)
+  const bild = kind("bild")
+  gleich("Gegenwert: ein abgewiesenes Bild bringt die allgemeine Meldung",
+    Array.isArray(bild) ? bild.filter((t) => !istVideoHinweis(t)).length : bild, 1)
 }
 
 ende()

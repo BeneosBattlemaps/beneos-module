@@ -1,9 +1,9 @@
 /**
  * Pruefsatz fuer den Abgleich gehaltener Dateien (stre-T-081).
  *
- * `verwaisteLoesen` in `stream-offline.mjs` laedt in node nicht ("Hooks is not
- * defined"). Der Vergleich steht deshalb als reine Funktion `ohneDeckung` in
- * `stream-fetch.mjs`, und dieser Satz misst ihn dort.
+ * Der Vergleich steht als reine Funktion `ohneDeckung` in `stream-fetch.mjs`,
+ * und dieser Satz misst ihn dort. `verwaisteLoesen` und `geteilteLuecken`
+ * selbst laufen am Speicher in `stream-pruefsumme.test.mjs`, Teil 3b.
  *
  * Teil 1, LEGACY: mit dem Schalter AUS verhaelt sich alles wie vor stre-T-081,
  * fuer eine Karte, eine /a/-Datei und ein Tonstueck. Die Vergleichsgroesse ist
@@ -202,8 +202,10 @@ gleich("AUS: ein geteilter Schluessel gilt fuer die Kartenform nicht als gehalte
 gleich("Gegenwert: ohne gehaltene Datei fehlt der Eintrag", pruefung([], AN)(KOMPASS), false)
 
 /*
- * Teil 3, STRUKTUR. Die Anschluesse im Browserteil laden in node nicht; sie
- * werden am Quelltext gelesen, je am Funktionskoerper und nicht an der Datei.
+ * Teil 3, STRUKTUR. Die uebrigen Anschluesse laufen seit stre-T-208 am
+ * Verhalten: adresseVon in stream-pruefsumme Teil 3 und stream-zusage,
+ * verwaisteLoesen und geteilteLuecken in stream-pruefsumme Teil 3b. Die Probe
+ * unten bleibt am Quelltext, der Grund steht in der Marke.
  */
 console.log("\nTeil 3: Struktur der Anschluesse")
 const { readFileSync } = await import("node:fs")
@@ -216,16 +218,7 @@ const koerper = (text, kopf) => {
   return text.slice(a, e < 0 ? undefined : e)
 }
 const offlineQ = quelle("stream-offline.mjs")
-const fetchQ = quelle("stream-fetch.mjs")
-gleich("[Struktur] adresseVon ruft adresseVonKennung",
-  /return adresseVonKennung\(kennung\)/.test(koerper(offlineQ, "export function adresseVon(")), true)
-gleich("[Struktur] verwaisteLoesen loest ueber den Schluessel",
-  /offlineFreigeben\(verwaist\.map\(v => v\.schluessel \|\| v\.url\)\)/
-    .test(koerper(offlineQ, "export async function verwaisteLoesen(")), true)
-gleich("[Struktur] gehalteneAdressen gibt den Schluessel mit",
-  /schluessel: anfrage\.url,/.test(koerper(fetchQ, "export async function gehalteneAdressen(")), true)
-gleich("[Struktur] geteilteLuecken fragt ueber gehaltenePruefung",
-  /gehaltenePruefung\(await gehalteneAdressen\(\)\)/.test(koerper(offlineQ, "export async function geteilteLuecken(")), true)
+// M6: S, "unklar" entsteht nur bei GETEILTER_VORRAT_AN, der Schalter ist modulprivat und aus, geteilteLuecken erreicht den Zweig im Pruefstand also nie.
 gleich("[Struktur] geteilteLuecken laesst einen unklaren Eintrag unberuehrt",
   /if \(stand === "unklar"\) continue/.test(koerper(offlineQ, "export async function geteilteLuecken(")), true)
 

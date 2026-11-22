@@ -29,9 +29,6 @@
  * Gegenfaelle stehen jeweils daneben: fremde Flags behalten die Toradresse
  * (stre-T-128), andere eigene Flags bleiben, ohne Schluessel bleibt alles.
  */
-import { readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { installiereFoundry, pruefstand, haken } from "../../tools/lib/foundry-attrappe.mjs"
 
 const { SETTING, assetUrl, platzhalterAdresse, MODULE_ID } = await import("./stream-settings.mjs")
@@ -249,9 +246,20 @@ t.gleich("scheibenBild ist exportiert", typeof settings.scheibenBild, "function"
     ist([FREI(KUNST)], null, null), json({ img: PLATZ, imgFallback: null }))
   t.gleich("D scheibenBild: ohne jeden Kandidaten kein Bild",
     ist([null, "", undefined], CDN, DATEN), json({ img: null, imgFallback: null }))
-  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../creature-installer/creature-installer.mjs"), "utf8")
-  t.struktur("D: die Scheibe ohne Premium waehlt ueber scheibenBild",
-    /scheibenBild\(\s*\[entry\.art, actor\?\.prototypeToken\?\.texture\?\.src, actor\?\.img\]/.test(quelle), true)
+  // Die Scheibe ohne Premium am Installer selbst (stre-T-208): decorate() mit
+  // einer Kreatur, deren Prototyp eine lokale Datei traegt, waehrend Eintrag und
+  // Akteur gestreamt sind. Die lokale Datei gewinnt nur, wenn alle drei
+  // Kandidaten in die Wahl gehen.
+  const { BeneosCreatureInstaller } = await import("../creature-installer/creature-installer.mjs")
+  const installer = new BeneosCreatureInstaller()
+  const scheibe = (protoSrc) => {
+    installer.resolveActor = () => ({ img: MIT(KUNST), prototypeToken: { texture: { src: protoSrc } } })
+    return installer.decorate({ key: "pruef", art: FREI(KUNST), thumbnail: "pruef.webp", thumbnailData: DATEN },
+      { premium: false, isPatron: false, assignedKeys: new Set() }).img
+  }
+  t.gleich("D Installer: ohne Premium gewinnt die lokale Datei aus dem Prototyp", scheibe(KUNST), KUNST)
+  t.gleich("D Installer Gegenwert: ist auch der Prototyp gestreamt, zieht die Scheibe auf die Miniatur",
+    String(scheibe(MIT(KUNST))).endsWith("/pruef.webp"), true)
 }
 
 t.abschnitt("E: flaggenUmstellen, einmal je Welt")
@@ -419,15 +427,7 @@ if (typeof flaggenUmstellen === "function") {
   }
 }
 
-t.abschnitt("Einstieg: die feste Reihenfolge der Schluessellaeufe")
-{
-  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "beneos-stream.mjs"), "utf8")
-  const rumpf = quelle.slice(quelle.indexOf("async function schluesselLaeufe()"))
-  const ende = rumpf.indexOf("\n}\n") >= 0 ? rumpf.indexOf("\n}\n") : rumpf.indexOf("\r\n}\r\n")
-  const teil = rumpf.slice(0, ende)
-  const f = teil.indexOf("await fremdflaggenZurueck()")
-  const e = teil.indexOf("await flaggenUmstellen()")
-  t.struktur("schluesselLaeufe ruft flaggenUmstellen als vierten Schritt nach fremdflaggenZurueck", f >= 0 && e > f, true)
-}
+// Die feste Folge der Schluessellaeufe faehrt seit stre-T-208
+// stream-einbau.test.mjs am echten Weltstart.
 
 t.ende()

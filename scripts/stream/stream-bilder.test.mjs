@@ -130,6 +130,7 @@ if (typeof riegel === "function") {
   gleich("der Riegel prueft auch den close-Namen", riegel("renderHarmlos", "closeItemDirectory5e"), true)
   gleich("Gross und klein sind fuer den Riegel gleich", riegel("renderitemdirectory", "closeHarmlos"), true)
 }
+// M6: S, FLAECHEN ist modulfest und traegt heute kein Verzeichnis, der Riegel weist im Pruefstand also nie ab und die Reihenfolge Riegel vor Hooks.on ist unbeobachtbar.
 const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "stream-bilder.mjs"), "utf8")
 const einbau = quelle.slice(quelle.indexOf("export function installStreamBilder("))
 struktur("der Einbau fragt den Riegel je Paar, bevor er anmeldet",
@@ -530,6 +531,7 @@ abschnitt("Der Kopf widerspricht der Liste unter sich nicht")
  * 08.11.2026 stand im Kopf "Keine Klappkarten"; mit `OP-PRJ-140` liegen sie
  * am Tor. Dokumentproben, Betreiberentscheid vom 14.11.2026.
  */
+// M6: D, Dokumentproben auf den Dateikopf, Betreiberentscheid vom 14.11.2026.
 dokument("der Kopf behauptet nicht mehr, Klappkarten seien aussen vor",
   (quelle.match(/\*\*Keine Klappkarten/g) || []).length, 0)
 dokument("der Kopf nennt stattdessen, seit wann sie mitgehen",

@@ -26,9 +26,6 @@
  * Die Haelfte der Faelle sind Gegenfaelle: das eigene Flag, das `img`-Feld
  * und gewoehnliche Felder muessen bleiben, wie sie vorher waren.
  */
-import { readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { installiereFoundry, pruefstand } from "../../tools/lib/foundry-attrappe.mjs"
 
 const { SETTING, assetUrl, platzhalterAdresse, MODULE_ID, nachzugRiegelNehmenNachRuecklauf, nachzugRiegelLoesen } =
@@ -373,24 +370,43 @@ if (typeof nachzugRiegelNehmenNachRuecklauf === "function") {
   t.gleich("W5: das Ende der Frist wird gemeldet", dritteZeilen.some((z) => z.includes("gab den Riegel nicht frei")), true)
   einstellungen[SETTING.nachzugRiegel] = ""
 }
+/*
+ * W7, DER NACHZUG NACH EINEM SCHLUESSELWECHSEL wartet auf den Ruecklauf, am
+ * Verhalten statt am Quelltext (stre-T-208). `ensureStreamKey` bekommt vom
+ * Server einen neuen Schluessel und startet den Nachzug ungewartet. Der Riegel
+ * steht beim Ruecklauf und wird nach 50 ms frei. Mit dem Abwarten nimmt der
+ * Nachzug ihn nach dem ersten Takt von zwei Sekunden, ohne das Abwarten sagt er
+ * sofort ab und setzt nie eine eigene Marke.
+ */
 {
-  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "stream-settings.mjs"), "utf8")
-  const rumpf = quelle.slice(quelle.indexOf("async function _adressenNachziehen()"))
-  t.struktur("_adressenNachziehen nimmt den Riegel ueber das Abwarten",
-    rumpf.slice(0, 200).includes("await nachzugRiegelNehmenNachRuecklauf()"), true)
+  const { ensureStreamKey } = await import("./stream-settings.mjs")
+  const marken = []
+  const urSet = game.settings.set
+  game.settings.set = async function (modul, name, wert) {
+    if (name === SETTING.nachzugRiegel && wert && !String(wert).startsWith("andere|")) marken.push(String(wert))
+    return urSet.call(this, modul, name, wert)
+  }
+  einstellungen["beneos-cloud-foundry-id"] = "pruef-sitzung"
+  const urFetch = globalThis.fetch
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: "ok", stream_key: "pk_pruefsatz_neu" }),
+    { status: 200, headers: { "content-type": "application/json" } })
+  const schluesselLesen = Object.getOwnPropertyDescriptor(einstellungen, SETTING.key)
+  einstellungen[SETTING.nachzugRiegel] = `andere|${Date.now()}|zufall|fremdflaggen`
+  setTimeout(() => { einstellungen[SETTING.nachzugRiegel] = "" }, 50)
+  await mitschnitt(async () => {
+    Object.defineProperty(einstellungen, SETTING.key, { value: SCHLUESSEL, writable: true, configurable: true, enumerable: true })
+    await ensureStreamKey()
+    await new Promise((weiter) => setTimeout(weiter, 2400))
+  })
+  t.gleich("W7: der Schluesselwechsel startet den Nachzug", einstellungen[SETTING.key], "pk_pruefsatz_neu")
+  t.gleich("W7: der Nachzug wartet den Ruecklauf ab und nimmt danach den Riegel", marken.length, 1)
+  Object.defineProperty(einstellungen, SETTING.key, schluesselLesen)
+  globalThis.fetch = urFetch
+  game.settings.set = urSet
 }
 
-t.abschnitt("Einstieg: die feste Reihenfolge der Schluessellaeufe")
-{
-  // Eine Strukturaussage: der Einstieg laesst sich ohne ganzes Foundry nicht
-  // laden. Geprueft wird nur der Rumpf von `schluesselLaeufe`.
-  const quelle = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "beneos-stream.mjs"), "utf8")
-  const rumpf = quelle.slice(quelle.indexOf("async function schluesselLaeufe()"))
-  const ende = rumpf.indexOf("\n}\n") >= 0 ? rumpf.indexOf("\n}\n") : rumpf.indexOf("\r\n}\r\n")
-  const teil = rumpf.slice(0, ende)
-  const a = teil.indexOf("altseitenUmstellen()")
-  const f = teil.indexOf("await fremdflaggenZurueck()")
-  t.struktur("schluesselLaeufe ruft fremdflaggenZurueck nach altseitenUmstellen", a >= 0 && f > a, true)
-}
+// Die feste Folge der Schluessellaeufe faehrt seit stre-T-208
+// stream-einbau.test.mjs am echten Weltstart; der Einstieg laedt dort in der
+// Attrappe (die fruehere Annahme, er lade ohne ganzes Foundry nicht, galt nicht).
 
 t.ende()

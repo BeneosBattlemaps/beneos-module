@@ -58,6 +58,13 @@ globalThis.fetch = async (input, init) => {
   return new Response("", { status: 200 })
 }
 const abrufeVon = (url) => klangAbrufe.filter((a) => a.url === url)
+// Jede Zeitgrenze, die der Code ueber AbortSignal.timeout anlegt, mit ihrem
+// Signal: so laesst sich die Zeitgrenze eines Abrufs an seinem Signal ablesen.
+const zeitgrenzen = []
+{
+  const ur = AbortSignal.timeout.bind(AbortSignal)
+  AbortSignal.timeout = (ms) => { const signal = ur(ms); zeitgrenzen.push({ ms, signal }); return signal }
+}
 let unbehandelt = 0
 process.on("unhandledRejection", () => { unbehandelt += 1 })
 
@@ -185,12 +192,13 @@ console.log("\nOffline")
 
 console.log("\nDie Zeitgrenze")
 {
-  const { readFileSync } = await import("node:fs")
-  const quelle = readFileSync(new URL("./stream-online.mjs", import.meta.url), "utf8")
-  const m = /const KLANG_NACHFRAGE_MS = (\d+)/.exec(quelle)
-  const ms = m ? Number(m[1]) : NaN
-  gleich("[Struktur] die Nachfrage hat eine Zeitgrenze von 1 bis 10 Sekunden", ms >= 1000 && ms <= 10000, true)
-  gleich("[Struktur] und nimmt sie als AbortSignal.timeout", /signal: AbortSignal\.timeout\(KLANG_NACHFRAGE_MS\)/.test(quelle), true)
+  // Bis stre-T-208 am Quelltext gelesen; jetzt am Signal der Nachfrage aus
+  // dem Abschnitt "Ein online gescheiterter Torklang" abgelesen.
+  const signal = abrufeVon(KLANG(1))[0]?.signal
+  const grenze = zeitgrenzen.find((z) => z.signal === signal)
+  gleich("das Signal der Nachfrage stammt aus AbortSignal.timeout", Boolean(signal && grenze), true)
+  const ms = grenze ? grenze.ms : NaN
+  gleich("die Nachfrage hat eine Zeitgrenze von 1 bis 10 Sekunden", ms >= 1000 && ms <= 10000, true)
 }
 
 console.log(`\n${gruen} bestanden, ${rot} gescheitert`)

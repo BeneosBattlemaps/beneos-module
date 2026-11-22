@@ -166,11 +166,64 @@ abschnitt("Teil 3: der Gemeinschaftsvorrat schreibt die Pruefsumme mit")
     ["beneos_bm_0113|4k|map_assets/alt.webp", "beneos_bm_0113|4k|map_assets/kompass.webp", "beneos_bm_0113|4k|map_assets/unbekannt.webp"].join(" "))
 }
 
+/*
+ * Teil 3b, DIE ANSCHLUESSE AM WELTSTART, am Verhalten statt am Quelltext
+ * (stre-T-208). `verwaisteLoesen` und `geteilteLuecken` laufen hier mit dem
+ * Speicher der Attrappe und den Einstellungen, wie der Weltstart sie ruft.
+ */
+abschnitt("Teil 3b: Weltstart-Abgleich am Speicher")
+{
+  const { verwaisteLoesen, geteilteLuecken } = await import("./stream-offline.mjs")
+  const store = await caches.open("x")
+  await caches.delete()
+  const gehaltenImSpeicher = async (schluessel) => {
+    const r = await store.match(schluessel)
+    return Boolean(r?.headers.get("x-beneos-keep"))
+  }
+  const lege = (schluessel) => store.put(schluessel, new Response("bild", {
+    status: 200, headers: { "x-beneos-keep": "1", "content-type": "image/webp", "content-length": "4" } }))
+
+  const KARTE_V = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0120/4k/karte.webp`
+  const VERWAIST = f.vorratsSchluessel(KARTE_V)
+  const ZUGESAGT_V = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0121/4k/karte.webp`
+  const ZUGESAGT = f.vorratsSchluessel(ZUGESAGT_V)
+  const OHNE_TRAEGER = geteilterSchluessel("d".repeat(64), "ohne.webp")
+  await lege(VERWAIST)
+  await lege(ZUGESAGT)
+  await lege(OHNE_TRAEGER)
+  einstellungen["beneos-stream-offline-held"] = {
+    "beneos_bm_0121|4k|z": { release: "beneos_bm_0121", variant: "4k", karte: "z", dateien: ["karte.webp"], bytes: 4 },
+  }
+  einstellungen["beneos-stream-offline-shared"] = {}
+  let r
+  try { r = await verwaisteLoesen() } catch (e) { r = { wurf: String(e?.message || e) } }
+  gleich("verwaisteLoesen: zwei Dateien ohne Zusage werden geloest", r?.geloest, 2)
+  gleich("verwaisteLoesen: die Kartendatei ohne Zusage ist nicht mehr gehalten", await gehaltenImSpeicher(VERWAIST), false)
+  gleich("verwaisteLoesen: die geteilte Datei ohne Traeger ist nicht mehr gehalten", await gehaltenImSpeicher(OHNE_TRAEGER), false)
+  gleich("verwaisteLoesen Gegenwert: die zugesagte Kartendatei bleibt gehalten", await gehaltenImSpeicher(ZUGESAGT), true)
+
+  await caches.delete()
+  const DA_V = `${BASIS}/a/${SCHLUESSEL}/beneos_bm_0122/4k/map_assets/da.webp`
+  await lege(f.vorratsSchluessel(DA_V))
+  einstellungen["beneos-stream-offline-shared"] = {
+    "beneos_bm_0122|4k|map_assets/da.webp": { bytes: 4, karten: ["x|y|z"], fehlt: true },
+    "beneos_bm_0122|4k|map_assets/weg.webp": { bytes: 4, karten: ["x|y|z"] },
+  }
+  try { r = await geteilteLuecken() } catch (e) { r = { wurf: String(e?.message || e) } }
+  const nachher = einstellungen["beneos-stream-offline-shared"] || {}
+  gleich("geteilteLuecken: die gehaltene Datei verliert ihren Fehlvermerk",
+    "fehlt" in (nachher["beneos_bm_0122|4k|map_assets/da.webp"] || {}), false)
+  gleich("geteilteLuecken Gegenwert: die nicht gehaltene Datei wird als fehlend vermerkt",
+    nachher["beneos_bm_0122|4k|map_assets/weg.webp"]?.fehlt, true)
+  gleich("geteilteLuecken: genau eine Datei fehlt", r?.fehlend, 1)
+}
+
 abschnitt("Teil 4: Struktur")
 {
   const hier = dirname(fileURLToPath(import.meta.url))
   const code = readFileSync(join(hier, "stream-offline.mjs"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((z) => z.replace(/\/\/.*$/, "")).join("\n")
+  // M6: S, die Pruefsumme des Eintrags wirkt nur bei GETEILTER_VORRAT_AN, der Schalter ist modulprivat und aus, im Pruefstand gleicht der Weg mit und ohne deckungDesVorrats also.
   const verwaist = code.slice(code.indexOf("export async function verwaisteLoesen"))
   struktur("verwaisteLoesen deckt den Gemeinschaftsvorrat ueber deckungDesVorrats",
     /deckungDesVorrats\(liesGeteilt\(\)\)/.test(verwaist.slice(0, 900)), true)

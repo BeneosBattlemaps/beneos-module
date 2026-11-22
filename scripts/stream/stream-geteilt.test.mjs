@@ -173,6 +173,7 @@ const settings = lies("stream-settings.mjs")
 const offline = lies("stream-offline.mjs")
 const fetchQ = lies("stream-fetch.mjs")
 
+// M6: S, Eindeutigkeit der Definition und Herkunft des Imports, zwei gleichlautende Kopien verhalten sich heute gleich, nur der Text zeigt die zweite.
 struktur("die Regel ist genau einmal definiert",
   ((settings + offline + fetchQ).match(/function istGeteilteDatei\(/g) || []).length === 1)
 struktur("und sie steht in stream-settings.mjs",
@@ -187,6 +188,7 @@ struktur("und sie steht in stream-settings.mjs",
 {
   const { readdirSync } = await import("node:fs")
   const SKRIPTE = join(HIER, "..")
+  // M6: S, Nahtverbot: ein Aufruf einer Pruefsatznaht aus einer Moduldatei aendert den Kundenschluessel, ohne dass ein Verhaltenssatz es sieht, weil die Saetze die Naht selbst rufen.
   const fremd = []
   for (const eintrag of readdirSync(SKRIPTE, { recursive: true })) {
     const datei = String(eintrag)
@@ -205,6 +207,7 @@ struktur("stream-offline.mjs importiert sie",
  * Vorkommen und wurde rot: sechs davon stehen in Kommentaren, die genau
  * erklaeren, warum die Regel an EINER Stelle liegt.
  */
+// M6: S, Eindeutigkeit des Musters und Gegenprobe des Kommentarfilters, eine zweite Stelle mit gleichem Verhalten zeigt nur der Text.
 struktur("das Muster map_assets steht im Code nur an der einen Stelle",
   ((nurCode(settings) + nurCode(offline) + nurCode(fetchQ)).match(/map_assets/g) || []).length === 1)
 // Gegenprobe auf den Trenner selbst: eine Suche, die nichts findet, ist von
@@ -403,6 +406,7 @@ wahr("keine Kundeneinstellung nennt den Vorrat",
 // Ausgenommen ist der Gemeinschaftsvorrat selbst (`SETTING.offlineGeteilt`):
 // seit stre-T-175 liest die Lesehuelle daraus die Pruefsumme einer gehaltenen
 // Datei. Das sind Daten und kein Schalter; der Schalter bleibt die Konstante.
+// M6: S, Abwesenheit eines Einstellungszugriffs, eine nie gesetzte Einstellung verhaelt sich im Pruefstand wie keine.
 struktur("die Abrufschicht liest keine Einstellung zum Vorrat",
   !/SETTING\.(?!offlineGeteilt\b)\w*[gG]eteilt/.test(fetchQ))
 
@@ -513,6 +517,7 @@ console.log("\nDer Umrechner mit dem Schalter AN, gemessen ueber die Naht")
 // Der Raumname kommt aus EINER Quelle. Zwei Kopien in zwei Dateien gehen
 // erfahrungsgemaess nicht zugleich mit, und dieselbe Begruendung steht schon
 // bei `zerlegeAdresse`.
+// M6: S, Eindeutigkeit des Raumnamens und Herkunft des Imports, zwei gleiche Konstanten verhalten sich heute gleich, nur der Text zeigt die zweite.
 struktur("der Raumname ist genau einmal gesetzt",
   ((settings + fetchQ + offline).match(/GETEILT_RAUM = /g) || []).length === 1)
 struktur("stream-fetch.mjs importiert ihn",

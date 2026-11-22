@@ -28,7 +28,11 @@ const { gleich, ende } = pruefstand("stream-einbau, init bei Modus aus mit Schlu
 const SCHLUESSEL = "pk_einbau_attrappe"
 const GATE = "https://gate.beneos.stream"
 const { SETTING } = await import("./stream-settings.mjs")
-installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE, [SETTING.mode]: false } })
+// Der letzte Abschnitt faehrt diesen Satz als Kindprozess mit Modus an.
+const KIND_MODUS_AN = process.env.EINBAU_KIND === "an"
+installiereFoundry({ einstellungen: { [SETTING.key]: SCHLUESSEL, [SETTING.base]: GATE, [SETTING.mode]: KIND_MODUS_AN } })
+// Mit Modus an haengt der Einstieg Fensterhaken ein, die die Attrappe nicht stellt.
+if (KIND_MODUS_AN) globalThis.addEventListener ??= () => {}
 
 // Eine Dokumentklasse, wie `installStreamLeinwand` sie in CONFIG erwartet.
 class Kachel {
@@ -61,6 +65,22 @@ try {
     }
   }
 } catch (e) { ladefehler = String(e?.stack ?? e).slice(0, 400) }
+
+/** Ein Szenenaufbau beginnt, dann weist das Tor eine Datei ab: meldet die Meldestelle sofort? */
+async function meldetImAufbau() {
+  globalThis.game.user = { isGM: true }
+  for (const h of haken.liste.filter((x) => x.name === "canvasInit")) {
+    try { await h.fn() } catch (_) { /* gezaehlt wird die Wirkung */ }
+  }
+  const { meldeAusfall } = await import("./stream-hinweis.mjs")
+  return meldeAusfall("denied", `${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/karte.webp`)
+}
+
+if (KIND_MODUS_AN) {
+  const sofort = await meldetImAufbau()
+  process.stdout.write(`\nKIND-ERGEBNIS ${JSON.stringify({ ladefehler, sofort })}\n`)
+  process.exit(0)
+}
 
 gesehen.length = 0
 console.log(`Loaded ${GATE}/a/${SCHLUESSEL}/beneos_bm_0113/4k/karte.webp`)
@@ -202,7 +222,12 @@ const FREI_HTML = "beneos://a/beneos_bm_0113/4k/handout.webp"
   globalThis.game.journal = [journal]
   globalThis.game.user = { isGM: true }
   const leise = console.log
-  console.log = () => {}
+  // Die Laeufe schreiben je eine Abschlusszeile; ihre Folge ist die Folge der Laeufe.
+  const laufzeilen = []
+  console.log = (...a) => {
+    const t = a.map(String).join(" ")
+    if (/^Beneos Stream \| (Altseiten|Fremde Flags|Eigene Flags)/.test(t)) laufzeilen.push(t)
+  }
   for (let mal = 0; mal < 2; mal++) {
     // Seit stre-T-113 ruft der Haken `weltstartStream()` und wartet nicht
     // darauf; die Probe wartet deshalb selbst, bevor sie die Wirkung zaehlt.
@@ -224,9 +249,62 @@ const FREI_HTML = "beneos://a/beneos_bm_0113/4k/handout.webp"
   globalThis.game.user = vorher.user
   gleich("Modus aus mit Schluessel: ready stellt Altseiten auf Form (a) um, einmal",
     `${geschrieben.length}|${!JSON.stringify(geschrieben).includes(SCHLUESSEL)}`, "1|true")
+  /*
+   * DIE FESTE FOLGE DER SCHLUESSELLAEUFE (stre-T-128, stre-T-122 E). Bis
+   * stre-T-208 lasen die Saetze fremdflaggen und flaggen sie am Rumpf von
+   * `schluesselLaeufe`; hier zaehlt die Folge der Abschlusszeilen des echten
+   * Weltstarts. Der Trockenlauf oben schreibt eine weitere Altseiten-Zeile;
+   * gezaehlt werden deshalb nur die Zeilen ohne "(trocken)".
+   */
+  const folge = laufzeilen.filter((z) => !z.includes("(trocken)")).map((z) => z.replace("Beneos Stream | ", "").split(":")[0])
+  gleich("ready: die Schluessellaeufe laufen je einmal, Altseiten, fremde Flags, eigene Flags",
+    folge.join(" > "), "Altseiten > Fremde Flags > Eigene Flags")
+}
+
+/*
+ * DAS FENSTER RUFT `BeneosStream.listReleases` UND LIEST `e.status`
+ * (Kalt-Review 17.11.2026). Eine Huelle im api-Objekt, die neu wirft, verloere
+ * den Status still, und das Fenster zeigte bei 403 den falschen Text. Bis
+ * stre-T-208 stand das in stream-rueckfall.test.mjs als Strukturprobe am
+ * Quelltext des Einstiegs; hier faehrt es das echte api-Objekt nach `ready`.
+ * Zwei Werte, damit ein fester Status nicht zufaellig passt.
+ */
+{
+  const api = globalThis.game.beneos?.stream
+  const alt = globalThis.fetch
+  const abruf = async (status) => {
+    globalThis.fetch = async () => new Response("{}", { status, headers: { "content-type": "application/json" } })
+    try { await api?.listReleases?.(); return "kein Fehler" } catch (e) { return `${e?.status}` } finally { globalThis.fetch = alt }
+  }
+  gleich("api.listReleases: ein 403 kommt mit Status 403 beim Fenster an", await abruf(403), "403")
+  gleich("api.listReleases: ein 502 kommt mit Status 502 beim Fenster an", await abruf(502), "502")
 }
 
 // Zweiwertprobe: der fetch-Ersatz haengt weiter am Modus.
 gleich("Modus aus: der fetch-Ersatz ist NICHT eingebaut", globalThis.fetch, urFetch)
+
+/*
+ * DER EINSTIEG BAUT DIE MELDESTELLE EIN, ABER NUR MIT MODUS AN (stre-T-208,
+ * vorher eine Textprobe in stream-hinweis). Eingebaut haelt die Meldestelle
+ * waehrend eines Szenenaufbaus die Meldung "nicht im Zugang" zurueck, bis die
+ * Videos nachgeladen sind; ohne Einbau meldet sie sofort. Modus an laeuft als
+ * Kindprozess, weil der Einstieg je Prozess einmal laedt. Steht zuletzt, denn
+ * die Meldung bleibt danach in dieser Sitzung gemeldet.
+ */
+{
+  const { execFileSync } = await import("node:child_process")
+  const { fileURLToPath } = await import("node:url")
+  let kind = null
+  try {
+    const aus = execFileSync(process.execPath, [fileURLToPath(import.meta.url)], {
+      encoding: "utf8", env: { ...process.env, EINBAU_KIND: "an" }, stdio: ["ignore", "pipe", "pipe"],
+    })
+    const z = aus.split("\n").find((x) => x.startsWith("KIND-ERGEBNIS "))
+    kind = z ? JSON.parse(z.slice("KIND-ERGEBNIS ".length)) : null
+  } catch (e) { kind = { wurf: String(e?.message || e).slice(0, 120) } }
+  gleich("Modus an: init laeuft in der Attrappe durch", kind?.ladefehler, "")
+  gleich("Modus an: die Meldestelle ist eingebaut und haelt die Meldung im Szenenaufbau zurueck", kind?.sofort, false)
+  gleich("Gegenwert Modus aus: ohne Einbau meldet sie im Szenenaufbau sofort", await meldetImAufbau(), true)
+}
 
 ende()

@@ -15,13 +15,9 @@
  *
  *   node scripts/stream/stream-traeger.test.mjs
  */
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
-
 import { pruefstand, installiereFoundry, netz, nimmAbrufe } from "../../tools/lib/foundry-attrappe.mjs"
 
-const { gleich, struktur, abschnitt, ende } = pruefstand("stream-traeger, Rueckfall auf den naechsten Traeger")
+const { gleich, abschnitt, ende } = pruefstand("stream-traeger, Rueckfall auf den naechsten Traeger")
 
 const BASIS = "https://gate.beneos.stream"
 const SCHLUESSEL = "k-attrappe-0001"
@@ -131,14 +127,7 @@ gleich("der Rueckweg nennt vor der Abweisung den ersten Traeger", f.adresseAusSc
   gleich("ein Traeger: der Rueckweg bleibt beim selben", f.adresseAusSchluessel(f.vorratsSchluessel(S_C)), S_C)
 }
 
-abschnitt("Teil 3: Struktur")
-{
-  const hier = dirname(fileURLToPath(import.meta.url))
-  const code = readFileSync(join(hier, "stream-fetch.mjs"), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((z) => z.replace(/\/\/.*$/, "")).join("\n")
-  const zweig = code.slice(code.indexOf('response.headers.get("x-beneos-denied")) {'))
-  struktur("der Abweisungszweig des Abrufersatzes merkt den Traeger",
-    /merkeTraegerAbweisung\(url\)/.test(zweig.slice(0, 1500)), true)
-}
+// Der Abweisungszweig des Abrufersatzes wird seit stre-T-208 gefahren, nicht
+// mehr am Quelltext gelesen: stream-traeger-ersatz.test.mjs, Teil 4.
 
 ende()

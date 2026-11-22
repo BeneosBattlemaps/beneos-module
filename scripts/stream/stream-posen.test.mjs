@@ -718,6 +718,7 @@ function nurCode(js) {
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split("\n").map(z => z.replace(/\/\/.*$/, "")).join("\n")
 }
+// M6: S, Abwesenheit in fremden Dateien und die Gegenprobe des Kommentarfilters, kein Aufruf kann zeigen, dass ein Name im Code NICHT steht.
 const posenQuelle = readFileSync(join(hier, "stream-posen.mjs"), "utf8")
 struktur("der Kommentarfilter laesst Code stehen", nurCode(posenQuelle).includes("export async function ansichtGeprueft"), true)
 struktur("der Kommentarfilter nimmt Kommentare weg", nurCode(posenQuelle).includes("zweite Wahrheit"), false)

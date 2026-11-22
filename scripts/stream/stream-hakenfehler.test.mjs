@@ -186,6 +186,7 @@ const lehneAb = (wurf) => () => Promise.reject(wurf)
 // Rueckruf, geschnitten mit `extractHaken` und ausgewertet in einem Bereich,
 // in dem jeder unbekannte Name ein Allesschlucker ist. Was eine Probe braucht,
 // setzt sie selbst.
+// M6: E, beneos_module.js laesst sich nicht importieren, die Lesung liefert nur den Code, aus dem die echten Rueckrufe geschnitten und ausgefuehrt werden.
 const MODULQUELLE = readFileSync(new URL("../beneos_module.js", import.meta.url), "utf8")
 
 /** Jeder Zugriff, jeder Ruf und jedes `new` liefert ihn wieder. */
@@ -600,6 +601,7 @@ p.abschnitt("beneos_module.js: ready, Suchfenster neu oeffnen (W1)")
 
 // Das Cloud-Fenster laesst sich nicht importieren. Geschnitten wird die echte
 // Methode und in eine Klasse gesetzt; die Namen kommen aus dem Bereich.
+// M6: E, das Cloud-Fenster laesst sich nicht importieren, die Lesung liefert nur den Code, aus dem die echten Methoden geschnitten und ausgefuehrt werden.
 const FENSTERQUELLE = readFileSync(new URL("../cloud-v2/cloud-window-v2.mjs", import.meta.url), "utf8")
 function fensterMethode(name, eigen) {
   try {

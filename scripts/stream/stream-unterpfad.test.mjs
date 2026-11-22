@@ -34,6 +34,7 @@ import { extractMethod } from "../../tools/lib/extract-method.mjs"
 
 const p = pruefstand("unterpfad: Routenpraefix (T-159 neun Stellen, T-164 Importe, Todesmarker, CSS), Kachelsymbol der Tour")
 
+// M6: E, die Lesungen liefern den Code, aus dem die Stellen geschnitten und unter dem Wortlaut von Foundrys getRoute ausgefuehrt werden, die Strukturproben tragen eigene Marken.
 const lies = (pfad) => readFileSync(new URL(pfad, import.meta.url), "utf8")
 const WAECHTER = lies("../beneos-asset-watcher.js")
 const TOUREN = lies("../beneos_tours.js")
@@ -104,6 +105,7 @@ abrufe.length = 0
 const absolut = await sicherAsync(() => tourAbruf("beneos://s/tour/actor-184-rot_cerf.json"))
 p.gleich("eine absolute Adresse loest keinen Abruf aus", abrufe.length, 0)
 p.gleich("und liefert keinen Inhalt", absolut, null)
+// M6: S, die Zeile steht im Tourablauf von beneos_tours.js, das ueber das Cloud-Fenster Foundry-Klassen hereinzieht und im Pruefstand nicht laedt, der Abrufweg selbst ist darueber gefahren.
 p.struktur("der Rot Cerf holt seinen Inhalt ueber beneosTourJsonAbrufen",
   /const resp = await beneosTourJsonAbrufen\(await beneosResolveTourAssetPath\(GETTING_STARTED_RUNTIME_ASSETS\.codexContent\)\)/.test(TOUREN), true)
 
@@ -133,6 +135,7 @@ p.gleich("B1 eine absolute Adresse bleibt stehen", sicher(() => mitPraefix(() =>
 p.abschnitt("B2/B3 Masken-Symbole in beneos-codex.mjs und forge-generator.mjs")
 for (const [name, text, schluessel, soll] of [["beneos-codex iconBw", KODEX, "iconBw", 2], ["forge-generator iconMask", SCHMIEDE, "iconMask", 2]]) {
   const ausdruecke = [...text.matchAll(new RegExp(`(?:${schluessel}|originIconMask)\\s*[:=]\\s*(\\w+\\.image \\? [^:]+ : null)`, "g"))].map((m) => m[1])
+  // M6: E, Vorbedingung des Schnitts: ohne die erwartete Zahl an Stellen liefe die Ausfuehrung darunter ueber eine leere Liste gruen.
   p.struktur(`${name}: ${soll} Stellen gefunden`, ausdruecke.length, soll)
   // Ein Pfad mit Leerzeichen: die Stelle kodiert nicht und soll es weiter nicht tun.
   const BILD = "m/v one.webp"
@@ -173,6 +176,7 @@ const frage = async (a) => { antwort = a; return sicherAsync(() => behalten("ben
 p.gleich("status -2 (ungeprueft, etwa beneos://) wird behalten", await frage({ ok: false, status: -2 }), true)
 p.gleich("404 wird ersetzt", await frage({ ok: false, status: 404 }), false)
 p.gleich("200 wird behalten", await frage({ ok: true, status: 200 }), true)
+// M6: S, die Rufstelle steht im Tourablauf von beneos_tours.js, das im Pruefstand nicht laedt, beneosTourAdresseBehalten selbst ist darueber gefahren.
 p.struktur("intro-complete prueft die gespeicherte Adresse mit beneosTourAdresseBehalten",
   /savedIconSrc && await beneosTourAdresseBehalten\(savedIconSrc\)/.test(TOUREN), true)
 
@@ -181,6 +185,7 @@ p.struktur("intro-complete prueft die gespeicherte Adresse mit beneosTourAdresse
 p.abschnitt("T-164 Importe von scene-packer")
 const PACKER = lies("../beneos-scenepacker.js")
 const IMPORT_SOLL = /import\(routeAdresse\("modules\/scene-packer\/scripts\/export-import\/moulinette-importer\.js"\)\)/
+// M6: S, der dynamische Import eines fremden Moduls laeuft nur in Foundry mit installiertem scene-packer, routeAdresse selbst ist darunter gefahren.
 p.struktur("beneos-scenepacker importiert scene-packer ueber routeAdresse", IMPORT_SOLL.test(PACKER), true)
 p.struktur("beneos-scenepacker bindet routeAdresse ein",
   /^import \{[^}]*\brouteAdresse\b[^}]*\} from "\.\/beneos-asset-watcher\.js";?$/m.test(PACKER), true)
@@ -198,6 +203,7 @@ p.gleich("Todesmarker mit Praefix unter dem Unterpfad", aufgeloest(fxBild, "http
 p.abschnitt("T-164 CSS: url() relativ zur CSS-Datei")
 for (const datei of ["beneos-journal.css", "beneos-character-sheet.css", "beneos-wiki.css", "beneos.css"]) {
   const css = lies(`../../css/${datei}`)
+  // M6: S, Abwesenheit in CSS, das kein Pruefstand ausfuehrt, die vorhandenen url() werden darunter gegen beide Basen aufgeloest.
   p.struktur(`${datei}: kein url() an der Serverwurzel`, /url\(\s*["']?\/modules\//.test(css), false)
   const urls = [...css.matchAll(/url\(\s*["']?([^"')]*icons\/[^"')]*)["']?\s*\)/g)].map((m) => m[1])
   const ohne = urls.map((u) => aufgeloest(u, `https://h/modules/beneos-module/css/${datei}`))

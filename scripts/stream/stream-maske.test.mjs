@@ -295,6 +295,7 @@ console.log("Die Gesamtmenge: die Tabelle gegen den Quelltext");
   //
   // Die Gegenzahl kommt deshalb aus einer anderen Datei und aus einer anderen
   // Form: den Buchstaben, die `assetUrl()` wirklich in eine Adresse schreibt.
+  // M6: S, bewusst zweite Herleitung der Raeume aus dem Quelltext von adressSegmente und zerlegeAdresse, sie faengt einen fehlenden Raum, den eine Schleife ueber die Tabelle nie sieht.
   const setQuelle = readFileSync(join(HIER, "stream-settings.mjs"), "utf8");
 
   /*
@@ -409,6 +410,7 @@ console.log("Die Maske liest ihre Buchstaben aus der Tabelle, nicht aus sich sel
   // WAS DIESER SATZ FAENGT, das kein Verhaltenssatz faengt: jemand schreibt die
   // Buchstaben wieder fest in die Maske. Das Verhalten waere heute identisch,
   // und der naechste Raum wuerde wieder lecken.
+  // M6: S, festgeschriebene Buchstaben in der Maske verhalten sich heute gleich wie die Tabelle, nur der Text unterscheidet sie.
   const repQuelle = readFileSync(join(HIER, "stream-report.mjs"), "utf8");
   const nurCode = repQuelle.split("\n").filter((z) => {
     const x = z.trim();

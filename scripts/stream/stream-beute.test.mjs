@@ -354,6 +354,29 @@ console.log("\nkarte(): der Name kommt aus der Liste und wird nicht gebildet")
     (await karte(tor, "FRONT")).zustand, true)
 }
 
+console.log("\nkarte(): ein Listenname, den keine Namensregel ergibt")
+{
+  /*
+   * Die Liste oben traegt genau den Namen, den eine Regel `<kennung>-<rolle>`
+   * auch bilden wuerde; ein Rueckfall auf das Bilden bliebe dort gruen. Bis
+   * stre-T-208 stand das deshalb als Strukturprobe am Quelltext. Hier traegt
+   * die Liste Namen, die keine Regel ergibt, und die Adresse muss genau sie
+   * tragen. Zwei Rollen, damit ein fest eingesetzter Name nicht zufaellig passt.
+   */
+  stelleWelt()
+  kartenVergessen()
+  const frei = liste()
+  frei.karten.front.pfad = "vorne_v2.webp"
+  frei.karten.back.pfad = "ruecken_neu.webp"
+  stelleAbruf((a) => a.endsWith("_karten.json") ? { koerper: frei, kopf: {} } : null)
+  const tor = assetUrl(RELEASE, "", `${KENNUNG}-front.webp`)
+  gleich("freier Listenname: die Vorderseite traegt den Namen aus der Liste",
+    (await karte(tor, ROLLEN.front)).src, `${GATE_DEFAULT_BASE}/l/pruefschluessel/${RELEASE}/vorne_v2.webp`)
+  gleich("freier Listenname: die Rueckseite traegt den Namen aus der Liste",
+    (await karte(tor, ROLLEN.back)).src, `${GATE_DEFAULT_BASE}/l/pruefschluessel/${RELEASE}/ruecken_neu.webp`)
+  kartenVergessen()
+}
+
 console.log("\nEine fehlende Rolle steht als null drin, und das IST eine Antwort")
 {
   stelleWelt()
@@ -676,31 +699,21 @@ console.log("\nDer Deckel des Merkers haelt, auch ueber eine lange Sitzung")
 // ===========================================================================
 abschnitt("Strukturproben: die Regel steht nicht nur im Kommentar")
 const hier = dirname(fileURLToPath(import.meta.url))
+// M6: S, gelesen fuer die Merkerproben unten, Grund dort an der Marke.
 const karten = readFileSync(join(hier, "stream-karten.mjs"), "utf8")
 const posen = readFileSync(join(hier, "stream-posen.mjs"), "utf8")
 
 /*
- * WARUM DIESE PROBEN. Die Faelle oben messen das Verhalten der heutigen
- * Fassung. Sie faengen aber nicht den Rueckfall, bei dem jemand den Namen
- * wieder BILDET und dabei zufaellig dasselbe Ergebnis erzeugt, weil die
- * gestellte Liste denselben Namen traegt. Das ist eine Aussage ueber den Code
- * selbst, darum steht sie als Strukturprobe.
+ * Dass der Name aus der Liste kommt und nicht gebildet wird, faehrt seit
+ * stre-T-208 der Abschnitt "ein Listenname, den keine Namensregel ergibt".
  */
-const ausDerListe = (karten.match(/assetUrl\(wer\.release, "", eintrag\.pfad\)/g) || []).length
-struktur("die Adresse entsteht aus `eintrag.pfad`", ausDerListe, 1)
-// Nur Kommentarzeilen duerfen einen Rollennamen an eine Kennung haengen.
-const codeZeilen = karten.split("\n").filter((z) => {
-  const k = z.trimStart()
-  return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")
-})
-const gebildet = codeZeilen.filter((z) => /-\$\{?(rolle|ziel)/.test(z)).length
-struktur("kein Dateiname wird im Code zusammengesetzt", gebildet, 0)
 
 /*
  * DER GETEILTE MERKER DARF NICHT WIEDER ZUR KOPIE WERDEN. Beide Dateien
  * fuehren Fristen und Deckel; abgeschrieben waere die Verdraengung zweimal
  * geschrieben und beim naechsten Fehler nur an einer Stelle behoben.
  */
+// M6: S, eine abgeschriebene Kopie des Merkers verhaelt sich heute gleich wie der geteilte, nur Import und fehlende eigene Definition unterscheiden sie im Text.
 struktur("stream-karten holt den Merker", karten.includes('from "./stream-merker.mjs"'), true)
 struktur("stream-posen holt denselben Merker", posen.includes('from "./stream-merker.mjs"'), true)
 const eigenerMerker = (karten + posen).match(/^function (merken|einmal|frisch)\(/gm) || []
@@ -711,9 +724,10 @@ struktur("keine der beiden Dateien hat einen eigenen Merker", eigenerMerker.leng
  * Faelle weiter unten messen, was der Schalter bewirkt, aber nicht, wie oft er
  * gelesen wird: ein gedoppelter Ruf gibt denselben Wert, und die Attrappe
  * zaehlt keine Lesezugriffe. Gezaehlt wird darum im Code, Kommentarzeilen
- * ausgenommen wie oben bei `codeZeilen`. Zwei heisst: die Definition und die
+ * ausgenommen (Filter direkt unten). Zwei heisst: die Definition und die
  * eine Rufstelle im Item-Installer.
  */
+// M6: S, Leseanzahl: ein gedoppelter Ruf des Beuteschalters gibt denselben Wert, und die Attrappe zaehlt keine Lesezugriffe.
 const cloudCode = readFileSync(join(hier, "..", "beneos_cloud.js"), "utf8").split(/\r?\n/).filter((z) => {
   const k = z.trimStart()
   return k !== "" && k[0] !== "*" && !k.startsWith("//") && !k.startsWith("/*")

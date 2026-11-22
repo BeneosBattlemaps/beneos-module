@@ -29,6 +29,7 @@ const HIER = dirname(fileURLToPath(import.meta.url))
 const WURZEL = join(HIER, "..", "..")
 const { gleich, struktur, abschnitt, ende } = pruefstand("stream-rueckfall, Cloud-Liste wenn der Stream-Katalog scheitert")
 
+// M6: E, die Lesung liefert nur den Code, aus dem die Methoden unten geschnitten und im Pruefstand ausgefuehrt werden, die Strukturprobe darunter sichert, dass jeder Schnitt etwas fand.
 const fensterText = readFileSync(join(WURZEL, "scripts/cloud-v2/cloud-window-v2.mjs"), "utf8")
 const zustandText = readFileSync(join(WURZEL, "scripts/cloud-v2/beneos-install-state.mjs"), "utf8")
 
@@ -269,10 +270,12 @@ abschnitt("Kontext und Vorlage")
   f.searchMode = "token"
   gleich("kein Hinweis: anderer Reiter", f.ausCloud(), false)
 
+  // M6: S, der Kontext entsteht in _prepareContext des ganzen Fensters, das dieser Satz nicht aufbaut, gefahren werden oben nur die zwei Lieferanten.
   struktur("der Kontext reicht bmapReleasesAusCloud durch",
     /bmapReleasesAusCloud:\s*this\.#releasesAusCloud\(\)/.test(fensterText), true)
   struktur("der Kontext reicht bmapRueckfallAbgewiesen durch",
     /bmapRueckfallAbgewiesen:\s*this\.#rueckfallAbgewiesen\(\)/.test(fensterText), true)
+  // M6: S, die Vorlage ist Handlebars und der Pruefstand rendert keine Vorlagen, Lage und Weiche des Hinweises stehen nur im Text.
   const vorlage = readFileSync(join(WURZEL, "templates/cloud-v2/parts/results-pane.hbs"), "utf8")
   const zeile = vorlage.split("\n").find((z) => z.includes("\"BENEOS.Cloud.Bmap.ReleasesFromCloud\"")) ?? ""
   const hinweis = vorlage.indexOf("\"BENEOS.Cloud.Bmap.ReleasesFromCloud\"")
@@ -356,11 +359,9 @@ abschnitt("Katalog: der Fehler traegt den Status")
   }
   gleich("403: Meldung unveraendert, Status 403", await abruf(403), "stream catalogue unavailable (403)|403")
   gleich("502: Meldung unveraendert, Status 502", await abruf(502), "stream catalogue unavailable (502)|502")
-  // Kalt-Review 17.11.2026: Das Fenster ruft globalThis.BeneosStream.listReleases.
-  // Eine Huelle im api-Objekt, die neu wirft, verloere den Status still.
-  const einstieg = readFileSync(join(HIER, "beneos-stream.mjs"), "utf8")
-  struktur("api: listReleases geht unverhuellt aus stream-install durch",
-    /import \{[^}]*\blistReleases\b[^}]*\} from "\.\/stream-install\.mjs"/.test(einstieg) && /^\s+listReleases,\s*$/m.test(einstieg), true)
+  // Dass das api-Objekt `listReleases` unverhuellt durchreicht (Kalt-Review
+  // 17.11.2026), faehrt seit stre-T-208 stream-einbau.test.mjs am echten
+  // Einstieg; hier laedt er wegen der Fensterattrappe oben nicht sauber.
 }
 
 console.warn = urWarn

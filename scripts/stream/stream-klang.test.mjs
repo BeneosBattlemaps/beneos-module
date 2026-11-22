@@ -35,11 +35,9 @@
  * demselben Grund wie in `stream-platzhalter.test.mjs`.
  */
 import { readFileSync } from "node:fs"
-import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { platzhalterAdresse, leinwandAdresse, SETTING, MODULE_ID } from "./stream-settings.mjs"
 
-const HIER = dirname(fileURLToPath(import.meta.url))
 const GATE = "https://gate2.beneos.stream"
 const GATE_NEU = "https://gate3.beneos.stream"
 let basis = GATE
@@ -859,17 +857,17 @@ console.log("Szenenklang (stre-T-123)")
   amb.placeables = []
 }
 
-console.log("Verdrahtung")
-{
-  const text = readFileSync(join(HIER, "beneos-stream.mjs"), "utf8")
-  const leinwand = text.indexOf("installStreamLeinwand()")
-  const klang = text.indexOf("installStreamKlang()")
-  gleich("beneos-stream.mjs ruft installStreamKlang() nach installStreamLeinwand()",
-    leinwand >= 0 && klang > leinwand, true)
-}
+/*
+ * Die Verdrahtung im Einstieg faehrt seit stre-T-208 stream-einbau.test.mjs am
+ * Verhalten: fehlt installStreamKlang(), baut der Schluesselwechsel keinen
+ * gescheiterten Klang neu. Die Folge nach der Leinwand ist gleichwertig, weil
+ * klangNachziehen die Adresse selbst nachzieht; vertauscht bleiben einbau,
+ * klang und klangwache gruen.
+ */
 
 console.log("Kein Schluessel in einer Ausgabe")
 {
+  // M6: S, der Satz liest sich selbst, gefragt ist, ob eine seiner eigenen Ausgabezeilen eine Adresse oder einen Schluessel druckt.
   const quelltext = readFileSync(fileURLToPath(import.meta.url), "utf8")
   const ausgaben = quelltext.split("\n").filter((z) => /console\.log\(/.test(z))
   gleich("keine Ausgabezeile nennt eine Adresse oder einen Schluessel",
@@ -881,7 +879,7 @@ console.log(`\n${aussagen} Aussagen, ${gruen} gruen, ${rot} rot`)
  * Von Hand nachgezogen, siehe Kopf. Weicht die gezaehlte Zahl ab, ist der Lauf
  * mittendrin gestorben oder ein Block ist still weggefallen.
  */
-const ERWARTET = 70
+const ERWARTET = 69
 if (aussagen !== ERWARTET) {
   console.log(`ROT  erwartet ${ERWARTET} Aussagen, gezaehlt ${aussagen}`)
   process.exit(1)

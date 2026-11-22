@@ -132,6 +132,7 @@ const linkeVon = (el) => el?.children.filter((k) => k.tagName === "A") ?? []
 const linkMit = (el, text) => linkeVon(el).find((a) => a.textContent === text) ?? null
 // Der echte Kern aus dem Bestand, als Quelltext geschnitten: das Modul selbst
 // laesst sich in node nicht laden (es braucht FormApplication).
+// M6: E, die Lesung liefert nur den Code, aus dem releaseKern geschnitten und unten ausgefuehrt wird.
 const kern = new Function(`${extractMethod(readFileSync(join(WURZEL, "scripts/cloud-v2/beneos-install-state.mjs"), "utf8"), "releaseKern", { maxZeilen: 10 }).replace(/^export\s+/, "")}; return releaseKern`)()
 /** Die Releaseliste der Cloud, wie BeneosScenePacker sie liefert. `null` scheitert. */
 function kaufQuelle(liste) {
@@ -511,42 +512,33 @@ delete globalThis.BeneosScenePacker
 /* ---------------------------------- Teil 5: die Anschlussstellen im Bestand */
 
 console.log("\nDie Anschlussstellen")
+/*
+ * Seit stre-T-208 am Verhalten statt hier am Quelltext: der denied-Zweig
+ * (stream-traeger-ersatz Teil 2), seine Folge nach dem Video-Hinweis und dass
+ * der Video-Hinweis sich merkt (ebenda Teil 7), die Steuerdateien und die Offline-Antwort (ebenda Teil 5 und 6), die
+ * Klangwache samt Nachfrage und Klanghelfer (stream-klangwache), der Einbau
+ * der Meldestelle im Einstieg (stream-einbau, Modus an), das Schild bei jedem
+ * Wechsel der Verbindung und derselbe Kaufknopf (dieser Satz, Teil 4 und 4b).
+ * Was unten bleibt, traegt seinen Grund in der Marke.
+ */
 const lies = (p) => readFileSync(join(WURZEL, p), "utf8")
-const FETCH = lies("scripts/stream/stream-fetch.mjs")
 const ONLINE = lies("scripts/stream/stream-online.mjs")
-const EINSTIEG = lies("scripts/stream/beneos-stream.mjs")
-const zweig = FETCH.slice(FETCH.indexOf('count("denied", url)'), FETCH.indexOf('return await ersatzAntwort(url, "denied")'))
-gleich("[Struktur] der denied-Zweig meldet den Grund", zweig.includes('meldeAusfall("denied", url)'), true)
-gleich("[Struktur] und zwar NACH dem Video-Hinweis",
-  zweig.indexOf("meldeVideoAbweisung(url)") >= 0 && zweig.indexOf("meldeVideoAbweisung(url)") < zweig.indexOf('meldeAusfall("denied", url)'), true)
-const offlineTeil = FETCH.slice(FETCH.indexOf("async function offlineAntwort(url) {"), FETCH.indexOf("async function offlineAntwort(url) {") + 400)
-gleich("[Struktur] die Offline-Antwort meldet den Grund", offlineTeil.includes('meldeAusfall("offline", url)'), true)
-const video = FETCH.slice(FETCH.indexOf("function meldeVideoAbweisung(url) {"), FETCH.indexOf("function meldeVideoAbweisung(url) {") + 900)
-gleich("[Struktur] der Video-Hinweis merkt sich, dass er kam", video.includes("merkeVideoToast()"), true)
 const CANVAS = lies("scripts/stream/stream-canvas.mjs")
 const bereit = CANVAS.slice(CANVAS.indexOf('Hooks.on("canvasReady", () => {'), CANVAS.indexOf('Hooks.on("canvasReady", () => {') + 600)
+// M6: S, die Bindung wirkt nur im Verbund aus canvasInit der Meldestelle und canvasReady der Leinwand, und frisch() holt die Meldestelle je Fall neu, waehrend stream-canvas die eine Fassung ohne Abfrage bindet, aufbauEnde selbst faehrt dieser Satz.
 gleich("[Struktur] das Nachladen der Videos beendet das Warten, gebunden an den Aufbau vor dem Nachladen",
   /const fertig = aufbauEnde\(\)\s*\n[\s\S]*?fillInVideos\(\)[^\n]*\.finally\(fertig\)/.test(bereit), true)
 gleich("[Struktur] stream-canvas holt aufbauEnde aus der Meldestelle", /import \{[^}]*\baufbauEnde\b[^}]*\} from "\.\/stream-hinweis\.mjs"/.test(CANVAS), true)
-const klang = ONLINE.slice(ONLINE.indexOf("function installKlangWache() {"), ONLINE.indexOf("let klangGemeldet = false"))
-gleich("[Struktur] die Klangwache meldet offline", /meldeKlang\("offline", src\)/.test(klang), true)
-gleich("[Struktur] die Klangwache fragt bei einem gescheiterten Torklang nach (stre-T-172)",
-  /if \(tor && src\.includes\(tor\) && this\?\.failed && !isOffline\(\)\) frageTorNach\(src\)/.test(klang), true)
-gleich("[Struktur] der Klanghelfer gibt an die Meldestelle weiter",
-  /function meldeKlang\(grund, src\) \{\s+import\("\.\/stream-hinweis\.mjs"\)\.then\(\(m\) => m\.meldeAusfall\(grund, src\)\)/.test(ONLINE), true)
 const wache = ONLINE.slice(ONLINE.indexOf("function installSceneGuard() {"), ONLINE.indexOf("function installKlangWache() {"))
+// M6: S, die Szenenwache umhuellt Scene.prototype.view und kehrt ohne diese Klasse sofort zurueck, die Attrappe stellt keine Szenenklasse.
 gleich("[Struktur] die Szenenablehnung nimmt ihren Text aus dem Schluessel", wache.includes('"BENEOS.Stream.Scene.Offline"'), true)
 gleich("[Struktur] kein hart geschriebener Ablehnungstext mehr", wache.includes("cannot be loaded, there is no connection"), false)
-gleich("[Struktur] der Einstieg baut die Meldestelle ein", EINSTIEG.includes("installStreamHinweis()"), true)
+// M6: S, Abwesenheit in einem Sprachwert, kein Code.
 gleich("[Struktur] kein Patreon-Link in einem Sprachwert", lies("lang/en.json").includes("patreon.com/c/"), false)
-gleich("[Struktur] jeder Wechsel der Verbindung stellt das Schild neu",
-  lies("scripts/stream/stream-hinweis.mjs").includes("onStreamState(() => pruefeSchild())"), true)
-gleich("[Struktur] Steuerdateien wie das Manifest melden keinen Ausfall", zweig.includes('if (endgueltig && !isControl(url)) meldeAusfall("denied", url)'), true)
 const FENSTER = lies("scripts/cloud-v2/cloud-window-v2.mjs")
+// M6: S, das Cloud-Fenster laesst sich im Pruefstand nicht importieren, der Kaufknopf selbst ist in Teil 4b gefahren.
 gleich("[Struktur] der Kaufknopf im Fenster nimmt weiter kaufKnopf(bmapRelease)",
   FENSTER.includes("const bmapKauf = kaufKnopf(bmapRelease)") && FENSTER.includes("shopUrl: bmapKauf.url,"), true)
-gleich("[Struktur] das Schild nimmt denselben kaufKnopf",
-  /import \{ kaufKnopf \} from "\.\.\/cloud-v2\/cloud-kaufknopf\.mjs"/.test(lies("scripts/stream/stream-hinweis.mjs")), true)
 
 /* ----------------------------------------------------- Teil 6: die Sprachen */
 

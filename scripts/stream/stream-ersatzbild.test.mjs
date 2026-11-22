@@ -304,6 +304,7 @@ abschnitt("Strukturprobe: unter ui/ liegen genau die sechs Ersatzdateien")
 // eine Form entfernt und ihre Datei vergessen hat. Eine Aussage ueber den
 // Dateibestand, die kein Aufruf zeigen kann.
 const SECHS = ["denied", "offline"].flatMap((u) => Object.keys(FORMEN).map((f) => `beneos_stream_${u}_${f}.webp`)).sort()
+// M6: S, eine Aussage ueber den Dateibestand unter ui/, eine uebrige Datei aendert kein Verhalten.
 struktur("es liegen genau die erwarteten Dateien und keine weitere",
   JSON.stringify(readdirSync(UI).filter((n) => n.startsWith("beneos_stream_") && n.endsWith(".webp")).sort()),
   JSON.stringify(SECHS))
@@ -314,6 +315,7 @@ abschnitt("Dokumentprobe: der Erzeuger tools/ersatzbilder.py nennt Werte und Her
 // Der Erzeuger ist kein Modulcode und laeuft hier nicht (er braucht Pillow).
 // Betreiberentscheid E1: sein Kopf bleibt als Dokument geprueft. OP-PRJ-207
 // entstand, weil die Bilder da waren und ihr Erzeuger nicht.
+// M6: D, der Erzeuger ist Python mit Pillow und laeuft hier nicht, sein Kopf bleibt Dokumentprobe nach Betreiberentscheid E1.
 const ERZEUGER = readFileSync(join(WURZEL, "tools", "ersatzbilder.py"), "utf8")
 const formenBlock = ERZEUGER.match(/FORMEN = \{([\s\S]*?)\n\}/)
 const sollMasse = {}
