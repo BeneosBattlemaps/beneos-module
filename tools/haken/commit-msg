@@ -1,0 +1,27 @@
+#!/bin/sh
+# Huelle des Kennungsriegels (stre-T-047), Regel in commit-msg.mjs.
+#
+# Diese Huelle ist die EINZIGE Stelle, die entscheidet, ob der Riegel gilt:
+# nur wenn die vorgemerkte module.json das Manifest von stream-beta traegt.
+# Erkannt am Inhalt, nicht an der Geschichte: nach einem Freigabe-Merge in main
+# steht auf main das main-Manifest, auf stream-beta weiter das Beta-Manifest.
+# Dieselbe Marke haelt der Push-Riegel (S2 in pre-push.mjs). Ohne module.json
+# im Index (erster Commit) gilt der Riegel nicht.
+#
+# git setzt fuer den Haken GIT_INDEX_FILE, `git show :module.json` liest also
+# den Index, der committet wird.
+MARKE='BeneosBattlemaps/beneos-module/stream-beta/module.json'
+if ! git show :module.json 2>/dev/null | grep -qF "$MARKE"; then
+  exit 0
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "commit-msg: node fehlt, der Betreff ist nicht pruefbar und der Commit bleibt gesperrt (stre-T-047)" >&2
+  exit 1
+fi
+# MERGE_HEAD ueber rev-parse: im verknuepften Arbeitsbaum liegt die Datei in
+# .git/worktrees/<name>/, nicht im gemeinsamen git-Ordner.
+MERGE=0
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  MERGE=1
+fi
+BENEOS_IST_MERGE=$MERGE node "$(dirname "$0")/commit-msg.mjs" "$@"

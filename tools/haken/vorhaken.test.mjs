@@ -131,6 +131,7 @@ const PFLICHT = [
   "tools/waisen-adressform-bench/bench.mjs", "tools/bildform-adresse-bench/bench.mjs",
   "tools/paket-grenze-bench/bench.mjs", "tools/haken/vorhaken.test.mjs",
   "tools/haken/vorpush.test.mjs", "tools/pruefe-beta-zip.test.mjs",
+  "tools/haken/commit-msg.test.mjs",
 ]
 
 function stubListe(wt) {

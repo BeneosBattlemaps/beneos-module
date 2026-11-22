@@ -732,6 +732,27 @@ then
   fi
 fi
 
+# DER KENNUNGSRIEGEL (stre-T-047). Wird er angefasst, faehrt sein Satz mit: er
+# committet in Wegwerfdepots und haelt fest, dass auf dem Stand von stream-beta
+# kein Commit ohne Kennung in der Klammer des Betreffs entsteht, und dass main
+# und Merges frei bleiben. Ausgeloest auch von module.json, an deren Manifest die
+# Huelle den Stand erkennt. Seine Sabotagen:
+# `tools/stream-sabotagen.mjs --satz betreffkennung`.
+if git diff --cached --name-only --diff-filter=ACM \
+     -- tools/haken/commit-msg tools/haken/commit-msg.mjs tools/haken/bruecke-commit-msg \
+        tools/haken/commit-msg.test.mjs module.json \
+   | grep -q .
+then
+  meld "pre-commit: Kennungsriegel oder module.json vorgemerkt, sein Satz laeuft mit"
+  if [ -f "tools/haken/commit-msg.test.mjs" ]; then
+    node "tools/haken/commit-msg.test.mjs" > "$TMP/lauf" 2>&1
+    werte_aus "$?" "commit-msg.test.mjs"
+  elif git cat-file -e "HEAD:tools/haken/commit-msg.test.mjs" 2>/dev/null; then
+    meld "pre-commit: commit-msg.test.mjs fehlt im Arbeitsbaum, HEAD kennt sie aber"
+    ROT=$((ROT + 1))
+  fi
+fi
+
 # Das Messwerkzeug fuer das Tag-ZIP der Beta (stre-T-028) misst nach einem
 # Push, ob Betatester das Modul bekommen. Sein Satz laeuft ohne Netz und
 # schnell. Seine Sabotagen: `tools/stream-sabotagen.mjs --satz betazip`.

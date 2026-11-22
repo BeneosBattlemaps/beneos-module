@@ -175,6 +175,12 @@
  * module.json zusammenpassen. Der Satz pusht in Wegwerfdepots wirklich und
  * gehoert zu den langsamen. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-047 dazu `betreffkennung` (`tools/haken/commit-msg.test.mjs`):
+ * der Kennungsriegel sperrt auf dem Stand von stream-beta jeden Commit ohne
+ * gueltige Kennung in der Klammer des Betreffs, mit Notweg, und laesst main
+ * und Merges durch. Der Satz committet in Wegwerfdepots wirklich. Der Name
+ * `kennung` ist an cloud-login-kennung vergeben. An der Basis gibt es ihn nicht.
+ *
  * Ebenfalls seit stre-T-028 `betazip` (`tools/pruefe-beta-zip.test.mjs`): das
  * Messwerkzeug fuer das Tag-ZIP der Beta meldet jede Abweichung zwischen
  * Manifest, Tag-ZIP und der module.json darin. Ohne Netz, mit einer Attrappe
@@ -234,6 +240,7 @@ const SATZ_AUSSERHALB = {
   doppelwache: "tools/haken/vorhaken.test.mjs",
   vorpush: "tools/haken/vorpush.test.mjs",
   betazip: "tools/pruefe-beta-zip.test.mjs",
+  betreffkennung: "tools/haken/commit-msg.test.mjs",
 };
 const SATZDATEI = (satz) => SATZ_AUSSERHALB[satz] ?? `scripts/stream/stream-${satz}.test.mjs`;
 
@@ -303,6 +310,10 @@ const BRUECKE_PUSH = "tools/haken/bruecke-pre-push";
 const MODULJSON = "module.json";
 const BETAZIP = "tools/pruefe-beta-zip.mjs";
 const VORPUSH_SATZ = "tools/haken/vorpush.test.mjs";
+const KMSG = "tools/haken/commit-msg.mjs";
+const KMSG_SH = "tools/haken/commit-msg";
+const BRUECKE_KMSG = "tools/haken/bruecke-commit-msg";
+const KENNUNG_SATZ = "tools/haken/commit-msg.test.mjs";
 const DEINST = "scripts/cloud-v2/beneos-native-uninstaller.mjs";
 const KREATURKODEX = "scripts/codex2/creature-codex.mjs";
 const KODEXFENSTER = "scripts/codex2/beneos-codex.mjs";
@@ -2371,6 +2382,60 @@ const SABOTAGEN = [
   { satz: "betazip", ziel: ["ZIP-Abruf scheitert nach einem Befund: der Befund bleibt"], ersetze: [[BETAZIP, "    return { rc: befund ? 1 : 2, zeilen }\n", "    return { rc: 2, zeilen }\n"]] },
   { satz: "betazip", ziel: ["ZIP-Abruf scheitert ohne Befund davor: nicht messbar"], ersetze: [[BETAZIP, "    return { rc: befund ? 1 : 2, zeilen }\n", "    return { rc: 1, zeilen }\n"]] },
   { satz: "betazip", ziel: ["kein Netz: nicht messbar"], ersetze: [[BETAZIP, "    zeilen.push(`NICHT MESSBAR  Manifest: ${e.message}`)\n    return { rc: 2, zeilen }\n", "    zeilen.push(`NICHT MESSBAR  Manifest: ${e.message}`)\n    return { rc: 1, zeilen }\n"]] },
+  // ---------------------------------------------------------------- betreffkennung (stre-T-047)
+  { satz: "betreffkennung", ziel: ["geht durch: Merge branch 'seite' into stream-beta"], ersetze: [[KMSG, "/^(?:Merge |fixup! ", "/^(?:fixup! "]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fixup! fix: x", "fixup per git commit -m geht durch"], ersetze: [[KMSG, "|fixup! |squash! ", "|squash! "]] },
+  { satz: "betreffkennung", ziel: ["geht durch: squash! fix: x"], ersetze: [[KMSG, "|squash! |amend! ", "|amend! "]] },
+  { satz: "betreffkennung", ziel: ["geht durch: amend! fix: x"], ersetze: [[KMSG, "|amend! |Revert \")/", "|Revert \")/"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: Revert \"fix: x\"", "Revert per git commit -m geht durch"], ersetze: [[KMSG, "|amend! |Revert \")/", "|amend! )/"]] },
+  { satz: "betreffkennung", ziel: ["ein Merge geht ohne Kennung durch", "ein echter Merge 'merge: x' im Arbeitsbaum geht durch"], ersetze: [[KMSG, "  if (istMerge) return", "  if (false) return"]] },
+  { satz: "betreffkennung", ziel: ["ohne Merge sperrt derselbe Betreff", "nach merge --squash ist der Commit kein Merge und sperrt"], ersetze: [[KMSG, "  if (istMerge) return", "  if (istMerge || b.startsWith(\"merge\")) return"]] },
+  { satz: "betreffkennung", ziel: ["ein echter Merge 'merge: x' im Arbeitsbaum geht durch"], ersetze: [[KMSG_SH, "if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then\n", "if false; then\n"]] },
+  // MERGE_HEAD am falschen Ort gesucht: im verknuepften Arbeitsbaum liegt er nicht im gemeinsamen git-Ordner.
+  { satz: "betreffkennung", ziel: ["ein echter Merge 'merge: x' im Arbeitsbaum geht durch"], ersetze: [[KMSG_SH, "if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then\n", "if [ -f \"$(git rev-parse --git-common-dir)/MERGE_HEAD\" ]; then\n"]] },
+  { satz: "betreffkennung", ziel: ["nach merge --squash ist der Commit kein Merge und sperrt"], ersetze: [[KMSG_SH, "MERGE=0\n", "MERGE=1\n"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stream): stre-T-154 x", "echter Commit sperrt: fix(stream): stre-T-154 x"], ersetze: [[KMSG, "  const teile = m[2].split(\",\")", "  const teile = b.split(/[\\s,()]+/)"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: x [stre-T-156]", "sperrt: stre-T-134: x", "sperrt: OP-PRJ-046: x", "sperrt: Fix(stre-T-047): x", "sperrt: fix(stre-T-047):x", "sperrt: fix: x", "Kommentarzeilen zaehlen nicht als Betreff", "echter Commit sperrt: fix: x"], ersetze: [[KMSG, "  if (!m) return { ok: false", "  if (!m) return { ok: true"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-047):x"], ersetze: [[KMSG, ")!?: \\S/", ")!?:\\s*\\S/"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: Fix(stre-T-047): x"], ersetze: [[KMSG, "const KOPF = /^([a-z][a-z0-9]*)", "const KOPF = /^([A-Za-z][a-z0-9]*)"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: i18n(stre-T-120): x"], ersetze: [[KMSG, "const KOPF = /^([a-z][a-z0-9]*)", "const KOPF = /^([a-z]+)"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(stre-T-047)!: x"], ersetze: [[KMSG, ")!?: \\S/", "): \\S/"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(T-056): x"], ersetze: [[KMSG, "/^(?:[a-z]{2,5}-T-", "/^(?:(?:[a-z]{2,5}-)?T-"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-47): x", "echter Commit sperrt: fix(stre-T-47): x"], ersetze: [[KMSG, "-T-\\d{3,}|", "-T-\\d+|"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stre-T-122-review): x"], ersetze: [[KMSG, "(?:-[A-Z]+)*-\\d+)$/", "(?:-[A-Z]+)*-\\d+)/"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: chore(version): x", "sperrt: fix(T-056): x", "sperrt: fix(stre-T-47): x", "echter Commit sperrt: chore(version): 14.5.0-beta.13"], ersetze: [[KMSG, "KENNUNG.test(t))) return { ok: false", "KENNUNG.test(t))) return { ok: true"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: feat(stre-T-001, stre-T-002): x"], ersetze: [[KMSG, "m[2].split(\",\")", "m[2].split(\";\")"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: feat(stream, stre-T-165): x"], ersetze: [[KMSG, "teile.some((t) =>", "teile.every((t) =>"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(OP-PRJ-126): x"], ersetze: [[KMSG, "|OP-[A-Z]{2,4}-\\d+", ""]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(RG-2): x"], ersetze: [[KMSG, "|RG-\\d+", ""]] },
+  { satz: "betreffkennung", ziel: ["geht durch: docs(TC-PRJ-STR-264): x"], ersetze: [[KMSG, "|TC-[A-Z]+(?:-[A-Z]+)*-\\d+", ""]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(cla-T-005): x"], ersetze: [[KMSG, "/^(?:[a-z]{2,5}-T-", "/^(?:stre-T-"]] },
+  { satz: "betreffkennung", ziel: ["geht durch: fix(stre-T-047): x", "geht durch: merge(stre-T-028): x", "geht durch: chore(stre-T-047): 14.5.0-beta.13", "Commit mit Kennung geht durch"], ersetze: [[KMSG, "/^(?:[a-z]{2,5}-T-", "/^(?:[a-z]{2,3}-T-"]] },
+  { satz: "betreffkennung", ziel: ["eine Kommentarzeile vor dem Betreff stoert nicht"], ersetze: [[KMSG, "    if (zeile.startsWith(\"#\")) continue\n", "\n"]] },
+  { satz: "betreffkennung", ziel: ["Commit mit Kennung geht durch", "fixup per git commit -m geht durch", "Revert per git commit -m geht durch", "ein echter Merge 'merge: x' im Arbeitsbaum geht durch"], ersetze: [[KMSG, "  if (r.ok) return 0\n", "  if (r.ok) return 1\n"]] },
+  { satz: "betreffkennung", ziel: ["auf einem Stand mit main-Manifest geht ein Commit ohne Kennung durch", "nach der Freigabe geht auf main ein Commit ohne Kennung durch", "nach der Freigabe sperrt auf stream-beta ein Commit ohne Kennung"], ersetze: [[KMSG_SH, "if ! git show :module.json 2>/dev/null | grep -qF \"$MARKE\"; then\n", "if git show :module.json 2>/dev/null | grep -qF \"$MARKE\"; then\n"]] },
+  { satz: "betreffkennung", ziel: ["auf einem Stand mit main-Manifest geht ein Commit ohne Kennung durch", "nach der Freigabe geht auf main ein Commit ohne Kennung durch"], ersetze: [[KMSG_SH, "MARKE='BeneosBattlemaps/beneos-module/stream-beta/module.json'\n", "MARKE='BeneosBattlemaps/beneos-module/'\n"]] },
+  { satz: "betreffkennung", ziel: ["ein erster Commit ohne module.json geht durch"], ersetze: [[KMSG_SH, "if ! git show :module.json 2>/dev/null | grep", "if ! { git show :module.json 2>/dev/null || echo \"$MARKE\"; } | grep"]] },
+  { satz: "betreffkennung", ziel: ["ohne node sperrt der aktive Riegel"], ersetze: [[KMSG_SH, "if ! command -v node >/dev/null 2>&1; then\n", "if false; then\n"]] },
+  { satz: "betreffkennung", ziel: ["ohne node schweigt der Riegel auf einem main-Stand", "auf einem Stand mit main-Manifest geht ein Commit ohne Kennung durch"], ersetze: [[KMSG_SH, "then\n  exit 0\nfi\nif ! command -v node", "then\n  :\nfi\nif ! command -v node"]] },
+  { satz: "betreffkennung", ziel: ["Notweg ohne Begruendung sperrt"], ersetze: [[KMSG, "String(env.BENEOS_COMMIT_NOTWEG ?? \"\").trim()", "String(env.BENEOS_COMMIT_NOTWEG ?? \"\")"]] },
+  { satz: "betreffkennung", ziel: ["der Notweg steht mit Begruendung im Log", "der Notweg nennt im Log den Betreff"], ersetze: [[KMSG, "    try { appendFileSync(log, zeile) } catch (e) {\n", "    try { void zeile } catch (e) {\n"]] },
+  { satz: "betreffkennung", ziel: ["Notweg ohne schreibbares Log sperrt"], ersetze: [[KMSG, "Commit bleibt gesperrt`)\n      return 1\n", "Commit bleibt gesperrt`)\n      return 0\n"]] },
+  { satz: "betreffkennung", ziel: ["Notweg mit Begruendung geht durch"], ersetze: [[KMSG, "mitgeschrieben in ${log}`)\n    return 0\n", "mitgeschrieben in ${log}`)\n    return 1\n"]] },
+  { satz: "betreffkennung", ziel: ["der Notweg nennt im Log den Betreff"], ersetze: [[KMSG, " | ${betreffAus(nachricht)} | ${r.grund}", " | ${r.grund}"]] },
+  { satz: "betreffkennung", ziel: ["die Bruecke schweigt auf einem Stand ohne den Riegel"], ersetze: [[BRUECKE_KMSG, "  fi\n  exit 0\nfi\nH=", "  fi\n  exit 1\nfi\nH="]] },
+  { satz: "betreffkennung", ziel: ["die Bruecke schweigt bei einer unversionierten Kopie des Riegels"], ersetze: [[BRUECKE_KMSG, "if ! git cat-file -e :tools/haken/commit-msg 2>/dev/null; then\n", "if false; then\n"]] },
+  { satz: "betreffkennung", ziel: ["die Bruecke sperrt, wenn HEAD den Riegel kennt und der Index ihn verliert"], ersetze: [[BRUECKE_KMSG, "Commit gesperrt (stre-T-047)\" >&2\n    exit 1\n", "Commit gesperrt (stre-T-047)\" >&2\n    exit 0\n"]] },
+  { satz: "betreffkennung", ziel: ["eine leere Nachricht geht durch", "eine reine Kommentarnachricht geht durch"], ersetze: [[KMSG, "  if (!b) return { ok: true", "  if (!b) return { ok: false"]] },
+  { satz: "betreffkennung", ziel: ["im Arbeitsbaum steht der Notweg im gemeinsamen git-Ordner", "ein zweiter Notweg haengt an"], ersetze: [[KMSG, "git([\"rev-parse\", \"--git-common-dir\"])", "git([\"rev-parse\", \"--git-dir\"])"]] },
+  { satz: "betreffkennung", ziel: ["ein zweiter Notweg haengt an"], ersetze: [[KMSG, "import { appendFileSync, readFileSync }", "import { appendFileSync, readFileSync, writeFileSync }"], [KMSG, "    try { appendFileSync(log, zeile) }", "    try { writeFileSync(log, zeile) }"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(abcdef-T-047): x", "sperrt: fix(s-T-047): x", "sperrt: fix(STRE-T-047): x"], ersetze: [[KMSG, "/^(?:[a-z]{2,5}-T-", "/^(?:[A-Za-z]+-T-"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(OP-P-1): x", "sperrt: fix(OP-PROJE-1): x", "sperrt: fix(OP-prj-1): x"], ersetze: [[KMSG, "|OP-[A-Z]{2,4}-\\d+", "|OP-[A-Za-z]+-\\d+"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(RG-): x"], ersetze: [[KMSG, "|RG-\\d+", "|RG-\\d*"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: 1fix(stre-T-047): x"], ersetze: [[KMSG, "const KOPF = /^([a-z][a-z0-9]*)", "const KOPF = /^([a-z0-9][a-z0-9]*)"]] },
+  { satz: "betreffkennung", ziel: ["sperrt: fix(stream stre-T-165): x"], ersetze: [[KMSG, "m[2].split(\",\")", "m[2].split(/[, ]+/)"]] },
+  { satz: "betreffkennung", ziel: ["die Bruecke ruft den versionierten Riegel des Stands"], ersetze: [[BRUECKE_KMSG, "exec \"$H\" \"$@\"\n", "exit 0\n"]] },
+  { satz: "betreffkennung", ziel: ["eine geerbte GIT_DIR erreicht das echte Repositorium nicht"], ersetze: [[KENNUNG_SATZ, "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) delete e[k]\n", "\"GIT_COMMON_DIR\", \"GIT_PREFIX\"]) void k\n"]] },
   // ---- vertrag-manifest (stre-T-021): beide Manifest-Vorlagen der Erzeuger
   // durch loadStreamManifest und buildStreamPack. Nur auf Zuruf.
   { satz: "vertrag-manifest", ziel: VM_PROBE("loadStreamManifest nimmt sie an"),
@@ -2708,8 +2773,12 @@ if (process.argv.includes("--alle-saetze")) {
 // ein Vielfaches eines anderen Satzes. Der Satz selbst laeuft im Vorhaken,
 // sobald der Push-Riegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz vorpush.
-const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse"]
+// betreffkennung (stre-T-047) macht je Sabotage echte Commits in Wegwerfdepots,
+// allein gemessen 208 s fuer 52 Sabotagen. Der Satz selbst laeuft im Vorhaken,
+// sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
+// Zuruf mit --satz betreffkennung.
+const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

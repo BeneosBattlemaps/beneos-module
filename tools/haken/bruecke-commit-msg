@@ -1,0 +1,23 @@
+#!/bin/sh
+# Bruecke .git/hooks/commit-msg auf den Kennungsriegel des Stands (stre-T-047).
+# Vorlage im Repositorium, damit die nicht versionierte Bruecke reproduzierbar
+# ist. Alle Arbeitsbaeume teilen den Hakenordner: die Bruecke ruft den Riegel
+# nur, wenn der Stand ihn VERSIONIERT traegt (im Index), damit eine lose Kopie
+# in einem fremden Baum nichts scharf stellt. Ein Stand ohne den Riegel
+# schweigt. Kennt HEAD den Riegel und fehlt er im Index, wird er mit diesem
+# Commit entfernt: dann sperrt sie, statt still durchzulassen (wie die Bruecke
+# in beneos-stream-beta, tools/hooks/install.sh).
+W="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+if ! git cat-file -e :tools/haken/commit-msg 2>/dev/null; then
+  if git cat-file -e HEAD:tools/haken/commit-msg 2>/dev/null; then
+    echo "commit-msg: tools/haken/commit-msg fehlt im Index, HEAD kennt ihn; Commit gesperrt (stre-T-047)" >&2
+    exit 1
+  fi
+  exit 0
+fi
+H="$W/tools/haken/commit-msg"
+if [ ! -x "$H" ]; then
+  echo "commit-msg: $H steht im Index, ist im Arbeitsbaum aber nicht ausfuehrbar; Commit gesperrt (stre-T-047)" >&2
+  exit 1
+fi
+exec "$H" "$@"
