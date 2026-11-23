@@ -18,6 +18,7 @@ import { BeneosUtility } from "./beneos_utility.js";
 // cycle: install-state pulls in beneos_utility, and nothing in that chain
 // reaches back here.
 import { BeneosInstallState } from "./cloud-v2/beneos-install-state.mjs";
+import { beneosReleaseAlias } from "./cloud-v2/beneos-release-aliases.mjs";
 
 const ANALYTICS_ENDPOINT = "https://beneos.cloud/api-analytics.php";
 // 15 min instead of 5: the ingest is the most frequent recurring request per
@@ -1282,11 +1283,23 @@ export class BeneosAnalytics {
    *
    * Leer heisst: diese Welt hat vor dem Install-State installiert, oder die
    * Karte wurde von Hand kopiert. Das ist ein Befund und keine Luecke.
+   *
+   * GESENDET WIRD DER HEUTIGE NAME, NICHT DER VERMERKTE (MO-038).
+   *
+   * Dreizehn Releases heissen seit dem 2026-09-14 anders (`bm_0057b` ->
+   * `bm_9108`). Der Vermerk einer Welt, die vorher installiert hat, traegt
+   * weiter den alten Namen, und der Lake verbindet ueber den heutigen
+   * Katalogschluessel. Ohne Aufloesung blieben 170 Szenenzeiten ohne Asset,
+   * waehrend eine frische Installation desselben Release schon `bm_9108`
+   * meldet. Unbekannte Namen gibt `beneosReleaseAlias` unveraendert zurueck.
+   * Aufgeloest wird hier und nicht in `findReleaseDirByScene`, weil der
+   * Installer denselben Wert gegen seinen eigenen Vermerk vergleicht.
+   * Pruefdatei: scripts/analytics-scene-pack.test.mjs.
    */
   static _scenePack(scene) {
     try {
       const genau = BeneosInstallState.findReleaseDirByScene(scene?.id)
-      return genau ? this._pathKey(genau, 96) : ""
+      return genau ? this._pathKey(beneosReleaseAlias(genau), 96) : ""
     } catch (_) { return "" }
   }
 
