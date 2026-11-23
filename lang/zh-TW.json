@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "這個世界裡已經安裝好的東西都不會變，而重點正在這裡：串流期間安裝的發布仍然指向我們的伺服器，所以它的地圖與生物圖會是空的。從現在起安裝的東西都會放到你的硬碟上。如果你也需要某個舊發布放在本機，請在 Discord 上告訴我們，我們會跟你一起處理。",
   "BENEOS.Stream.Denied.Video": "Beneos：{name} 的動態地圖目前無法取得，所以這個場景顯示的是靜態圖。通常表示訂閱或租用已經到期。",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream：未連線至伺服器。串流的地圖、標記、日誌與音效會顯示預留圖或保持靜音，直到連線恢復。",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream：部分圖片目前無法載入，正以預留圖顯示。請重新載入世界（F5）再試一次。",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream：此世界中有部分內容不在你的存取權限內。它們會顯示預留圖或保持靜音。",
   "BENEOS.Stream.Notice.MapDenied": "你無權查看此地圖。",
   "BENEOS.Stream.Notice.MapSubscribe": "訂閱",

@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "Nic z tego, co już jest zainstalowane w tym świecie, się nie zmienia, i właśnie o to chodzi: wydanie zainstalowane przy włączonym strumieniowaniu nadal wskazuje na nasze serwery, więc jego mapy i obrazy stworów pozostaną puste. Wszystko, co zainstalujesz od teraz, trafia na twój dysk. Jeśli potrzebujesz starszego wydania także lokalnie, napisz do nas na Discordzie i załatwimy to z tobą.",
   "BENEOS.Stream.Denied.Video": "Beneos: animowane mapy wydania {name} nie są teraz dostępne, więc ta scena pokazuje swój nieruchomy obraz. Zwykle oznacza to, że członkostwo albo najem wygasły.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: brak połączenia z serwerem. Streamowane mapy, żetony, dzienniki i dźwięki pokazują symbol zastępczy lub milkną, dopóki połączenie nie wróci.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: niektórych obrazów nie udało się teraz wczytać, w ich miejscu widać symbol zastępczy. Wczytaj świat ponownie (F5), aby spróbować jeszcze raz.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: część treści tego świata nie wchodzi w zakres Twojego dostępu. Pokazuje symbol zastępczy lub milknie.",
   "BENEOS.Stream.Notice.MapDenied": "Nie masz uprawnień do wyświetlenia tej mapy.",
   "BENEOS.Stream.Notice.MapSubscribe": "Subskrybuj",

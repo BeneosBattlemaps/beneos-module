@@ -40,7 +40,7 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
-import { pruefstand, installiereFoundry, netz, nimmAbrufe } from "../../tools/lib/foundry-attrappe.mjs"
+import { pruefstand, installiereFoundry, netz, nimmAbrufe, meldungen } from "../../tools/lib/foundry-attrappe.mjs"
 
 const { gleich, struktur, dokument, abschnitt, ende } = pruefstand("stream-ersatzbild, am echten Abrufersatz")
 
@@ -259,6 +259,55 @@ gleich("ein abgewiesenes Video behaelt die Antwort des Tores", gleicheBytes(vide
 
 const steuer = await hole("manifest.json", "netzfehler")
 gleich("ein Netzfehler bei einer Steuerdatei wird geworfen", steuer.geworfen !== null, true)
+
+// ===========================================================================
+abschnitt("Ein Netzfehler-Ersatzbild sagt es der Spielleitung, einmal je Szene (stre-T-220)")
+
+// Am echten Abrufersatz: der Netzfehler-Zweig ruft die Meldestelle. Die
+// Attrappe uebersetzt nicht, also kommt der englische Rueckfall an. Zwischen
+// zwei Netzfehlern steht ein guter Abruf, sonst kippte die Sitzung nach dem
+// dritten Fehlschlag in Folge auf offline und der Netzfehler-Zweig liefe nicht.
+const hinweis = await import("./stream-hinweis.mjs")
+hinweis.installStreamHinweis()
+const szenenwechsel = () => globalThis.Hooks.rufe("canvasInit")
+// Gezaehlt ab hier: die Abschnitte davor hatten schon Netzfehler-Ersatzbilder.
+const ab = meldungen.length
+const netzHinweise = () => meldungen.slice(ab).filter((m) => m.art === "warn" && /could not be loaded right now/.test(m.text)).length
+await szenenwechsel()
+await hole("e-token.webp", "netzfehler")
+gleich("Netzfehler auf einem Bild: ein Hinweis", netzHinweise(), 1)
+await hole("f-token.webp", "gut")
+await hole("g-token.webp", "netzfehler")
+gleich("zweites Netzfehler-Ersatzbild derselben Szene: kein weiterer Hinweis", netzHinweise(), 1)
+await szenenwechsel()
+await hole("h-token.webp", "gut")
+await hole("karte.webm", "netzfehler")
+gleich("Netzfehler auf einem Video: kein Hinweis", netzHinweise(), 1)
+await hole("i-token.webp", "gut")
+await hole("manifest.json", "netzfehler")
+gleich("Netzfehler auf einer Steuerdatei: kein Hinweis", netzHinweise(), 1)
+await hole("j-token.webp", "gut")
+await hole("k-token.webp", "netzfehler")
+gleich("neue Szene, erstes Netzfehler-Ersatzbild: wieder ein Hinweis", netzHinweise(), 2)
+await hole("l-token.webp", "gut")
+await szenenwechsel()
+globalThis.game.user.isGM = false
+await hole("m-token.webp", "netzfehler")
+globalThis.game.user.isGM = true
+gleich("Spieler: kein Hinweis", netzHinweise(), 2)
+await hole("n-token.webp", "gut")
+await szenenwechsel()
+await globalThis.game.settings.set("beneos-module", "beneos-stream-install-mode", "download")
+await hole("o-token.webp", "netzfehler")
+await globalThis.game.settings.set("beneos-module", "beneos-stream-install-mode", "stream")
+gleich("Messmodus: kein Hinweis", netzHinweise(), 2)
+await hole("p-token.webp", "gut")
+await hole("q-token.webp", "netzfehler")
+gleich("Gegenprobe nach dem Messmodus: derselbe Netzfehler meldet wieder", netzHinweise(), 3)
+await hole("r-token.webp", "gut")
+// Ueber die ganze Sitzung: die Meldung offline kommt einmal je Sitzung, also
+// schon beim ersten Netzfehler-Ersatzbild weiter oben, wenn der Zweig sie riefe.
+gleich("keine Meldung offline auf diesem Weg", meldungen.filter((m) => /no connection to the server/.test(m.text)).length, 0)
 
 // ===========================================================================
 abschnitt("Ohne Verbindung kommt das Ersatzbild offline, ohne dass das Tor gefragt wird")

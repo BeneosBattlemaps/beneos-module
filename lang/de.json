@@ -2428,6 +2428,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "An dem, was schon in dieser Welt installiert ist, ändert sich nichts, und das ist der Punkt: ein Release, das du im Streambetrieb installiert hast, zeigt weiter auf unsere Server, seine Karten und Kreaturenbilder bleiben also leer. Alles, was du ab jetzt installierst, landet auf deiner Platte. Brauchst du ein älteres Release auch örtlich, frag uns im Discord, wir regeln das mit dir.",
   "BENEOS.Stream.Denied.Video": "Beneos: Die bewegten Karten von {name} sind gerade nicht verfügbar, diese Szene zeigt deshalb ihr Standbild. Meist ist die Mitgliedschaft oder die Miete abgelaufen.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: Es besteht keine Verbindung zum Server. Gestreamte Karten, Tokens, Journale und Klänge zeigen einen Platzhalter oder bleiben stumm, bis sie wieder steht.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: Einige Bilder konnten gerade nicht geladen werden und zeigen einen Platzhalter. Lade die Welt neu (F5), um es erneut zu versuchen.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: Einige Inhalte dieser Welt sind nicht in deinem Zugang enthalten. Sie zeigen einen Platzhalter oder bleiben stumm.",
   "BENEOS.Stream.Notice.MapDenied": "Du bist nicht berechtigt, diese Karte anzusehen.",
   "BENEOS.Stream.Notice.MapSubscribe": "Abonnieren",

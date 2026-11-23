@@ -2310,6 +2310,8 @@ async function alleImSpeicherBei(urls, an) {
         // `x-beneos-offline`, und `toStore` weist das schon heute ab.
         if (!measuring && istBild(url)) {
           count("ersatz-netz")
+          // stre-T-220: die Spielleitung erfaehrt es einmal je Szene in Worten.
+          meldeAusfall("netz", url)
           return await ersatzAntwort(url, "offline")
         }
         throw err

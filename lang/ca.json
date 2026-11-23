@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "No canvia res del que ja hi ha instal·lat en aquest món, i això és el punt: una publicació que has instal·lat amb la transmissió activa continua apuntant als nostres servidors, així que els seus mapes i les imatges de criatura es queden buits. Tot el que instal·lis a partir d'ara va al teu disc. Si necessites una publicació antiga també en local, pregunta'ns al Discord i ho resolem amb tu.",
   "BENEOS.Stream.Denied.Video": "Beneos: els mapes animats de {name} no estan disponibles ara mateix, així que aquesta escena mostra la seva imatge fixa. Normalment vol dir que la subscripció o el lloguer ha caducat.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: no hi ha connexió amb el servidor. Els mapes, fitxes, diaris i sons en streaming mostren un marcador de posició o queden en silenci fins que torni.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: algunes imatges no s'han pogut carregar ara mateix i mostren un marcador de posició. Torna a carregar el món (F5) per tornar-ho a provar.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: part del contingut d'aquest món no forma part del teu accés. Mostra un marcador de posició o queda en silenci.",
   "BENEOS.Stream.Notice.MapDenied": "No tens dret a veure aquest mapa.",
   "BENEOS.Stream.Notice.MapSubscribe": "Subscriu-te",

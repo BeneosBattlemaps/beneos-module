@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "이미 이 월드에 설치된 것은 아무것도 바뀌지 않으며, 바로 그 점이 중요합니다. 스트리밍 중에 설치한 릴리스는 여전히 저희 서버를 가리키므로 그 맵과 크리처 이미지는 비어 있게 됩니다. 지금부터 설치하는 것은 모두 당신의 디스크에 저장됩니다. 예전 릴리스도 로컬로 필요하면 Discord로 물어보세요. 함께 해결하겠습니다.",
   "BENEOS.Stream.Denied.Video": "Beneos: {name}의 움직이는 맵을 지금 사용할 수 없어 이 장면은 정지 이미지를 보여 줍니다. 보통 멤버십이나 대여 기간이 끝났다는 뜻입니다.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: 서버에 연결되어 있지 않습니다. 스트리밍되는 맵, 토큰, 저널, 사운드는 연결이 돌아올 때까지 대체 이미지를 표시하거나 재생되지 않습니다.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: 일부 이미지를 지금 불러오지 못해 대체 이미지를 표시합니다. 다시 시도하려면 월드를 새로 고치세요(F5).",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: 이 월드의 일부 콘텐츠는 이용 권한에 포함되어 있지 않습니다. 대체 이미지를 표시하거나 재생되지 않습니다.",
   "BENEOS.Stream.Notice.MapDenied": "이 맵을 볼 수 있는 권한이 없습니다.",
   "BENEOS.Stream.Notice.MapSubscribe": "구독하기",

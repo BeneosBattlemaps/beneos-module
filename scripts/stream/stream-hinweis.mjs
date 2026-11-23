@@ -53,6 +53,10 @@ const MELDUNG = {
     "Beneos Stream: there is no connection to the server. Streamed maps, tokens, journals and sounds show a placeholder or stay silent until it is back."],
   denied: ["BENEOS.Stream.Notice.Denied",
     "Beneos Stream: some content in this world is not part of your access. It shows a placeholder or stays silent."],
+  // stre-T-220: ein Bild bekam wegen eines Netzfehlers das Ersatzbild. Nur die
+  // Spielleitung, einmal je Szene (zurueckgesetzt im canvasInit-Haken unten).
+  netz: ["BENEOS.Stream.Notice.NetPlaceholder",
+    "Beneos Stream: some images could not be loaded right now and show a placeholder. Reload the world (F5) to try again."],
 }
 const SCHILD_TEXT = ["BENEOS.Stream.Notice.MapDenied", "You are not entitled to view this map."]
 const SCHILD_ABO = ["BENEOS.Stream.Notice.MapSubscribe", "Subscribe"]
@@ -118,6 +122,7 @@ export function meldeAusfall(grund, url) {
     }
   }
   if (gemeldet.has(grund)) return false
+  if (grund === "netz" && !globalThis.game?.user?.isGM) return false
   if (grund === "denied") {
     if (!globalThis.game?.user?.isGM) return false
     if (videoHinweisKam) {
@@ -340,6 +345,8 @@ export function installStreamHinweis() {
   globalThis.Hooks?.on?.("canvasInit", () => {
     aufbau++
     szeneLaedt = true
+    // Der Netzfehler-Hinweis gilt je Szene, offline und denied je Sitzung.
+    gemeldet.delete("netz")
   })
   globalThis.Hooks?.on?.("canvasTearDown", entferneSchild)
   // Die wartende Meldung kommt nicht hier, sondern ueber aufbauEnde, wenn die

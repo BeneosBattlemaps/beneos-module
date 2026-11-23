@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "No cambia nada de lo que ya está instalado en este mundo, y ese es el punto: un lanzamiento que instalaste con la transmisión activa sigue apuntando a nuestros servidores, así que sus mapas y sus imágenes de criatura se quedan vacíos. Todo lo que instales desde ahora va a tu disco. Si necesitas un lanzamiento antiguo también en local, pregúntanos en Discord y lo resolvemos contigo.",
   "BENEOS.Stream.Denied.Video": "Beneos: los mapas animados de {name} no están disponibles ahora mismo, así que esta escena muestra su imagen fija. Normalmente significa que la suscripción o el alquiler ha caducado.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: no hay conexión con el servidor. Los mapas, fichas, diarios y sonidos en streaming muestran un marcador de posición o quedan en silencio hasta que vuelva.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: algunas imágenes no se han podido cargar ahora mismo y muestran un marcador de posición. Recarga el mundo (F5) para volver a intentarlo.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: parte del contenido de este mundo no forma parte de tu acceso. Muestra un marcador de posición o queda en silencio.",
   "BENEOS.Stream.Notice.MapDenied": "No tienes derecho a ver este mapa.",
   "BENEOS.Stream.Notice.MapSubscribe": "Suscribirse",

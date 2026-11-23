@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "Na tom, co už je v tomto světě nainstalované, se nic nemění, a právě o to jde: vydání, které jste nainstalovali za streamování, stále ukazuje na naše servery, takže jeho mapy a obrázky stvoření zůstanou prázdné. Vše, co nainstalujete od teď, přijde na váš disk. Pokud potřebujete i starší vydání místně, napište nám na Discordu a vyřešíme to s vámi.",
   "BENEOS.Stream.Denied.Video": "Beneos: animované mapy vydání {name} nejsou právě dostupné, tato scéna proto ukazuje svůj statický obrázek. Obvykle to znamená, že vypršelo členství nebo nájem.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: není spojení se serverem. Streamované mapy, tokeny, deníky a zvuky ukazují zástupný obrázek nebo zůstávají tiché, dokud se spojení neobnoví.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: některé obrázky se teď nepodařilo načíst a ukazují zástupný obrázek. Načtěte svět znovu (F5) a zkuste to znovu.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: část obsahu tohoto světa není součástí vašeho přístupu. Ukazuje zástupný obrázek nebo zůstává tichá.",
   "BENEOS.Stream.Notice.MapDenied": "Nemáte oprávnění zobrazit tuto mapu.",
   "BENEOS.Stream.Notice.MapSubscribe": "Předplatit",

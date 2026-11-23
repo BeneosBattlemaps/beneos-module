@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "Rien de ce qui est déjà installé dans ce monde ne change, et c'est justement le point : une sortie que vous avez installée en diffusion pointe toujours vers nos serveurs, donc ses cartes et ses images de créature restent vides. Tout ce que vous installez désormais va sur votre disque. S'il vous faut aussi une ancienne sortie en local, demandez-nous sur Discord et nous réglons cela avec vous.",
   "BENEOS.Stream.Denied.Video": "Beneos : les cartes animées de {name} ne sont pas disponibles pour le moment, cette scène affiche donc son image fixe. En général, l'abonnement ou la location a expiré.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream : aucune connexion au serveur. Les cartes, jetons, journaux et sons diffusés affichent un espace réservé ou restent muets jusqu'à son retour.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream : certaines images n'ont pas pu être chargées pour le moment et affichent un espace réservé. Rechargez le monde (F5) pour réessayer.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream : certains contenus de ce monde ne font pas partie de votre accès. Ils affichent un espace réservé ou restent muets.",
   "BENEOS.Stream.Notice.MapDenied": "Vous n'êtes pas autorisé à voir cette carte.",
   "BENEOS.Stream.Notice.MapSubscribe": "S'abonner",

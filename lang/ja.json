@@ -2420,6 +2420,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "すでにこのワールドに入っているものは何も変わりません。そこが肝心です。ストリーミング中に入れたリリースは当社のサーバーを指したままなので、そのマップとクリーチャーの画像は空のままになります。これから入れるものはすべてあなたのディスクに置かれます。古いリリースも手元に必要なときは、Discord でお知らせください。一緒に解決します。",
   "BENEOS.Stream.Denied.Video": "Beneos: {name} の動くマップは現在利用できないため、このシーンは静止画を表示しています。多くの場合、メンバーシップまたはレンタルの期限が切れています。",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: サーバーに接続されていません。ストリーミングのマップ、トークン、ジャーナル、サウンドは、接続が戻るまでプレースホルダーを表示するか無音になります。",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: 一部の画像を読み込めなかったため、プレースホルダーを表示しています。もう一度試すには、ワールドを再読み込み（F5）してください。",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: このワールドの一部のコンテンツは、あなたのアクセスに含まれていません。プレースホルダーを表示するか無音になります。",
   "BENEOS.Stream.Notice.MapDenied": "このマップを閲覧する権利がありません。",
   "BENEOS.Stream.Notice.MapSubscribe": "購読する",

@@ -293,6 +293,53 @@ console.log("\nDer Video-Hinweis geht vor")
   gleich("und nur einmal", warnungen.length, 1)
 }
 
+/* ------------------------- Teil 3b: Netzfehler-Hinweis je Szene (stre-T-220) */
+
+// Betreiberentscheid zu stre-T-218 Teil B: bekommt ein Bild wegen eines
+// Netzfehlers das Ersatzbild, sagt es die Spielleitung EINMAL je Szene in
+// Worten. Spieler bekommen nichts. Offline und "nicht im Zugang" bleiben je
+// Sitzung, der Szenenwechsel setzt nur den Netzfehler-Hinweis zurueck.
+// Vor Teil 4: dessen letzter Fall stellt die Sitzung auf offline, und offline
+// erscheint nie ein Schild. Die Schildprobe unten braucht eine Sitzung online.
+console.log("\nNetzfehler-Hinweis je Szene")
+const neueSzene = async () => { for (const [, fn] of haken.filter(([n]) => n === "canvasInit")) await fn() }
+{
+  const h = await frisch()
+  h.installStreamHinweis()
+  // Die Szene traegt KARTE: so zeigt die Schildprobe unten, dass der
+  // Netzfehler kein Schild "nicht berechtigt" aufstellt.
+  canvas.scene = szene
+  h.meldeAusfall("netz", KARTE)
+  gleich("erstes Ersatzbild der Szene: ein Hinweis", warnungen.length, 1)
+  gleich("der Hinweis kommt aus dem Schluessel fuer den Netzfehler", warnungen[0], "T:BENEOS.Stream.Notice.NetPlaceholder")
+  h.meldeAusfall("netz", TOKEN)
+  gleich("zweites Ersatzbild derselben Szene: kein Hinweis", warnungen.length, 1)
+  await neueSzene()
+  gleich("Szenenwechsel ohne Ersatzbild: kein Hinweis", warnungen.length, 1)
+  h.meldeAusfall("netz", KARTE)
+  gleich("neue Szene: wieder ein Hinweis", warnungen.length, 2)
+  gleich("ein Netzfehler-Hinweis stellt kein Schild auf", schild() === null, true)
+}
+{
+  const h = await frisch()
+  h.installStreamHinweis()
+  istGM = false
+  h.meldeAusfall("netz", KARTE)
+  await neueSzene()
+  h.meldeAusfall("netz", KARTE)
+  gleich("Spieler: kein Hinweis, auch nicht in der naechsten Szene", warnungen.length, 0)
+}
+{
+  const h = await frisch()
+  h.installStreamHinweis()
+  h.meldeAusfall("netz", KARTE)
+  h.meldeAusfall("offline", KARTE)
+  gleich("nach dem Netzfehler-Hinweis meldet offline weiter", warnungen.length, 2)
+  await neueSzene()
+  h.meldeAusfall("offline", KARTE)
+  gleich("canvasInit setzt offline nicht zurueck", warnungen.length, 2)
+}
+
 /* --------------------------------------------- Teil 4: das Kartenschild */
 
 console.log("\nDas Kartenschild")
@@ -547,7 +594,8 @@ const modul = JSON.parse(lies("module.json"))
 const sprachen = modul.languages.map((l) => l.path)
 gleich("module.json nennt 14 Sprachdateien (13 Pflichtsprachen und Englisch)", sprachen.length, 14)
 const NEU = ["BENEOS.Stream.Notice.Offline", "BENEOS.Stream.Notice.Denied", "BENEOS.Stream.Notice.MapDenied",
-  "BENEOS.Stream.Notice.MapSubscribe", "BENEOS.Stream.Scene.Offline", "BENEOS.Cloud.Card.BuyPack", "BENEOS.Cloud.Card.BuyBundle"]
+  "BENEOS.Stream.Notice.MapSubscribe", "BENEOS.Stream.Scene.Offline", "BENEOS.Cloud.Card.BuyPack", "BENEOS.Cloud.Card.BuyBundle",
+  "BENEOS.Stream.Notice.NetPlaceholder"]
 const GEAENDERT = ["BENEOS.Stream.Intro.Cost", "BENEOS.Stream.Doku.DropBody"]
 // Halbgeviert, Geviert und das doppelte Minus. Aus Zeichencodes gebaut, damit
 // der Pruefsatz selbst keinen Gedankenstrich traegt.
@@ -572,6 +620,11 @@ gleich("MapDenied nennt keine Mitgliedschaft als Ursache", URSACHE.test(en["BENE
 gleich("Notice.Denied nennt keine Mitgliedschaft als Ursache", URSACHE.test(en["BENEOS.Stream.Notice.Denied"] ?? "x membership"), false)
 const BERECHTIGUNG = /entitl|access|permission|membership|subscri/i
 gleich("die Offline-Meldung nennt nie fehlende Berechtigung", BERECHTIGUNG.test(en["BENEOS.Stream.Notice.Offline"] ?? "x access"), false)
+// Betreiberentscheid 23.11.2026 (stre-T-220): Foundry haelt das Ersatzbild im
+// Texturspeicher, es kommt nicht von selbst wieder. Der Hinweis nennt den
+// Schritt, der hilft, und verspricht keine Selbstheilung.
+gleich("der Netzfehler-Hinweis nennt das Neuladen der Welt", /reload the world/i.test(en["BENEOS.Stream.Notice.NetPlaceholder"] ?? ""), true)
+gleich("der Netzfehler-Hinweis nennt nie fehlende Berechtigung", BERECHTIGUNG.test(en["BENEOS.Stream.Notice.NetPlaceholder"] ?? "x access"), false)
 gleich("die Offline-Ablehnung der Szene nennt nie fehlende Berechtigung", BERECHTIGUNG.test(en["BENEOS.Stream.Scene.Offline"] ?? "x access"), false)
 gleich("Positivkontrolle: die Ursachensuche findet die Mitgliedschaft", URSACHE.test("your membership expired") && BERECHTIGUNG.test("not entitled"), true)
 // Positivkontrolle der Strichsuche: dieselbe Regel findet jeden der drei Striche.

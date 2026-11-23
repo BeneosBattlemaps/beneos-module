@@ -2470,6 +2470,7 @@
   "BENEOS.Stream.Intro.Download.Existing": "Nothing already installed in this world changes, and that is worth knowing: a release you installed while streaming still points at our servers, so its maps and creature pictures stay empty. Everything you install from now on lands on your disk. If you need an older release locally as well, ask us on Discord and we will sort it out with you.",
   "BENEOS.Stream.Denied.Video": "Beneos: the animated maps of {name} are not available right now, so this scene shows its still picture. Usually the membership or the rental has expired.",
   "BENEOS.Stream.Notice.Offline": "Beneos Stream: there is no connection to the server. Streamed maps, tokens, journals and sounds show a placeholder or stay silent until it is back.",
+  "BENEOS.Stream.Notice.NetPlaceholder": "Beneos Stream: some images could not be loaded right now and show a placeholder. Reload the world (F5) to try again.",
   "BENEOS.Stream.Notice.Denied": "Beneos Stream: some content in this world is not part of your access. It shows a placeholder or stays silent.",
   "BENEOS.Stream.Notice.MapDenied": "You are not entitled to view this map.",
   "BENEOS.Stream.Notice.MapSubscribe": "Subscribe",
