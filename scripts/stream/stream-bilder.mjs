@@ -67,6 +67,7 @@
 import { istPlatzhalter, assetUrl, streamKey, streamMode, zerlegeAdresse, leinwandAdresse } from "./stream-settings.mjs"
 import { ours, sammelSchluessel } from "./stream-fetch.mjs"
 import { reportFailure } from "./stream-report.mjs"
+import { isOffline } from "./stream-online.mjs"
 import { formAAdresse, MEDIEN_PAARE, srcsetTeile, srcsetTausch } from "./stream-html.mjs"
 import { maskiere } from "./stream-tormaske.mjs"
 
@@ -169,9 +170,19 @@ function bearbeitet(fenster) {
 
 /** Die Blob-Adresse zu einer Toradresse, geholt oder wiederverwendet. */
 async function blobFuer(adresse) {
-  const vorhanden = bildBlobs.get(adresse)
+  let vorhanden = bildBlobs.get(adresse)
+  // stre-T-222: ein Ersatzbild wegen fehlender Verbindung wird nicht
+  // wiederverwendet, sonst stuende es bis F5 im Journal, obwohl Notice.Offline
+  // "until it is back" verspricht. Der naechste Render holt frisch; die alte
+  // Blob-Adresse bleibt fuer ihre Halter gueltig. Solange die Sitzung offline
+  // ist, bleibt es beim Ersatz: ein neuer Abruf braechte nur ein neues.
+  if (vorhanden?.ersatz && !isOffline()) {
+    loese(adresse, vorhanden)
+    vorhanden = null
+  }
   if (vorhanden) return vorhanden.versprechen
 
+  let ersatz = false
   const versprechen = (async () => {
     /*
      * ABGERUFEN WIRD DIE TORADRESSE VON HEUTE, nicht die aus dem Dokument.
@@ -197,8 +208,11 @@ async function blobFuer(adresse) {
     // Durch den ersetzten Abruf, und das ist der ganze Zweck: Vorrat,
     // Zwischenspeicher und Ersatzbild haengen dort. Eine Abweisung kommt als
     // gueltiges Ersatzbild zurueck und nicht als Fehler.
-    const antwort = await fetch(abrufen)
+    // `beneosOberflaeche`: dieses Bild liegt nicht in PIXI, ein Ersatzbild
+    // hier wird nicht zum Verwerfen in PIXI gemerkt (stre-T-222).
+    const antwort = await fetch(abrufen, { beneosOberflaeche: true })
     if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
+    ersatz = !!antwort.headers?.get?.("x-beneos-offline")
     const blob = await antwort.blob()
     if (!blob.size) throw new Error("leere Antwort")
     if (!BILDARTEN.test(blob.type)) throw new Error(`unerlaubte Bildart: ${blob.type || "ohne Typ"}`)
@@ -211,6 +225,7 @@ async function blobFuer(adresse) {
   bildBlobs.set(adresse, eintrag)
   try {
     eintrag.blob = await versprechen
+    eintrag.ersatz = ersatz
   } catch (e) {
     // Der Eintrag muss weg, sonst merkt sich die Ablage einen Fehlschlag fuer
     // den Rest der Sitzung und ein spaeterer Versuch bekaeme ihn wieder.
@@ -220,9 +235,40 @@ async function blobFuer(adresse) {
   return eintrag.versprechen
 }
 
+/** Widerruft die Blob-Adresse eines Eintrags, den niemand mehr haelt. */
+function widerrufe(eintrag) {
+  if (!eintrag.blob) return
+  blobZuAdresse.delete(eintrag.blob)
+  try { URL.revokeObjectURL(eintrag.blob) } catch (_) { /* schon weg */ }
+}
+
+/**
+ * Abgeloeste Ersatzbild-Eintraege, stre-T-222. `blobFuer` ersetzt einen
+ * Ersatz durch einen frischen Abruf unter derselben Adresse; der alte Eintrag
+ * haelt noch Fenster, deren Blob-Adresse bis zum Loslassen gueltig bleiben
+ * muss. Hier wird er weitergefuehrt, bis sein letzter Halter weg ist, sonst
+ * widerriefe ihn nie jemand.
+ */
+const abgeloest = new Set()   // { adresse, blob, halter:Set }
+
+/** Ein Ersatz wird abgeloest: sofort widerrufen oder bis zum Loslassen fuehren. */
+function loese(adresse, eintrag) {
+  bildBlobs.delete(adresse)
+  if (!eintrag.halter.size) { widerrufe(eintrag); return }
+  eintrag.adresse = adresse
+  abgeloest.add(eintrag)
+}
+
 /** Dieses Fenster laesst die genannten Adressen los. */
 function loslassen(fenster, adressen) {
   for (const adresse of adressen) {
+    for (const alt of abgeloest) {
+      if (alt.adresse !== adresse) continue
+      alt.halter.delete(fenster)
+      if (alt.halter.size) continue
+      widerrufe(alt)
+      abgeloest.delete(alt)
+    }
     const eintrag = bildBlobs.get(adresse)
     if (!eintrag) continue
     eintrag.halter.delete(fenster)
@@ -248,6 +294,9 @@ function allesLoslassen(fenster) {
   const betroffen = []
   for (const [adresse, eintrag] of bildBlobs) {
     if (eintrag.halter.has(fenster)) betroffen.push(adresse)
+  }
+  for (const alt of abgeloest) {
+    if (alt.halter.has(fenster) && !betroffen.includes(alt.adresse)) betroffen.push(alt.adresse)
   }
   if (betroffen.length) loslassen(fenster, betroffen)
   jeFenster.delete(fenster)

@@ -60,6 +60,11 @@ netz((adresse) => {
   if (adresse.startsWith("https://gate.beneos.stream/") && adresse.includes("kaputt")) {
     return new Response("weg", { status: 404 })
   }
+  if (adresse.startsWith("https://gate.beneos.stream/") && adresse.includes("ersatzfall")) {
+    // So antwortet der Abrufersatz ohne Verbindung (stream-fetch.mjs, ersatzAntwort offline).
+    return new Response(new Blob([new Uint8Array([82, 73, 70, 70])], { type: "image/webp" }),
+      { status: 200, headers: { "x-beneos-ersatz": "offline", "x-beneos-offline": "1" } })
+  }
   if (adresse.startsWith("https://gate.beneos.stream/")) {
     return new Response(new Blob([new Uint8Array([82, 73, 70, 70])], { type: "image/webp" }), { status: 200 })
   }
@@ -677,6 +682,93 @@ abschnitt("stre-T-148: medienAnzeigen setzt srcset je Eintrag, nur im DOM")
   gleich("srcset mit Anhang ?/#: Anhang geht an die Adresse", lauf(anhang) + "/" + (anhang.getAttribute("srcset") === echt1 + (echt1.includes("?") ? "&" : "?") + "v=2 1x, " + echt2 + "#f 2x"), "1/true")
   const fremdAnhang = quelle({ srcset: maskiere(echt1) + "x 1x, " + maskiere(echt2) + " 2x", "data-beneos-srcset": freiSatz })
   gleich("srcset mit fremdem Anhang: bleibt", lauf(fremdAnhang) + "/" + (fremdAnhang.getAttribute("srcset") === maskiere(echt1) + "x 1x, " + maskiere(echt2) + " 2x"), "0/true")
+}
+
+abschnitt("stre-T-222: ein Ersatzbild wegen fehlender Verbindung wird nicht wiederverwendet")
+{
+  // Notice.Offline verspricht "until it is back". Ein Journalbild, das ohne
+  // Verbindung das Ersatzbild bekam, darf deshalb beim naechsten Render nicht
+  // aus der Ablage kommen, sobald die Sitzung nicht mehr offline ist. Solange
+  // sie offline ist, bleibt es beim Ersatz: ein neuer Abruf braechte nur ein neues.
+  const warte = async (b) => {
+    for (let i = 0; i < 20 && !String(b.getAttribute("src")).startsWith("blob:"); i++) {
+      await new Promise((r) => setTimeout(r, 5))
+    }
+  }
+  const ersatzAdresse = settings.assetUrl("beneos_bm_0042", "4k", "map_assets/ersatzfall.webp")
+  const e1 = bildElement(ersatzAdresse)
+  const fe1 = fenster([e1])
+  nimmAbrufe()
+  await haken.rufe("renderJournalEntrySheet", fe1.app, fe1.wurzel)
+  await warte(e1)
+  const erst = `${String(e1.getAttribute("src")).startsWith("blob:")}|${nimmAbrufe().length}`
+  const e2 = bildElement(ersatzAdresse)
+  const fe2 = fenster([e2])
+  await haken.rufe("renderJournalEntrySheet", fe2.app, fe2.wurzel)
+  await warte(e2)
+  // Blob im ersten Fenster | Abrufe beim ersten Render | Abrufe beim zweiten
+  gleich("Ersatzbild, Sitzung nicht offline: der naechste Render holt frisch", `${erst}|${nimmAbrufe().length}`, "true|1|1")
+
+  // Gegenwert: ein echtes Bild kommt weiter aus der Ablage.
+  const echtAdresse = settings.assetUrl("beneos_bm_0042", "4k", "map_assets/echtfall.webp")
+  const g1 = bildElement(echtAdresse)
+  const fg1 = fenster([g1])
+  await haken.rufe("renderJournalEntrySheet", fg1.app, fg1.wurzel)
+  await warte(g1)
+  nimmAbrufe()
+  const g2 = bildElement(echtAdresse)
+  const fg2 = fenster([g2])
+  await haken.rufe("renderJournalEntrySheet", fg2.app, fg2.wurzel)
+  await warte(g2)
+  gleich("echtes Bild: der naechste Render holt nichts", nimmAbrufe().length, 0)
+
+  // Offline: der Ersatz bleibt in der Ablage. Die Sitzung wird ueber den
+  // echten Zustand offline gestellt: der Browser meldet kein Netz.
+  const online = await import("./stream-online.mjs")
+  const vorher = Object.getOwnPropertyDescriptor(globalThis.navigator, "onLine")
+  Object.defineProperty(globalThis.navigator, "onLine", { value: false, configurable: true })
+  online.noteResult(false, "pruefsatz")
+  const offline = online.isOffline()
+  nimmAbrufe()
+  const e3 = bildElement(ersatzAdresse)
+  const fe3 = fenster([e3])
+  await haken.rufe("renderJournalEntrySheet", fe3.app, fe3.wurzel)
+  await warte(e3)
+  // Sitzung offline | neue Abrufe der Ersatzadresse
+  gleich("Ersatzbild, Sitzung offline: kein neuer Abruf", `${offline}|${nimmAbrufe().filter((a) => a.adresse.includes("ersatzfall")).length}`, "true|0")
+  if (vorher) Object.defineProperty(globalThis.navigator, "onLine", vorher)
+  else delete globalThis.navigator.onLine
+
+  // Das abgeloeste Ersatz-Blob des ersten Fensters wird beim Schliessen
+  // widerrufen, nicht erst mit dem Ende der Sitzung (Beneos-Review, CQ-H-06).
+  const widerrufen = []
+  const echtesWiderrufen = URL.revokeObjectURL
+  URL.revokeObjectURL = (a) => { widerrufen.push(a); return echtesWiderrufen.call(URL, a) }
+  const blob1 = e1.getAttribute("src")
+  const blob2 = e2.getAttribute("src")
+  await haken.rufe("closeJournalEntrySheet", fe2.app)
+  const nachZweitem = widerrufen.includes(blob1)
+  await haken.rufe("closeJournalEntrySheet", fe1.app)
+  await haken.rufe("closeJournalEntrySheet", fe3.app)
+  URL.revokeObjectURL = echtesWiderrufen
+  // verschiedene Blobs | erstes widerrufen, solange sein Fenster offen ist | erstes nach dem Schliessen | zweites
+  gleich("abgeloestes Ersatz-Blob: widerrufen, sobald sein Fenster schliesst",
+    `${blob1 !== blob2}|${nachZweitem}|${widerrufen.includes(blob1)}|${widerrufen.includes(blob2)}`, "true|false|true|true")
+  await haken.rufe("closeJournalEntrySheet", fg1.app)
+  await haken.rufe("closeJournalEntrySheet", fg2.app)
+
+  // Der Abruf meldet sich als Oberflaeche: ein Ersatzbild hier liegt nicht in
+  // PIXI und darf dort nichts verwerfen lassen (Kalt-Review zum Diff, Befund 3).
+  const m1 = bildElement(settings.assetUrl("beneos_bm_0042", "4k", "map_assets/markefall.webp"))
+  const fm1 = fenster([m1])
+  nimmAbrufe()
+  await haken.rufe("renderJournalEntrySheet", fm1.app, fm1.wurzel)
+  await warte(m1)
+  const amTor = nimmAbrufe().filter((a) => a.adresse.includes("markefall"))
+  // Abrufe | jeder mit der Marke
+  gleich("der Abruf eines Blattbildes traegt die Marke beneosOberflaeche",
+    `${amTor.length}|${amTor.every((a) => a.optionen?.beneosOberflaeche === true)}`, "1|true")
+  await haken.rufe("closeJournalEntrySheet", fm1.app)
 }
 
 console.log("Nicht geprueft, ausdruecklich benannt:")

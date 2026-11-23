@@ -24,6 +24,7 @@ import { assetUrl, budgetFor, downloadMode, GETEILT_RAUM, geteilteAdresse, istGe
 import { ohneSchluessel, ohneSchluesselImText, reportFailure, reportedSoFar } from "./stream-report.mjs"
 import { isOffline, noteResult } from "./stream-online.mjs"
 import { meldeAusfall, merkeVideoToast } from "./stream-hinweis.mjs"
+import { merkeErsatz } from "./stream-ersatz-speicher.mjs"
 
 const CACHE_NAME = "beneos-stream-v1"
 const TTL_MS = 72 * 60 * 60 * 1000
@@ -1236,6 +1237,14 @@ async function ersatzAntwort(url, ursache) {
   }
 }
 
+/**
+ * Kommt der Abruf aus der Oberflaeche (Blatt, Journal, Chat)? Die setzt
+ * `{ beneosOberflaeche: true }`; ihr Bild liegt nicht in PIXI (stre-T-222).
+ */
+function fuerOberflaeche(init) {
+  return init?.beneosOberflaeche === true
+}
+
 async function offlineAntwort(url) {
   meldeOffline(url)
   // Die Konsolenzeile darueber bleibt `debug`. In Worten sagt es seit
@@ -2119,6 +2128,11 @@ async function alleImSpeicherBei(urls, an) {
       // Nach dem Speicher, vor allem anderen: was lokal liegt, wird auch ohne
       // Verbindung geliefert, und genau das ist der Sinn des Speichers. Erst wenn
       // es die Leitung braeuchte, entscheidet der Zustand.
+      // stre-T-222: PIXI haelt das Ersatzbild fest; gemerkt, damit es bei der
+      // Rueckkehr der Verbindung und beim naechsten Szenenaufbau verworfen
+      // wird. Ein Abruf der Oberflaeche liegt nicht in PIXI und bleibt aussen
+      // vor (siehe stream-ersatz-speicher.mjs).
+      if (!measuring && isOffline() && istBild(url) && !fuerOberflaeche(init)) merkeErsatz(url)
       if (!measuring && isOffline()) return offlineAntwort(url)
 
       // Laeuft schon jemand fuer diese Adresse? Dann mitwarten statt zweimal
@@ -2312,6 +2326,8 @@ async function alleImSpeicherBei(urls, an) {
           count("ersatz-netz")
           // stre-T-220: die Spielleitung erfaehrt es einmal je Szene in Worten.
           meldeAusfall("netz", url)
+          // stre-T-222: siehe stream-ersatz-speicher.mjs.
+          if (!fuerOberflaeche(init)) merkeErsatz(url)
           return await ersatzAntwort(url, "offline")
         }
         throw err

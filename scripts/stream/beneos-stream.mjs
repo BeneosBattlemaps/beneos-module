@@ -23,7 +23,8 @@ import { installStreamFetch, installKonsolenMaske, storeStatus, clearStore, prew
          offlineHalten, offlineFreigeben, offlineGehalten, offlineBestand, alleZusagenLoesen,
          speicherLage, raumSchaffen, speicherAusfallStand, gehalteneAdressen } from "./stream-fetch.mjs"
 import { installStreamCanvas, drawStatus, videoTilesOf } from "./stream-canvas.mjs"
-import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent } from "./stream-online.mjs"
+import { installStreamOnline, onlineStatus, streamState, isOffline, hasStreamedContent, onStreamState } from "./stream-online.mjs"
+import { installErsatzVerwerfen } from "./stream-ersatz-speicher.mjs"
 import { installStreamIndicator } from "./stream-indicator.mjs"
 import { installStreamHinweis } from "./stream-hinweis.mjs"
 import { installStreamBilder, bilderBlobStand } from "./stream-bilder.mjs"
@@ -138,6 +139,8 @@ Hooks.once("init", () => {
     installStreamFetch()
     installStreamOnline()
     installStreamCanvas()
+    // Ersatzbilder aus PIXI verwerfen, wenn die Verbindung zurueck ist (stre-T-222).
+    installErsatzVerwerfen({ onState: onStreamState, zustand: streamState })
     installStreamIndicator()
     // Meldungen und Kartenschild bei fehlendem Zugang oder offline (stre-T-165, T-166).
     installStreamHinweis()

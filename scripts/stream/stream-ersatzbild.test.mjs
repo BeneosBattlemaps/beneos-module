@@ -100,12 +100,12 @@ const adresse = (name) => {
 }
 
 /** Ruft den eingebauten Ersatz und sammelt, was ankommt. */
-async function hole(name, zustand) {
+async function hole(name, zustand, init = undefined) {
   tor = zustand
   nimmAbrufe()
   let antwort
   let geworfen = null
-  try { antwort = await globalThis.fetch(adresse(name)) } catch (fehler) { geworfen = String(fehler) }
+  try { antwort = await globalThis.fetch(adresse(name), init) } catch (fehler) { geworfen = String(fehler) }
   // Ein Tick, damit die Gesundheitsabfrage nach einem dritten Fehlschlag fertig ist.
   await new Promise((r) => setTimeout(r, 0))
   const alle = nimmAbrufe().map((a) => a.adresse)
@@ -310,6 +310,26 @@ await hole("r-token.webp", "gut")
 gleich("keine Meldung offline auf diesem Weg", meldungen.filter((m) => /no connection to the server/.test(m.text)).length, 0)
 
 // ===========================================================================
+abschnitt("Ein Ersatzbild wegen fehlender Verbindung wird zum Verwerfen gemerkt (stre-T-222)")
+
+// Am echten Abrufersatz: PIXI haelt ein Ersatzbild als gueltige Textur fest,
+// also muss der Abruf es dem Speicher melden. Gemerkt wird nur das Ersatzbild
+// offline, nie denied, nie ein Video, nie eine Steuerdatei, nie im Messmodus.
+const speicher = await import("./stream-ersatz-speicher.mjs")
+const gemerkt = (name) => speicher.gemerktFuerPruefsatz().includes(adresse(name))
+gleich("Netzfehler auf einem Bild: gemerkt", gemerkt("e-token.webp"), true)
+gleich("ein gutes Bild: nicht gemerkt", gemerkt("f-token.webp"), false)
+gleich("Netzfehler auf einem Video: nicht gemerkt", gemerkt("karte.webm"), false)
+gleich("Netzfehler auf einer Steuerdatei: nicht gemerkt", gemerkt("manifest.json"), false)
+gleich("Netzfehler im Messmodus: nicht gemerkt", gemerkt("o-token.webp"), false)
+await hole("s-token.webp", "abgewiesen")
+gleich("Abweisung (denied): nicht gemerkt", gemerkt("s-token.webp"), false)
+// Ein Blatt- oder Journalbild liegt nicht in PIXI (Kalt-Review zum Diff, Befund 3).
+const oberflaecheNetz = await hole("u-token.webp", "netzfehler", { beneosOberflaeche: true })
+gleich("Netzfehler auf einem Oberflaechenbild: Ersatz ja, gemerkt nein",
+  `${oberflaecheNetz.ersatz}|${gemerkt("u-token.webp")}`, "offline|false")
+
+// ===========================================================================
 abschnitt("Ohne Verbindung kommt das Ersatzbild offline, ohne dass das Tor gefragt wird")
 
 // Drei Fehlschlaege in Folge und ein stummes Tor: die Sitzung ist offline.
@@ -320,9 +340,14 @@ gleich("offline: ein Bild bekommt das Ersatzbild offline", offlineBild.ersatz, "
 gleich("offline: es sind die Bytes von beneos_stream_offline_card.webp",
   gleicheBytes(offlineBild.bytes, datei("offline", "card")), true)
 gleich("offline: das Tor wird fuer das Bild nicht gefragt", offlineBild.amTor.length, 0)
+gleich("offline: das Ersatzbild wird zum Verwerfen gemerkt (stre-T-222)", gemerkt("d_front.webp"), true)
+const offlineOberflaeche = await hole("g_front.webp", "gut", { beneosOberflaeche: true })
+gleich("offline: ein Oberflaechenbild bekommt Ersatz, gemerkt wird es nicht (stre-T-222)",
+  `${offlineOberflaeche.ersatz}|${gemerkt("g_front.webp")}`, "offline|false")
 const offlineVideo = await hole("karte.webm", "gut")
 gleich("offline: ein Video bekommt kein Ersatzbild", offlineVideo.ersatz, null)
 gleich("offline: ein Video bekommt den Bildpunkt", offlineVideo.typ, "image/gif")
+gleich("offline: ein Video wird nicht gemerkt (stre-T-222)", gemerkt("karte.webm"), false)
 const offlineSteuer = await hole("manifest.json", "gut")
 gleich("offline: eine Steuerdatei bekommt HTTP 503 statt eines Bildes", offlineSteuer.status, 503)
 
