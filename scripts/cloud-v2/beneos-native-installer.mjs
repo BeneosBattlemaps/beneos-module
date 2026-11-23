@@ -408,6 +408,46 @@ export function szenenSammlungAbgleich(packListe, vorhanden, frueher) {
   return { anlegen, aktualisieren, loeschen, fremd }
 }
 
+/**
+ * Gehoert die vorhandene Szene zu DIESEM Release? Drei Belege, jeder reicht,
+ * und jeder bindet an dieses Release statt nur an Beneos.
+ *
+ * Der Namensvergleich ist der alte Test und bleibt der haeufigste Fall. Er
+ * allein genuegt nicht: ein Kunde, der die Szene umbenannt hat, bekaeme sonst
+ * nie wieder ein Update, und Umbenennen ist genau die Art Aenderung, die
+ * dieser Weg schuetzen soll.
+ *
+ * Der Merker zaehlt nur mit passendem `releaseDir`. Sein blosses Vorhandensein
+ * hiesse "irgendein Beneos-Paket war hier", und damit haette ein Release Y
+ * eine umbenannte Szene aus Release X uebernommen und nach dem Merker von X
+ * darin geloescht. Genau den Kollisionsfall faengt der Zweig ab, der diese
+ * Frage stellt.
+ *
+ * Merker und Vermerk werden ueber den Alias verglichen (MO-039). Eine Welt,
+ * die vor der Umbenennung installiert hat, traegt `bm_0057b`, der Lauf kommt
+ * mit dem Katalogschluessel `bm_9108`. Roh verglichen, galt eine umbenannte
+ * Szene dann als fremd und bekam statt des Updates eine Kollisionsmeldung.
+ * Der Kollisionsschutz bleibt: ein ANDERES umbenanntes Release loest auf eine
+ * andere Nummer auf und trifft nicht.
+ *
+ * Eine Modulfunktion und keine private Methode, damit
+ * release-alias-vergleich.test.mjs die echte Entscheidung faehrt.
+ *
+ * @param {object} cur        die Szene in der Welt
+ * @param {object} d          die Szene aus dem Paket
+ * @param {string} releaseDir der Katalogschluessel dieses Laufs
+ */
+export function istUnsereSzene(cur, d, releaseDir) {
+  if (String(cur?.name || "") === String(d?.name || "")) return true
+  const meins = String(releaseDir || "")
+  if (!meins) return false
+  if (BeneosInstallState.gleichesRelease(cur?.getFlag?.("beneos-module", "packEmbedIds")?.releaseDir, meins)) return true
+  try {
+    if (BeneosInstallState.gleichesRelease(BeneosInstallState.findReleaseDirByScene?.(String(cur?.id || "")), meins)) return true
+  } catch (_) { /* Vermerk nicht lesbar, dann zaehlt er eben nicht */ }
+  return false
+}
+
 const JSON_FILE_TO_PHASE = {
   "data/folders.json":      { phaseKey: "data",       collection: "folders",   docClass: () => globalThis.Folder },
   "data/Scene.json":        { phaseKey: "scenes",     collection: "scenes",    docClass: () => globalThis.Scene },
@@ -2513,30 +2553,9 @@ export class BeneosNativeBattlemapInstaller {
     }
   }
 
-  /**
-   * Gehoert die vorhandene Szene zu DIESEM Release? Drei Belege, jeder reicht,
-   * und jeder bindet an dieses Release statt nur an Beneos.
-   *
-   * Der Namensvergleich ist der alte Test und bleibt der haeufigste Fall. Er
-   * allein genuegt nicht: ein Kunde, der die Szene umbenannt hat, bekaeme sonst
-   * nie wieder ein Update, und Umbenennen ist genau die Art Aenderung, die
-   * dieser Weg schuetzen soll.
-   *
-   * Der Merker zaehlt nur mit passendem `releaseDir`. Sein blosses Vorhandensein
-   * hiesse "irgendein Beneos-Paket war hier", und damit haette ein Release Y
-   * eine umbenannte Szene aus Release X uebernommen und nach dem Merker von X
-   * darin geloescht. Genau den Kollisionsfall faengt der Zweig ab, der diese
-   * Frage stellt.
-   */
+  /** Siehe die Modulfunktion `istUnsereSzene`. */
   #istUnsereSzene(cur, d) {
-    if (String(cur?.name || "") === String(d?.name || "")) return true
-    const meins = String(this.record?.releaseDir || "")
-    if (!meins) return false
-    if (String(cur?.getFlag?.("beneos-module", "packEmbedIds")?.releaseDir || "") === meins) return true
-    try {
-      if (String(BeneosInstallState.findReleaseDirByScene?.(String(cur?.id || "")) || "") === meins) return true
-    } catch (_) { /* Vermerk nicht lesbar, dann zaehlt er eben nicht */ }
-    return false
+    return istUnsereSzene(cur, d, this.record?.releaseDir)
   }
 
   /**

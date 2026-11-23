@@ -9,6 +9,7 @@ All notable changes to this module will be documented in this file.
 **Fixes**
 - Fixed: When the Foundry app or your browser can no longer read a battlemap it has already downloaded, usually because your disk is nearly full, the install report now says so and tells you to free up space instead of showing "unknown" and only suggesting a retry.
 - Fixed: The install report on The Forge no longer claims that every HD file fits your plan's per-file limit, because a few HD bonus videos are larger than 50 MB.
+- Fixed: In worlds that installed a battlemap release before it was renumbered, uninstalling another battlemap now frees its downloaded files again instead of leaving them on disk with a warning, and updates of that release now also reach scenes you renamed yourself.
 
 **Changes**
 - Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`. Battlemaps install from the Beneos Cloud window as before.

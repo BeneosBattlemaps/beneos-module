@@ -48,6 +48,40 @@ const localize = (k, d) => {
   return d
 }
 
+/**
+ * Der Paketordner eines vermerkten Release aus der Katalogliste, oder null.
+ *
+ * Verglichen wird ueber den Alias (MO-039). Der Katalog fuehrt nach der
+ * Umbenennung nur `bm_9108`, der Vermerk einer aelteren Welt `bm_0057b`. Roh
+ * verglichen fand sich keine Zeile, der Lauf hielt den Vermerk fuer
+ * unaufloesbar und liess bei JEDER anderen Deinstallation die Dateien liegen
+ * (`_othersUnresolved`, Warnung SharedUnknown).
+ *
+ * Die genaue Schreibweise geht vor, erst danach zaehlt der Alias, wie in
+ * `findByReleaseDir` und `vermerkSchluessel`. Fuehrt die Liste je beide Zeilen
+ * eines Release, beschreibt der Lauf so das vermerkte Paket und nicht das
+ * erste, das zufaellig auf denselben Alias faellt.
+ *
+ * Eine Modulfunktion und keine private Methode, damit
+ * release-alias-vergleich.test.mjs die echte Zeilenwahl faehrt.
+ *
+ * @param {Array<object>} releases  Zeilen aus listReleases
+ * @param {string}        releaseDir Releasename aus dem Vermerk
+ * @param {string}        variant    "4K", "HD" oder ""
+ * @returns {string|null}
+ */
+export function paketOrdnerAusListe(releases, releaseDir, variant) {
+  const liste = Array.isArray(releases) ? releases : []
+  const name = (r) => String(r?.release_dir || r?.filename || "").trim()
+  const genau = String(releaseDir || "").trim()
+  const row = (genau && liste.find(r => name(r) === genau))
+    || liste.find(r => BeneosInstallState.gleichesRelease(name(r), releaseDir))
+  if (!row) return null
+  const dirs = row.variant_dirs || {}
+  if (variant && dirs[variant]) return dirs[variant]
+  return dirs["4K"] || dirs["HD"] || Object.values(dirs)[0] || null
+}
+
 export class BeneosNativeUninstaller {
   /**
    * @param {object}  opts
@@ -218,12 +252,7 @@ export class BeneosNativeUninstaller {
     try {
       const mgr = window.BeneosScenePacker
       if (!mgr?.listReleases) return null
-      const releases = await mgr.listReleases()
-      const row = releases.find(r => String(r.release_dir || r.filename) === String(releaseDir))
-      if (!row) return null
-      const dirs = row.variant_dirs || {}
-      if (variant && dirs[variant]) return dirs[variant]
-      return dirs["4K"] || dirs["HD"] || Object.values(dirs)[0] || null
+      return paketOrdnerAusListe(await mgr.listReleases(), releaseDir, variant)
     } catch (_) {
       return null
     }

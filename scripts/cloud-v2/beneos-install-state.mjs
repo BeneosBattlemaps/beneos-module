@@ -77,6 +77,29 @@ export class BeneosInstallState {
   }
 
   /**
+   * Meinen zwei Releasenamen dasselbe Release? Der Vergleich fuer jede Stelle,
+   * die einen Namen aus dem Vermerk dieser Welt gegen einen Namen aus dem
+   * Katalog haelt (MO-039).
+   *
+   * Beide Seiten laufen durch den Alias, aus demselben Grund wie in
+   * `findByReleaseDir`: der Katalog kennt nach der Umbenennung nur `bm_9108`,
+   * der Vermerk einer Welt, die vorher installiert hat, weiter `bm_0057b`. Der
+   * Vorsatz `beneos_` faellt vorher weg, weil aeltere Vermerke ihn tragen.
+   *
+   * Leer ist nie gleich. "Nicht bekannt" auf beiden Seiten darf kein Treffer
+   * sein, sonst gehoerte eine Szene ohne Vermerk zu jedem Release ohne Namen.
+   *
+   * @param {string} a
+   * @param {string} b
+   * @returns {boolean}
+   */
+  static gleichesRelease(a, b) {
+    const norm = (s) => beneosReleaseAlias(String(s || "").trim().replace(/^beneos_/i, ""))
+    const na = norm(a), nb = norm(b)
+    return !!na && na === nb
+  }
+
+  /**
    * Every scene id this world installed from a release, across all variants.
    *
    * WHY THE UNION AND NOT THE FIRST ROW
