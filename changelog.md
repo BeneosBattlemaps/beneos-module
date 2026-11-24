@@ -7,6 +7,7 @@ All notable changes to this module will be documented in this file.
 ### 14.4.13 # unreleased
 
 **Fixes**
+- Fixed: In the Beneos Cloud library the loot mechanics buttons now have a clearly visible edge, and the search field and the source checkboxes show a gold focus ring, so you can always see where keyboard input goes.
 - Fixed: In a narrow Beneos Cloud window the filter column no longer cuts off the result cards. Below about 420 px the library switches to one column, and the filters fold behind a "Filters" button above the results that also shows how many filters are active.
 - Fixed: When the Foundry app or your browser can no longer read a battlemap it has already downloaded, usually because your disk is nearly full, the install report now says so and tells you to free up space instead of showing "unknown" and only suggesting a retry.
 - Fixed: The install report on The Forge no longer claims that every HD file fits your plan's per-file limit, because a few HD bonus videos are larger than 50 MB.
