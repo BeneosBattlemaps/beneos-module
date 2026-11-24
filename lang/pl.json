@@ -2435,6 +2435,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Nie udało się ustalić, które wydanie usunąć.",
   "BENEOS.Cloud.Uninstall.Failed": "Usunięcie wydania nie powiodło się. Sprawdź konsolę przeglądarki.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud nie rozpoznaje już logowania tego świata, więc zapisany dostęp z Patreona został usunięty. Otwórz okno Beneos Cloud i zaloguj się ponownie, aby go przywrócić.",
+  "BENEOS.Cloud.AccountRebound": "Ten świat jest teraz połączony z innym kontem Beneos. Zaloguj się ponownie, aby wrócić.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nowe pliki za Twoje wsparcie na Patreonie",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Odblokowane dla Twojego konta od ostatniej wizyty.",
