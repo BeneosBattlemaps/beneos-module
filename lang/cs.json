@@ -1041,6 +1041,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "Zavřít",
   "BENEOS.Cloud.Filter.Search": "Globální textové vyhledávání",
   "BENEOS.Cloud.Filter.Reset": "Resetovat",
+  "BENEOS.Cloud.Filter.Toggle": "Filtry",
   "BENEOS.Cloud.Filter.Biome": "Biom",
   "BENEOS.Cloud.Filter.Faction": "Frakce",
   "BENEOS.Cloud.Filter.Source": "Zdroj",

@@ -1041,6 +1041,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "닫기",
   "BENEOS.Cloud.Filter.Search": "전체 텍스트 검색",
   "BENEOS.Cloud.Filter.Reset": "초기화",
+  "BENEOS.Cloud.Filter.Toggle": "필터",
   "BENEOS.Cloud.Filter.Biome": "바이옴",
   "BENEOS.Cloud.Filter.Faction": "진영",
   "BENEOS.Cloud.Filter.Source": "출처",

@@ -1043,6 +1043,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "Close",
   "BENEOS.Cloud.Filter.Search": "Global text search",
   "BENEOS.Cloud.Filter.Reset": "Reset",
+  "BENEOS.Cloud.Filter.Toggle": "Filters",
   "BENEOS.Cloud.Filter.Biome": "Biome",
   "BENEOS.Cloud.Filter.Faction": "Faction",
   "BENEOS.Cloud.Filter.Source": "Source",
