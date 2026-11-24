@@ -2443,7 +2443,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Не удалось определить, какой релиз удалить.",
   "BENEOS.Cloud.Uninstall.Failed": "Удаление релиза не удалось. Смотрите консоль браузера.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud больше не распознаёт вход в этот мир, поэтому сохранённый доступ к Patreon был удалён. Откройте окно Beneos Cloud и авторизуйтесь заново, чтобы восстановить его.",
-  "BENEOS.Cloud.AccountRebound": "Этот мир теперь привязан к другой учётной записи Beneos. Войдите снова, чтобы переключиться обратно.",
+  "BENEOS.Cloud.AccountRebound": "Этот мир теперь привязан к другой учётной записи Beneos. Чтобы снова использовать здесь свою учётную запись, отключитесь в настройках Beneos Cloud и войдите.",
   "BENEOS.Cloud.WhatsNew.Title": "Обновления Beneos",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Новые загрузки для вашей поддержки на Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Открыто для вашего аккаунта с последней посещёния.",

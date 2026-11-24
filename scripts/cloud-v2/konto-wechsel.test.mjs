@@ -166,5 +166,5 @@ test("Hinweistext in allen 14 Sprachen vorhanden, englisch woertlich, ohne Gedan
     assert.doesNotMatch(text, new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]|--`), code)
   }
   assert.equal(JSON.parse(readFileSync(SPRACHEN.en, "utf8"))["BENEOS.Cloud.AccountRebound"],
-    "This world is now linked to another Beneos account. Sign in again to switch back.")
+    "This world is now linked to another Beneos account. To use your own account here again, disconnect in the Beneos Cloud settings and sign in.")
 })

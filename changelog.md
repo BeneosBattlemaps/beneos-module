@@ -7,7 +7,6 @@ All notable changes to this module will be documented in this file.
 ### 14.4.13 # unreleased
 
 **Fixes**
-- Fixed: When someone signs in to Beneos Cloud with a different account and the cloud moves the world's link to that account, copies of the world now tell the GM "This world is now linked to another Beneos account. Sign in again to switch back." instead of switching accounts silently.
 - Fixed: In the Beneos Cloud library the Origin filter no longer lists Technoarcane and Giantforged twice, each option now finds all of its items, and newly installed loot of one origin lands in one compendium folder. Choosing Arcane no longer also shows Technoarcane items, and the item details now show the origin icon for Technoarcane, Giantforged, Dwarvenforged and Crystalline items too.
 - Fixed: In a narrow Beneos Cloud window the "Filters" button now stays in place while you scroll through the open filters.
 - Fixed: In the Beneos Cloud library the filter dropdowns now show a gold focus ring when you reach them with the keyboard.

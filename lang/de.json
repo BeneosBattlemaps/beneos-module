@@ -2443,7 +2443,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Es war nicht feststellbar, welches Release entfernt werden soll.",
   "BENEOS.Cloud.Uninstall.Failed": "Das Entfernen des Releases ist fehlgeschlagen. Siehe Browser-Konsole.",
   "BENEOS.Cloud.SessionExpired": "Die Beneos Cloud kennt die Anmeldung dieser Welt nicht mehr, der gespeicherte Patreon-Zugang wurde deshalb entfernt. Melde dich im Beneos-Cloud-Fenster neu an, um ihn wiederherzustellen.",
-  "BENEOS.Cloud.AccountRebound": "Diese Welt ist jetzt mit einem anderen Beneos-Konto verknüpft. Melde dich erneut an, um zurückzuwechseln.",
+  "BENEOS.Cloud.AccountRebound": "Diese Welt ist jetzt mit einem anderen Beneos-Konto verknüpft. Um hier wieder dein eigenes Konto zu nutzen, trenne die Verbindung in den Beneos-Cloud-Einstellungen und melde dich an.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Neue Downloads für deine Patreon-Unterstützung",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Seit deinem letzten Besuch für dein Konto freigeschaltet.",
