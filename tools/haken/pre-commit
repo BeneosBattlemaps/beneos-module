@@ -179,7 +179,8 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # Pruefung genauso; eine Umbenennung erscheint dank --no-renames als D plus A.
 # Ist der Haken selbst vorgemerkt, laufen alle: eine Aenderung am Tor wird an
 # allen Pruefungen gemessen, die es faehrt.
-NACH_GEGENSTAND="scripts/cloud-v2/filter-zaehler.test.mjs
+NACH_GEGENSTAND="scripts/cloud-v2/eingabeart.test.mjs
+scripts/cloud-v2/filter-zaehler.test.mjs
 scripts/cloud-v2/install-ausgang.test.mjs
 scripts/cloud-v2/install-badge.test.mjs
 scripts/cloud-v2/install-nachspiel.test.mjs
