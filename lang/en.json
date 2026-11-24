@@ -2443,6 +2443,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Could not work out which release to remove.",
   "BENEOS.Cloud.Uninstall.Failed": "Removing the release failed. See the browser console.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud no longer recognises this world's sign-in, so the stored Patreon access was cleared. Open the Beneos Cloud window and sign in again to restore it.",
+  "BENEOS.Cloud.AccountRebound": "This world is now linked to another Beneos account. To use your own account here again, disconnect in the Beneos Cloud settings and sign in.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "New downloads for your Patreon support",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Unlocked for your account since your last visit.",

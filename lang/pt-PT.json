@@ -2435,6 +2435,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Não foi possível determinar que versão remover.",
   "BENEOS.Cloud.Uninstall.Failed": "A remoção da versão falhou. Consulte a consola do navegador.",
   "BENEOS.Cloud.SessionExpired": "A Beneos Cloud já não reconhece a sessão deste mundo, pelo que o acesso do Patreon guardado foi removido. Abra a janela da Beneos Cloud e inicie sessão novamente para o restaurar.",
+  "BENEOS.Cloud.AccountRebound": "Este mundo está agora associado a outra conta Beneos. Para voltar a usar a sua própria conta aqui, desligue-se nas definições da Beneos Cloud e inicie sessão.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Novas transferências pelo seu apoio no Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Desbloqueado para a sua conta desde a sua última visita.",
