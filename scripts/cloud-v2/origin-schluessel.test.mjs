@@ -60,10 +60,11 @@ globalThis.game = {
 
 // Die Pfade stehen als new URL(...), damit die Attrappen vor dem Laden stehen
 // und der Importgraph des Hakens (tools/haken/betroffen.mjs) sie trotzdem liest.
-const { herkunftSchluessel, herkunftIconUrl } = await import(new URL("./origin-schluessel.mjs", import.meta.url))
+const { herkunftSchluessel, herkunftIconUrl, herkunftFarbe } = await import(new URL("./origin-schluessel.mjs", import.meta.url))
 const { BeneosDatabaseHolder } = await import(new URL("../beneos_search_engine.js", import.meta.url))
 const { BeneosUtility } = await import(new URL("../beneos_utility.js", import.meta.url))
 const { V2_FILTER_DEFS } = await import(new URL("./filter-defs.mjs", import.meta.url))
+const { OriginsRegistry } = await import(new URL("../loot/origins-registry.mjs", import.meta.url))
 BeneosUtility.isItemLoaded = () => false
 BeneosUtility.getItemInstallTS = () => 0
 BeneosUtility.getItemInstallHash = () => null
@@ -145,15 +146,28 @@ const REGISTRY_SLUGS = [
   "crystalline", "beastforged", "feywoven", "occult", "giantforged",
 ]
 
-test("Icon: Kartenname aus der Registry, sonst der Schluessel wie bisher", () => {
-  const cdn = (n) => `https://www.beneos-database.com/icons/${n}.webp`
-  // Wert mit Aenderung: kanonisch technoarcane, die Datei am CDN heisst techno_arcane.
-  assert.equal(herkunftIconUrl("technoarcane", { icon_filename_bw: "techno_arcane_blackwhite.webp" }), cdn("techno_arcane"))
-  assert.equal(herkunftIconUrl("crystalline", { icon_filename_bw: "crystaline_blackwhite.webp" }), cdn("crystaline"))
-  // Wert ohne Aenderung: arcane bleibt arcane, unbekannte Herkunft (srd) bleibt beim Schluessel.
-  assert.equal(herkunftIconUrl("arcane", { icon_filename_bw: "arcane_blackwhite.webp" }), cdn("arcane"))
-  assert.equal(herkunftIconUrl("srd", null), cdn("srd"))
-  assert.equal(herkunftIconUrl("", null), null)
+test("Icon: farbige Scheibe aus dem Modul ueber die Registry, srd ohne Icon (MO-044)", () => {
+  // Zwei Eintraege wie in data/_itemorigins/origins.json, als Literale.
+  OriginsRegistry.origins = {
+    beastforged: { slug: "beastforged", icon_filename: "beastforged.webp", icon_filename_bw: "beastforged_blackwhite.webp" },
+    technoarcane: { slug: "technoarcane", icon_filename: "techno_arcane.webp", icon_filename_bw: "techno_arcane_blackwhite.webp" },
+  }
+  const modul = (datei) => `modules/beneos-module/icons/origin/${datei}`
+  // Wert mit Aenderung: beastforged fehlt am CDN, die Scheibe liegt im Modul.
+  assert.equal(herkunftIconUrl("beastforged"), modul("beastforged.webp"))
+  // Der Dateiname kommt aus der Registry, nicht aus einer eigenen Namensregel.
+  assert.equal(herkunftIconUrl("technoarcane"), modul("techno_arcane.webp"))
+  // Wert ohne sichtbare Aenderung: srd ist eine Quelle, keine Herkunft, und zeigt kein Icon.
+  assert.equal(herkunftIconUrl("srd"), null)
+  assert.equal(herkunftIconUrl(""), null)
+})
+
+test("Icon-Farbe: dieselbe Glow-Farbe wie in der Codex-Galerie, srd ohne Farbe (MO-044)", () => {
+  // Der Codex faerbt die Scheibe je Herkunft ein; ohne Farbe saehe jede Herkunft gleich rot aus.
+  assert.equal(herkunftFarbe("beastforged"), "#a86838")
+  assert.equal(herkunftFarbe("technoarcane"), "#4ac8d9")
+  assert.equal(herkunftFarbe("srd"), null)
+  assert.equal(herkunftFarbe(""), null)
 })
 
 test("Livekatalog: 22 Rohwerte werden zu 20, genau die Registry plus srd", () => {

@@ -8,6 +8,7 @@ All notable changes to this module will be documented in this file.
 
 **Fixes**
 - Fixed: In the Beneos Cloud library the Origin filter no longer lists Technoarcane and Giantforged twice, each option now finds all of its items, and newly installed loot of one origin lands in one compendium folder. Choosing Arcane no longer also shows Technoarcane items, and the item details now show the origin icon for Technoarcane, Giantforged, Dwarvenforged and Crystalline items too.
+- Fixed: In the Beneos Cloud library the item details now show the same coloured origin emblem as the Item Codex for every origin, including Beastforged, Infernal and Mutation items, which showed no icon before. The emblem now comes with the module, so it also appears offline.
 - Fixed: In a narrow Beneos Cloud window the "Filters" button now stays in place while you scroll through the open filters.
 - Fixed: In the Beneos Cloud library the filter dropdowns now show a gold focus ring when you reach them with the keyboard.
 - Fixed: In the Beneos Cloud library the loot mechanics buttons now have a clearly visible edge, and the search field and the source checkboxes show a gold focus ring, so you can always see where keyboard input goes.

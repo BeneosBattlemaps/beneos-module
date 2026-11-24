@@ -17,6 +17,9 @@
  * Die Funktion ist idempotent und damit ueberall vorschaltbar.
  */
 
+import { OriginsRegistry } from "../loot/origins-registry.mjs"
+import { ORIGIN_META } from "../codex2/origin-meta.mjs"
+
 // Ein Kartenicon heisst `crystaline`, die Herkunft `crystalline`.
 const HERKUNFT_ALIAS = Object.freeze({
   crystaline: "crystalline",
@@ -32,25 +35,33 @@ export function herkunftSchluessel(wert) {
 }
 
 /**
- * Adresse des Herkunft-Icons am CDN fuer den Drawer des Cloud-Fensters.
+ * Herkunft-Symbol fuer den Drawer des Cloud-Fensters: die Scheibe aus dem
+ * Modul, die auch die Codex-Galerie zeigt. Eingefaerbt wird sie wie dort mit
+ * herkunftFarbe(), denn alle 19 Dateien sind dasselbe Rot.
  *
- * Das CDN benennt seine Icons nach den Kartendateien (`techno_arcane`,
- * `giant_forged`, `dwarven_forged`, `crystaline`), nicht nach der kanonischen
- * Herkunft. Derselbe Kartenname steht in der Registry im Feld
- * `icon_filename_bw` (`<kartenname>_blackwhite.webp`), daraus wird er
- * gelesen. Gemessen am 2026-11-24: 16 von 19 Registry-Herkuenften liefern so
- * ein Icon; beastforged, infernal und mutation fehlen am CDN.
+ * Bis MO-043 kam das Icon vom CDN. Dort fehlten beastforged, infernal und
+ * mutation (gemessen 404 am 2026-11-24), und die Dateien am CDN sind in keinem
+ * Repository. Seit MO-044 (Betreiberentscheid: farbige Modul-Scheibe) gilt
+ * die Registry: alle 19 Herkuenfte haben ihr Icon unter icons/origin/.
  *
- * Kennt die Registry die Herkunft nicht (etwa srd), bleibt es beim
- * kanonischen Schluessel, wie bisher; fehlt die Datei, entfernt die Vorlage
- * das Bild.
+ * Kennt die Registry die Herkunft nicht, gibt es kein Icon. Das betrifft srd,
+ * das im Katalog eine Quelle ist und keine Herkunft.
  *
  * @param {string} schluessel kanonische Herkunft
- * @param {{icon_filename_bw?: string} | null} eintrag Registry-Eintrag oder null
+ * @returns {string|null} Foundry-Pfad oder null
+ */
+export function herkunftIconUrl(schluessel) {
+  if (!schluessel) return null
+  return OriginsRegistry.iconPath(schluessel, "color")
+}
+
+/**
+ * Glow-Farbe der Herkunft, dieselbe Quelle wie Codex-Galerie und Item-Radar
+ * (ORIGIN_META). Ohne Eintrag, etwa bei srd, keine Farbe.
+ *
+ * @param {string} schluessel kanonische Herkunft
  * @returns {string|null}
  */
-export function herkunftIconUrl(schluessel, eintrag) {
-  if (!schluessel) return null
-  const karte = /^(.+)_blackwhite\.webp$/.exec(String(eintrag?.icon_filename_bw ?? ""))?.[1]
-  return `https://www.beneos-database.com/icons/${karte ?? schluessel}.webp`
+export function herkunftFarbe(schluessel) {
+  return ORIGIN_META[schluessel]?.glow ?? null
 }
