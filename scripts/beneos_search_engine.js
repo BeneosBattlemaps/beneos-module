@@ -535,7 +535,6 @@ export class BeneosDatabaseHolder {
     }
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    tokenData.isNewForUser = !!game.beneos.cloud.getTokenIsNewForUser(tokenData.key)
     {
       const f = this.beneosComputeNewUpdate(tokenData, {
         type:        "token",
@@ -550,9 +549,6 @@ export class BeneosDatabaseHolder {
     tokenData.properties.install = ["Any", "All"] // Used for filtering
     if (tokenData.isNew) {
       tokenData.properties.install.push("New")
-    }
-    if (tokenData.isNewForUser) {
-      tokenData.properties.install.push("NewForYou")
     }
     if (tokenData.isUpdate) {
       tokenData.properties.install.push("Updated")
@@ -580,7 +576,6 @@ export class BeneosDatabaseHolder {
     itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    itemData.isNewForUser = !!game.beneos.cloud.getItemIsNewForUser(itemData.key)
     {
       const f = this.beneosComputeNewUpdate(itemData, {
         type:        "item",
@@ -594,9 +589,6 @@ export class BeneosDatabaseHolder {
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
       itemData.properties.install.push("New")
-    }
-    if (itemData.isNewForUser) {
-      itemData.properties.install.push("NewForYou")
     }
     if (itemData.isUpdate) {
       itemData.properties.install.push("Updated")
@@ -632,7 +624,6 @@ export class BeneosDatabaseHolder {
       //spellData.picture = BeneosUtility.getLocalAvatarPicture(spellData.key)
     }
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    spellData.isNewForUser = !!game.beneos.cloud.getSpellIsNewForUser(spellData.key)
     {
       const f = this.beneosComputeNewUpdate(spellData, {
         type:        "spell",
@@ -646,9 +637,6 @@ export class BeneosDatabaseHolder {
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {
       spellData.properties.install.push("New")
-    }
-    if (spellData.isNewForUser) {
-      spellData.properties.install.push("NewForYou")
     }
     if (spellData.isUpdate) {
       spellData.properties.install.push("Updated")
