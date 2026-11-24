@@ -162,6 +162,25 @@ test("Icon: farbige Scheibe aus dem Modul ueber die Registry, srd ohne Icon (MO-
   assert.equal(herkunftIconUrl(""), null)
 })
 
+test("Icon ohne geladene Registry: Ersatz aus ORIGIN_META, srd bleibt ohne Icon (MO-044 Nachtrag)", () => {
+  // Zustand nach einem gescheiterten load() (origins-registry.mjs: origins = {}, loaded = false),
+  // der bis zum Neuladen der Welt nicht heilt. Ohne Ersatz fehlte das Emblem bei allen 19 Herkuenften.
+  const vorher = { origins: OriginsRegistry.origins, loaded: OriginsRegistry.loaded }
+  OriginsRegistry.origins = {}
+  OriginsRegistry.loaded = false
+  try {
+    // Wert mit Aenderung: Pfad und Farbe sind da, die Vorlage zeigt das Emblem.
+    assert.equal(herkunftIconUrl("beastforged"), "modules/beneos-module/icons/origin/beastforged.webp")
+    assert.equal(herkunftFarbe("beastforged"), "#a86838")
+    // Wert ohne Aenderung: srd steht weder in der Registry noch in ORIGIN_META.
+    assert.equal(herkunftIconUrl("srd"), null)
+    assert.equal(herkunftIconUrl(""), null)
+  } finally {
+    OriginsRegistry.origins = vorher.origins
+    OriginsRegistry.loaded = vorher.loaded
+  }
+})
+
 test("Icon-Farbe: dieselbe Glow-Farbe wie in der Codex-Galerie, srd ohne Farbe (MO-044)", () => {
   // Der Codex faerbt die Scheibe je Herkunft ein; ohne Farbe saehe jede Herkunft gleich rot aus.
   assert.equal(herkunftFarbe("beastforged"), "#a86838")
