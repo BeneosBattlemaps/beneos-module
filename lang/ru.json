@@ -1570,6 +1570,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "Проверить",
   "BENEOS.Cloud.Notification.CodeSent": "Код отправлен. Проверьте вашу электронную почту.",
   "BENEOS.Cloud.Notification.CodeInvalid": "Неверный или истекший код. Пожалуйста, попробуйте ещё раз.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "Код принят, но подключить этот мир не удалось. Пожалуйста, запросите новый код и попробуйте ещё раз.",
+  "BENEOS.Cloud.Notification.SignInFailed": "Не удалось войти. Пожалуйста, попробуйте ещё раз.",
   "BENEOS.Cloud.ConnectAccount.Resend": "Отправить код ещё раз",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "Код в пути",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "Код истекает через {time}",
