@@ -1043,6 +1043,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "Закрыть",
   "BENEOS.Cloud.Filter.Search": "Глобальный текстовый поиск",
   "BENEOS.Cloud.Filter.Reset": "Очистить",
+  "BENEOS.Cloud.Filter.Toggle": "Фильтры",
   "BENEOS.Cloud.Filter.Biome": "Биом",
   "BENEOS.Cloud.Filter.Faction": "Фракция",
   "BENEOS.Cloud.Filter.Source": "Источник",

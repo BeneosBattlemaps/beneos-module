@@ -63,6 +63,14 @@
    into the 280px sidebar slot and left the 1fr results slot empty —
    the source of the "Settings only uses 30% of the window width"
    user complaint. Keep this restricted to the cloud main window. */
+/* MO-040: the window is the size container for the narrow layout further
+   down (search "container bc-window"). A Foundry window can be dragged down
+   to 200 px (core .application min-width), and @media would only see the
+   browser viewport, never the window. */
+#beneos-cloud-window-v2 {
+  container: bc-window / inline-size;
+}
+
 #beneos-cloud-window-v2 .window-content {
   display: grid !important;
   /* Sidebar content is as wide as the filter selects (12rem, 192px):
@@ -4160,6 +4168,61 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-sidebar-button:hover {
   background: var(--bc-card-hover);
   border-color: var(--bc-accent);
+}
+
+/* MO-040: "Filters (n)" button of a narrow window. Hidden in a wide window;
+   the container query below shows it. Two classes, so it beats the
+   display: flex of .bc-sidebar-button above. */
+.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle {
+  display: none;
+  gap: var(--bc-space-1);
+  /* COL-10: a control edge needs 3:1 against its surroundings. The hairline
+     of .bc-sidebar-button measured 1.06:1 on the sidebar panel. */
+  border-color: var(--bc-border-control);
+}
+.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle:hover {
+  border-color: var(--bc-accent);
+}
+.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* MO-040: narrow window, container bc-window. Below 420 px of window content
+   the 235 px filter column (grid rule at the top of this file) leaves less
+   than one full card: 150 px card plus 2 x 12 px list padding plus the
+   11 px scrollbar of the result list = 185 px.
+   Measured: at a 375 px window the card was cut by 24 px. Here the library
+   turns single-column, the filter bar sits above the results and folds
+   behind its button (pattern: design/referenz/your-library-template.html).
+   The filter bar takes at most half the height and scrolls inside, as it
+   already does in the wide layout. Home has its own single-column grid and
+   is left out. The folded filters stay in the DOM, so the dropdown filters
+   that are read from it keep working. */
+@container bc-window (width < 420px) {
+  #beneos-cloud-window-v2:not([data-bc-mode="home"]) .window-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto fit-content(50%) minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "header"
+      "sidebar"
+      "results"
+      "footer" !important;
+  }
+  #beneos-cloud-window-v2 .bc-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--bc-border);
+  }
+  #beneos-cloud-window-v2 .bc-sidebar-button.bc-filter-toggle {
+    display: flex;
+  }
+  #beneos-cloud-window-v2[data-bc-filters="open"] .bc-sidebar-button.bc-filter-toggle {
+    margin-bottom: var(--bc-space-4);
+  }
+  #beneos-cloud-window-v2:not([data-bc-filters="open"]) #bc-filter-panel {
+    display: none;
+  }
 }
 /* Wave B-9-fix-60: icon rules dropped — the loot mechanics buttons
    no longer carry icons. Left as a comment so a future reader sees
