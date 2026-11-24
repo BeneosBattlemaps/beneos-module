@@ -35,6 +35,18 @@ async function openCloudWindowForTour(timeoutMs = 6000) {
   return el;
 }
 
+/* MO-040: in a narrow Cloud window the filters sit folded behind the
+ * "Filters" button. A tour step that points at a single filter unfolds them
+ * first. No effect on a wide window, where the filters always show. */
+function unfoldCloudFiltersForTour() {
+  try {
+    const cloudApp = Array.from(foundry.applications.instances.values()).find(a => a?.element?.id === "beneos-cloud-window-v2");
+    cloudApp?.setFiltersOpen?.(true);
+  } catch (e) {
+    console.warn("Beneos | Tour could not unfold the cloud filters:", e);
+  }
+}
+
 /* Make sure a scene is active/viewed so Foundry renders the left toolbar (the
  * Beneos button lives there). If the world has no scene at all, create a blank
  * one. Used by the Setup Tour before it points at the toolbar. */
@@ -1732,6 +1744,7 @@ class BeneosDemoTour extends TourBase {
     }
 
     if (stepId === "demo-maps-filters") {
+      unfoldCloudFiltersForTour();
       this._trySelector("#bc-biome-add") ||
       this._trySelector(".beneos_search_engine");
     }
@@ -5535,6 +5548,8 @@ class BeneosTutorialSceneTour extends TourBase {
         } catch (e) {}
         await new Promise(r => setTimeout(r, 500));
       }
+      // MO-040: a window the customer dragged narrow keeps its size here.
+      unfoldCloudFiltersForTour();
       // Always dismiss the BattleMap notice if it's hanging around
       ctCloseBattleMapNotice();
     };

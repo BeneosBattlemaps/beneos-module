@@ -36,6 +36,7 @@ import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { kaufKnopf } from "./cloud-kaufknopf.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { staleInstallTooltip } from "./install-badge.mjs"
+import { countActiveFilters, countShownFilters, filterStateOf } from "./filter-count.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
@@ -213,6 +214,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openLgc:                 BeneosCloudWindowV2._onOpenLgc,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
       clearShowFilter:         BeneosCloudWindowV2._onClearShowFilter,
+      toggleFilters:           BeneosCloudWindowV2._onToggleFilters,
       beneosResyncCatalog:     BeneosCloudWindowV2._onResyncCatalog,
       beneosCancelBulkInstall: BeneosCloudWindowV2._onCancelBulkInstall,
       switchView:              BeneosCloudWindowV2._onSwitchView,
@@ -1377,34 +1379,52 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // collapse it into Rest (filtered list — user is hunting something
   // specific, the New highlight stays useful but Update is noise).
   #hasActiveFilter(type) {
-    if (this._textFilter) return true
-    if (type === "token") {
-      if (this.crMin > 0) return true
-      if (this.crMax < BeneosCloudWindowV2.CR_NO_LIMIT) return true
-      if (this.sourceHidden.size > 0) return true
-      if (this.biomeFilters.size > 0) return true
-    }
-    // Wave B-8i-3: item gold range filter.
-    if (type === "item") {
-      if (this.goldMin > 0) return true
-      if (this.goldMax != null && this.goldMax < this.#getMaxItemPrice()) return true
-    }
-    // Wave B-8k-2: bmap biome chip filter.
-    if (type === "bmap") {
-      if (this.bmapBiomeFilters.size > 0) return true
-    }
+    return countActiveFilters(type, this.#filterState()) > 0
+  }
+
+  // MO-040: the filter state of the window as input for filter-count.mjs,
+  // where the rules and this mapping live so a node test can drive both
+  // (filter-zaehler.test.mjs). Dropdown values come from the DOM (Wave
+  // B-8h-1 type guard included there); a missing select is skipped.
+  #filterState() {
+    return filterStateOf(this, {
+      crNoLimit: BeneosCloudWindowV2.CR_NO_LIMIT,
+      maxItemPrice: () => this.#getMaxItemPrice(),
+      hiddenSourceInTab: () => this.#buildSourceCheckboxes().some(c => !c.checked),
+      root: this.element,
+      defs: V2_FILTER_DEFS,
+    })
+  }
+
+  // MO-040: below 420 px of window content the library turns single-column
+  // and the filters fold behind a button (css/beneos-cloud.css, container
+  // bc-window). The open state lives on the instance and as data-bc-filters
+  // on the window element, so it survives part renders. Wide windows ignore
+  // it: the button is hidden there and the filters always show.
+  #filtersOpen = false
+
+  setFiltersOpen(open) {
+    this.#filtersOpen = !!open
+    this.#syncFilterToggle()
+  }
+
+  static _onToggleFilters(event, _target) {
+    event?.preventDefault?.()
+    this.setFiltersOpen(!this.#filtersOpen)
+  }
+
+  #syncFilterToggle() {
     const root = this.element
-    if (root) {
-      for (const def of V2_FILTER_DEFS) {
-        // Wave B-8h-1: same type guard as #applyDropdownFilters.
-        if (def.types && !def.types.includes(type)) continue
-        const sel = root.querySelector("#" + def.selector)
-        if (!sel) continue
-        const v = sel.value
-        if (v && v.toLowerCase() !== "any") return true
-      }
+    if (!root) return
+    root.dataset.bcFilters = this.#filtersOpen ? "open" : "closed"
+    const btn = root.querySelector(".bc-filter-toggle")
+    if (!btn) return
+    btn.setAttribute("aria-expanded", this.#filtersOpen ? "true" : "false")
+    const countEl = btn.querySelector(".bc-filter-toggle-count")
+    if (countEl) {
+      const n = this.searchMode === "home" ? 0 : countShownFilters(this.searchMode, this.#filterState())
+      countEl.textContent = n > 0 ? `(${n})` : ""
     }
-    return false
   }
 
   #groupHeading(kind) {
@@ -3649,6 +3669,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Mark the window with the active mode so CSS can rearrange the
     // grid (Home swaps sidebar+results for the full-width feed).
     if (this.element) this.element.dataset.bcMode = this.searchMode
+    this.#syncFilterToggle()
     // Auch beim ERSTEN Zeichnen pruefen, nicht erst beim Reiterwechsel.
     //
     // GEMESSEN am 03.09.2026 in der V13-Streaming-Welt: Fenster geoeffnet,
@@ -3666,6 +3687,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
     this.#wireFooterFit()
+    this.#wireResultsFit()
     requestAnimationFrame(() => BeneosCloudWindowV2.#fitCardTags(this.element))
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
@@ -3799,6 +3821,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // the fallback font would pick too generous a stage, so measure again
     // once the fonts are in.
     document.fonts?.ready.then(refit)
+  }
+
+  // MO-040: the virtualized list pins its height when it renders. Folding
+  // the filters in or out, or dragging the window across the narrow
+  // threshold, changes the height of the results region without a render,
+  // and the pinned list would then reach below its clipped bottom. So the
+  // pin is renewed whenever that height changes. Re-pinning sizes the list
+  // inside the region, not the region itself, so this cannot loop.
+  #wireResultsFit() {
+    this._resultsObserver?.disconnect()
+    this._resultsObserver = null
+    const results = this.element?.querySelector(".bc-results")
+    if (!results) return
+    let lastHeight = null
+    this._resultsObserver = new ResizeObserver(([entry]) => {
+      const height = Math.round(entry.contentRect.height)
+      const first = lastHeight === null
+      if (height === lastHeight) return
+      lastHeight = height
+      if (first) return   // the first delivery is the size just rendered
+      requestAnimationFrame(() => { if (this._virt) this.#setupVirtualization() })
+    })
+    this._resultsObserver.observe(results)
   }
 
   // Grid cards: a tag that does not fit whole into the tag box of its card
@@ -7712,6 +7757,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       this._lazyObservers = null
     }
     if (this._footerObserver) { this._footerObserver.disconnect(); this._footerObserver = null }
+    if (this._resultsObserver) { this._resultsObserver.disconnect(); this._resultsObserver = null }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined

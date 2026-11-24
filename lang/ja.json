@@ -1051,6 +1051,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "閉じる",
   "BENEOS.Cloud.Filter.Search": "全文検索",
   "BENEOS.Cloud.Filter.Reset": "リセット",
+  "BENEOS.Cloud.Filter.Toggle": "フィルター",
   "BENEOS.Cloud.Filter.Biome": "バイオーム",
   "BENEOS.Cloud.Filter.Faction": "派閥",
   "BENEOS.Cloud.Filter.Source": "ソース",

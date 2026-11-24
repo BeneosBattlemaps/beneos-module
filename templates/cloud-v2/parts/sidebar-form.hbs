@@ -8,6 +8,18 @@
      and the existing tour selectors still resolve. --}}
 <aside class="bc-sidebar" data-bc-region="sidebar">
 
+  {{!-- MO-040: only shown below 420 px of window content (container
+       bc-window in beneos-cloud.css). There the library is single-column
+       and this button folds the filters below it in and out. The count and
+       aria-expanded are kept current by #syncFilterToggle on every render. --}}
+  <button type="button" class="bc-sidebar-button bc-filter-toggle" data-action="toggleFilters"
+          aria-expanded="false" aria-controls="bc-filter-panel">
+    <span>{{localize "BENEOS.Cloud.Filter.Toggle"}}</span>
+    <span class="bc-filter-toggle-count"></span>
+  </button>
+
+  <div id="bc-filter-panel">
+
   {{!-- Global text search + reset --}}
   {{!-- Wave B-8e-fix-7: reset is a <button type="button">, not an
        <a href="#">. The anchor used to bubble through Foundry's
@@ -539,4 +551,5 @@
       {{localize "BENEOS.Cloud.OfflineBanner"}}
     </div>
   {{/if}}
+  </div>
 </aside>

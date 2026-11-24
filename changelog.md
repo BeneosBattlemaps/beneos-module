@@ -17,6 +17,10 @@ All notable changes to this module will be documented in this file.
 **Fixed**
 - Fixed: When the code could not be sent, the message now says so and asks
   you to try again, instead of asking you to check your credentials.
+- Fixed: In a narrow Beneos Cloud window the filter column no longer cuts
+  off the result cards. Below about 420 px the library switches to one
+  column, and the filters fold behind a "Filters" button above the results
+  that also shows how many filters are active.
 
 ### 14.5.0-beta.13 # 2026-11-25
 

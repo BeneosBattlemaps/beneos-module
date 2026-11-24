@@ -1051,6 +1051,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "Chiudi",
   "BENEOS.Cloud.Filter.Search": "Ricerca testuale globale",
   "BENEOS.Cloud.Filter.Reset": "Reimposta",
+  "BENEOS.Cloud.Filter.Toggle": "Filtri",
   "BENEOS.Cloud.Filter.Biome": "Bioma",
   "BENEOS.Cloud.Filter.Faction": "Fazione",
   "BENEOS.Cloud.Filter.Source": "Fonte",

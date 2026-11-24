@@ -1053,6 +1053,7 @@
   "BENEOS.Cloud.UpdateNotice.Close": "Schließen",
   "BENEOS.Cloud.Filter.Search": "Volltextsuche",
   "BENEOS.Cloud.Filter.Reset": "Zurücksetzen",
+  "BENEOS.Cloud.Filter.Toggle": "Filter",
   "BENEOS.Cloud.Filter.Biome": "Biom",
   "BENEOS.Cloud.Filter.Faction": "Fraktion",
   "BENEOS.Cloud.Filter.Source": "Quelle",
