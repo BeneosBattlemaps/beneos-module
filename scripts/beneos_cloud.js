@@ -1885,9 +1885,10 @@ export class BeneosCloud {
     return false
   }
 
-  // Hash lookup against the cached available-content list. Tolerant to the
-  // server not (yet) shipping the field: it returns an empty string.
-  // Defensive against malformed entries that lack a `key`.
+  // Shared lookup of one entry in a cached available-content list, used by
+  // the hash getters and getTokenVariantCount below. Returns the entry or
+  // null. Defensive against malformed entries that lack a `key`. The hash
+  // getters turn a missing entry or a missing contentSignature into "".
   _beneosFindCloudAsset(list, key) {
     if (!Array.isArray(list) || !list.length || !key) return null
     const k = String(key).toLowerCase().replaceAll("-", "_")
