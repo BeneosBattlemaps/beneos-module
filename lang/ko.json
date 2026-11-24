@@ -2435,6 +2435,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "어떤 릴리스를 제거할지 확인할 수 없습니다.",
   "BENEOS.Cloud.Uninstall.Failed": "릴리스 제거에 실패했습니다. 브라우저 콘솔을 확인하세요.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud가 이 월드의 로그인을 더 이상 인식하지 못해 저장된 Patreon 접근 권한을 지웠습니다. Beneos Cloud 창을 열고 다시 로그인하면 복구됩니다.",
+  "BENEOS.Cloud.SignInLost": "Beneos Cloud가 이 월드의 로그인을 더 이상 인식하지 못해 이 월드가 로그아웃되었습니다. Beneos Cloud 창을 열고 다시 로그인하면 콘텐츠에 다시 접근할 수 있습니다.",
   "BENEOS.Cloud.AccountRebound": "이 월드는 이제 다른 Beneos 계정에 연결되어 있습니다. 여기서 본인 계정을 다시 사용하려면 Beneos Cloud 설정에서 연결을 해제한 뒤 로그인하세요.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Patreon 후원에 대한 새 다운로드",

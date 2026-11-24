@@ -2435,6 +2435,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "No s'ha pogut determinar quina versió s'ha d'eliminar.",
   "BENEOS.Cloud.Uninstall.Failed": "L'eliminació de la versió ha fallat. Consulta la consola del navegador.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que s'ha esborrat l'accés de Patreon desat. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar-lo.",
+  "BENEOS.Cloud.SignInLost": "Beneos Cloud ja no reconeix l'inici de sessió d'aquest món, així que ara aquest món té la sessió tancada. Obre la finestra de Beneos Cloud i torna a iniciar la sessió per recuperar l'accés al teu contingut.",
   "BENEOS.Cloud.AccountRebound": "Aquest món ara està vinculat a un altre compte de Beneos. Per tornar a fer servir el teu compte aquí, desconnecta't a la configuració de Beneos Cloud i inicia la sessió.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Noves descàrregues pel teu suport a Patreon",
