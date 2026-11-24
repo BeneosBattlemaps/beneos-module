@@ -34,6 +34,7 @@ import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { staleInstallTooltip } from "./install-badge.mjs"
 import { countActiveFilters, countShownFilters, filterStateOf } from "./filter-count.mjs"
+import { markInputKind, wireWindowInputKind } from "./eingabeart.mjs"
 import { releaseNachLauf } from "./install-nachspiel.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
@@ -3515,6 +3516,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // grid (Home swaps sidebar+results for the full-width feed).
     if (this.element) this.element.dataset.bcMode = this.searchMode
     this.#syncFilterToggle()
+    // MO-042: last input kind for the select focus ring (eingabeart.mjs).
+    // Registered once per page; a reopened window takes the current kind.
+    markInputKind(this.element, wireWindowInputKind(window, document, this.id))
     // Auch beim ERSTEN Zeichnen pruefen, nicht erst beim Reiterwechsel.
     //
     // GEMESSEN am 03.09.2026: Fenster geoeffnet, 17 von 33 Releases waren
@@ -5142,8 +5146,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // spinner gives the user a "working on it" cue. Fast renders never
   // see the spinner thanks to the rAF chain.
   async #renderPreservingSidebarScroll(parts) {
+    // MO-042: in a narrow window the filter list (#bc-filter-panel) scrolls
+    // instead of the sidebar, so both positions are kept.
     const oldSidebar = this.element?.querySelector(".bc-sidebar")
     const scrollTop = oldSidebar?.scrollTop || 0
+    const panelScrollTop = this.element?.querySelector("#bc-filter-panel")?.scrollTop || 0
     this.#showLoading()
     return new Promise((resolve) => {
       requestAnimationFrame(() => {
@@ -5152,6 +5159,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             await this.render({ parts })
             const newSidebar = this.element?.querySelector(".bc-sidebar")
             if (newSidebar) newSidebar.scrollTop = scrollTop
+            const newPanel = this.element?.querySelector("#bc-filter-panel")
+            if (newPanel) newPanel.scrollTop = panelScrollTop
           } catch (err) {
             console.warn("[Beneos]", err)
           } finally {
