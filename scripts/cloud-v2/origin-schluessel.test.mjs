@@ -53,7 +53,7 @@ globalThis.game = {
   beneos: {
     cloud: {
       isItemAvailable: () => false, isFreeAsset: () => false, isLoggedIn: () => false,
-      getItemIsNewForUser: () => false, getItemHash: () => null, getPatreonStatus: () => null,
+      getItemHash: () => null, getPatreonStatus: () => null,
     },
   },
 }

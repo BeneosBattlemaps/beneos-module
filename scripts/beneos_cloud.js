@@ -1885,10 +1885,9 @@ export class BeneosCloud {
     return false
   }
 
-  // Hash + per-user "new" lookups against the cached available-content
-  // list. Both are tolerant to the server not (yet) shipping the field
-  // — they return empty string / false respectively. Defensive against
-  // malformed entries that lack a `key`.
+  // Hash lookup against the cached available-content list. Tolerant to the
+  // server not (yet) shipping the field: it returns an empty string.
+  // Defensive against malformed entries that lack a `key`.
   _beneosFindCloudAsset(list, key) {
     if (!Array.isArray(list) || !list.length || !key) return null
     const k = String(key).toLowerCase().replaceAll("-", "_")
@@ -1907,9 +1906,6 @@ export class BeneosCloud {
   // 0 means "catalog did not say", and the caller must not read that as zero
   // variants.
   getTokenVariantCount(key) { return Number(this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.nb_variants) || 0 }
-  getTokenIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.isNewForUser }
-  getItemIsNewForUser(key)  { return !!this._beneosFindCloudAsset(this.availableContent?.items,  key)?.isNewForUser }
-  getSpellIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.spells, key)?.isNewForUser }
 
   isNew(key) {
     let content = this.availableContent.tokens
