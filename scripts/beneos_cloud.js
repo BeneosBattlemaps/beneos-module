@@ -1303,9 +1303,10 @@ export class BeneosCloud {
     const zuLeeren = tokenPatron || battlemapPatron || (typeof status === "string" && !!status && status !== "no_patreon")
     const hatteZugang = tokenPatron || battlemapPatron || status === "active_patron"
 
+    // Logged on every path, so a report about SignInLost still shows the server's reason.
+    console.warn(`BENEOS Cloud | this world's Foundry ID is unknown to the cloud (${serverInformation || "no detail"})`)
     if (zuLeeren) {
-      console.warn(`BENEOS Cloud | this world's Foundry ID is unknown to the cloud (${serverInformation || "no detail"}); `
-        + "clearing the stored Patreon entitlement so the storefront stops showing patron access")
+      console.warn("BENEOS Cloud | clearing the stored Patreon entitlement so the storefront stops showing patron access")
       try {
         await game.settings.set(M, "beneos-cloud-patreon-status", "no_patreon")
         await game.settings.set(M, "beneos-cloud-token-patron", false)
