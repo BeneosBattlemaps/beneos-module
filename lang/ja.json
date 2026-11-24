@@ -1562,6 +1562,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "確認",
   "BENEOS.Cloud.Notification.CodeSent": "コードを送信しました。メールをご確認ください。",
   "BENEOS.Cloud.Notification.CodeInvalid": "コードが無効か期限切れです。もう一度お試しください。",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "コードは受け付けられましたが、このワールドを接続できませんでした。新しいコードをリクエストして、もう一度お試しください。",
+  "BENEOS.Cloud.Notification.SignInFailed": "サインインに失敗しました。もう一度お試しください。",
   "BENEOS.Cloud.ConnectAccount.Resend": "コードを再送信",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "コードを送信中",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "コードの有効期限まで {time}",

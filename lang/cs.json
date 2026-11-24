@@ -1562,6 +1562,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "Ověřit",
   "BENEOS.Cloud.Notification.CodeSent": "Kód odeslán. Zkontrolujte svůj e-mail.",
   "BENEOS.Cloud.Notification.CodeInvalid": "Neplatný nebo vypršelý kód. Zkuste to znovu.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "Kód byl přijat, ale tento svět se nepodařilo připojit. Vyžádejte si nový kód a zkuste to znovu.",
+  "BENEOS.Cloud.Notification.SignInFailed": "Přihlášení se nezdařilo. Zkuste to znovu.",
   "BENEOS.Cloud.ConnectAccount.Resend": "Odeslat kód znovu",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "Kód je na cestě",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "Kód vyprší za {time}",
