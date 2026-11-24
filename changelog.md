@@ -7,7 +7,6 @@ All notable changes to this module will be documented in this file.
 ### 14.4.13 # unreleased
 
 **Fixes**
-- Fixed: When you sign in to Beneos Cloud with a correct code but the world cannot be connected to your account, the module now says so and asks you to request a new code. Before, it reported the code as invalid or expired, although that code was already used up.
 - Fixed: When Beneos Cloud no longer recognises a world's sign-in, the GM now gets a one-time notice to sign in again, also in worlds without a linked Patreon account. Before, such worlds were signed out without any explanation, and worlds with a linked Patreon account but no active membership were told about Patreon access they never had.
 - Fixed: When a world's Foundry ID gets linked to a different Beneos account, for example in a copied world, the GM now gets a one-time notice. The world then uses that other account. To switch back, use Disconnect and sign in again.
 - Fixed: In the Beneos Cloud library the Origin filter no longer lists Technoarcane and Giantforged twice, each option now finds all of its items, and newly installed loot of one origin lands in one compendium folder. Choosing Arcane no longer also shows Technoarcane items, and the item details now show the origin emblem from the Item Codex in its origin colour for every origin, including Beastforged, Infernal and Mutation items, which showed no icon before. The emblem comes with the module, so it also appears offline.
