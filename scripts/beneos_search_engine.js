@@ -1,5 +1,6 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosCloudLogin } from "./beneos_cloud.js"
+import { herkunftSchluessel } from "./cloud-v2/origin-schluessel.mjs"
 
 /********************************************************************************** */
 //const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
@@ -802,6 +803,13 @@ export class BeneosDatabaseHolder {
         itemData.key = key
         itemData.path_name = itemData.name.replace(/ /g, "_").toLowerCase()
         itemData.picture = "https://www.beneos-database.com/data/items/thumbnails/" + itemData.properties.icon
+        // MO-043: the catalog carries some origins twice ("techno_arcane" next
+        // to "technoarcane"). Canonicalise once here; the filter options, the
+        // origin filter, the compendium folder, hover text and tag translation
+        // all read this same object.
+        if (itemData.properties.origin != null) {
+          itemData.properties.origin = herkunftSchluessel(itemData.properties.origin)
+        }
         foundry.utils.mergeObject(this.itemRarity, this.buildList(itemData.properties.rarity))
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))

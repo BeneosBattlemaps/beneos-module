@@ -26,19 +26,13 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { countActiveFilters, countShownFilters, filterStateOf } from "./filter-count.mjs"
+import { V2_FILTER_DEFS } from "./filter-defs.mjs"
 
 const CR_NO_LIMIT = 31
 
-// Die echten Filterdefinitionen der Dropdowns, gekuerzt auf types und
-// selector (cloud-window-v2.mjs:94). Nur diese beiden Felder liest die Zaehlung.
-const DEFS = [
-  { types: ["token"], selector: "faction-selector" },
-  { types: ["token"], selector: "campaign-selector" },
-  { types: ["token", "item", "spell"], selector: "installation-selector" },
-  { types: ["bmap"], selector: "bmap-brightness" },
-  { types: ["item"], selector: "rarity-selector" },
-  { types: ["spell"], selector: "level-selector" },
-]
+// Die echten Filterdefinitionen der Dropdowns aus filter-defs.mjs, seit
+// MO-043 importiert statt kopiert. Die Zaehlung liest nur types und selector.
+const DEFS = V2_FILTER_DEFS
 
 function orakel(type, s, selects) {
   if (s._textFilter) return true

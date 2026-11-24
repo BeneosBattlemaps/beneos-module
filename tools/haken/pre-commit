@@ -186,6 +186,7 @@ scripts/cloud-v2/install-badge.test.mjs
 scripts/cloud-v2/install-nachspiel.test.mjs
 scripts/cloud-v2/install-ziel.test.mjs
 scripts/cloud-v2/item-tooltip.test.mjs
+scripts/cloud-v2/origin-schluessel.test.mjs
 scripts/cloud-v2/release-alias-vergleich.test.mjs
 scripts/cloud-v2/retry-nachlauf.test.mjs
 scripts/cloud-v2/transfer-drossel.test.mjs
