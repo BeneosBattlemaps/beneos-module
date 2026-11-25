@@ -7,7 +7,7 @@ All notable changes to this module will be documented in this file.
 ### 14.4.13 # unreleased
 
 **Fixes**
-- Fixed: The journal pin setting, the catalog status and Refresh button at the bottom of the Beneos Cloud window, the black canvas notice and four install messages now appear in your language instead of English. German was missing the canvas notice and the install messages, eleven more languages were missing all of them.
+- Fixed: The journal pin setting, the catalog status and Refresh button at the bottom of the Beneos Cloud window, the black canvas notice and four install messages now appear in your language instead of English. German was missing the canvas notice and the install messages, eleven more languages were missing all of them. Outdated texts in the tour, the Beneos Cloud window and the shop are now up to date in all languages, so they no longer describe Moulinette or controls that have since changed.
 - Fixed: Signing in to Beneos Cloud no longer puts your email address and sign-in code into the web address of the request, so they no longer end up in server logs.
 - Fixed: When Beneos Cloud no longer recognises a world's sign-in, the GM now gets a one-time notice to sign in again, also in worlds without a linked Patreon account. Before, such worlds were signed out without any explanation, and worlds with a linked Patreon account but no active membership were told about Patreon access they never had.
 - Fixed: When a world's Foundry ID gets linked to a different Beneos account, for example in a copied world, the GM now gets a one-time notice. The world then uses that other account. To switch back, use Disconnect and sign in again.

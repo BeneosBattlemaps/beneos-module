@@ -194,6 +194,10 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # Sprachen je 19 Schluessel, weil en.json viermal ohne die anderen erweitert
 # wurde. Den Ordner lang/ nennt die Pruefung woertlich im new URL(), deshalb
 # waehlt betroffen.mjs sie bei jeder Sprachdatei und bei sich selbst.
+#
+# scripts/tour-schritte.test.mjs (MO-056) prueft, wie die Tour Title, Content
+# und den Hinweis "automatisch uebersetzt" (.Note) zusammensetzt. Sie nennt
+# beneos_tours.js und lang/ woertlich und laeuft bei beiden.
 NACH_GEGENSTAND="scripts/cloud-v2/anmelde-anfrage.test.mjs
 scripts/cloud-v2/anmeldung-verloren.test.mjs
 scripts/cloud-v2/eingabeart.test.mjs
@@ -211,6 +215,7 @@ scripts/cloud-v2/retry-nachlauf.test.mjs
 scripts/cloud-v2/transfer-drossel.test.mjs
 scripts/canvas/map-sharpen-curve.test.mjs
 scripts/analytics-scene-pack.test.mjs
+scripts/tour-schritte.test.mjs
 tools/pruefe-katalog-offline.mjs
 tools/sprachschluessel.test.mjs"
 
