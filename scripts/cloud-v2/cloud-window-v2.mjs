@@ -1881,10 +1881,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-9-fix-9: item-specific tags. Result cards for loot show
     // rarity + origin + type + tier + price as tags so the row reads
     // naturally ("Very Rare · Vampiric · Melee Weapon · T3 · 52800 gp").
-    // Origin gets the codex emblem next to the label: the disc bundled with
-    // the module (herkunftIconUrl, via the origin registry), tinted in the
-    // origin's glow colour (herkunftFarbe), MO-044. Origins without an entry
-    // (srd) get no emblem.
+    // itemOriginIcon and itemOriginColor feed the codex emblem in the item
+    // detail drawer (results-pane.hbs), not these card tags: the disc bundled
+    // with the module (herkunftIconUrl), tinted in the origin's glow colour
+    // (herkunftFarbe), MO-044. Origins without an entry (srd) get no emblem.
     let itemOrigin = null
     let itemOriginIcon = null
     let itemOriginColor = null

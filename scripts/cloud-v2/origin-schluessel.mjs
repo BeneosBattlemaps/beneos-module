@@ -18,7 +18,7 @@
  */
 
 import { OriginsRegistry } from "../loot/origins-registry.mjs"
-import { ORIGIN_META } from "../codex2/origin-meta.mjs"
+import { ORIGIN_META, originIconPath } from "../codex2/origin-meta.mjs"
 
 // Ein Kartenicon heisst `crystaline`, die Herkunft `crystalline`.
 const HERKUNFT_ALIAS = Object.freeze({
@@ -44,15 +44,19 @@ export function herkunftSchluessel(wert) {
  * Repository. Seit MO-044 (Betreiberentscheid: farbige Modul-Scheibe) gilt
  * die Registry: alle 19 Herkuenfte haben ihr Icon unter icons/origin/.
  *
- * Kennt die Registry die Herkunft nicht, gibt es kein Icon. Das betrifft srd,
- * das im Katalog eine Quelle ist und keine Herkunft.
+ * Ist die Registry nicht geladen (vor load() oder nach einem gescheiterten
+ * load(), das bis zum Neuladen nicht heilt), springt originIconPath() aus
+ * ORIGIN_META ein. Es liefert fuer alle 19 Herkuenfte denselben Pfad wie die
+ * Registry (gemessen 19 von 19 am 2026-11-24). Steht die Herkunft in keiner
+ * der beiden Quellen, gibt es kein Icon. Das betrifft srd, das im Katalog
+ * eine Quelle ist und keine Herkunft.
  *
  * @param {string} schluessel kanonische Herkunft
  * @returns {string|null} Foundry-Pfad oder null
  */
 export function herkunftIconUrl(schluessel) {
   if (!schluessel) return null
-  return OriginsRegistry.iconPath(schluessel, "color")
+  return OriginsRegistry.iconPath(schluessel, "color") ?? originIconPath(schluessel)
 }
 
 /**
