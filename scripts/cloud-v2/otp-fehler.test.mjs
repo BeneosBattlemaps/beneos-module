@@ -142,7 +142,10 @@ test("Netzfehler und unlesbare Antwort bleiben LoginServerOffline wie bisher", a
 
 const GEDANKENSTRICH = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`)
 const SPRACHEN = ["ca", "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt-BR", "pt-PT", "ru", "zh-TW"]
-const lies = (code) => JSON.parse(readFileSync(new URL(`../../lang/${code}.json`, import.meta.url), "utf8"))
+// Der Ordner steht woertlich, damit tools/haken/betroffen.mjs diesen Test auch
+// fuer einen Commit waehlt, der nur lang/*.json aendert.
+const LANG = new URL("../../lang/", import.meta.url)
+const lies = (code) => JSON.parse(readFileSync(new URL(`${code}.json`, LANG), "utf8"))
 
 test("beide Hinweise in allen 14 Sprachen vorhanden, englisch woertlich, ohne Gedankenstriche", () => {
   for (const code of SPRACHEN) {

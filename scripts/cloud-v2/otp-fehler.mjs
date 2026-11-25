@@ -15,8 +15,13 @@
  * GRENZE
  *
  * Ohne code, mit einem unbekannten code oder bei einer unlesbaren Antwort
- * bleibt es beim bisherigen Hinweis CodeInvalid. Ein Server vor clou-T-481
- * sendet kein code, dort aendert sich also nichts.
+ * bleibt es beim bisherigen Hinweis CodeInvalid. Ein Server vor clou-T-513
+ * sendet kein code, dort aendert sich also nichts. Die neuen Hinweise wirken
+ * erst, wenn clou-T-513 live ist; clou-T-481 allein liefert nur information.
+ *
+ * foundry-id-revoked faellt ebenfalls auf CodeInvalid, obwohl der Code dort
+ * nicht verbraucht ist. Heute unerreichbar, denn connectWithCode sendet kein
+ * faehig=1. Ein Modul, das faehig=1 sendet, braucht dafuer einen eigenen Fall.
  */
 
 const CODE_INVALID = "BENEOS.Cloud.Notification.CodeInvalid"
@@ -24,7 +29,7 @@ const NICHT_VERBUNDEN = "BENEOS.Cloud.Notification.CodeAcceptedNotConnected"
 const FEHLGESCHLAGEN = "BENEOS.Cloud.Notification.SignInFailed"
 
 // INTENTIONAL-SPECIAL-CASE: die code-Werte setzt foundry-otp-verify.php im
-// beneos-cloud-server (clou-T-481). "code-invalid" fehlt hier mit Absicht,
+// beneos-cloud-server (clou-T-513). "code-invalid" fehlt hier mit Absicht,
 // es faellt auf den Rueckfall CodeInvalid.
 const SCHLUESSEL = new Map([
   ["account-create-failed", NICHT_VERBUNDEN],
