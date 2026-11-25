@@ -1587,6 +1587,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "확인",
   "BENEOS.Cloud.Notification.CodeSent": "코드를 보냈습니다. 이메일을 확인하세요.",
   "BENEOS.Cloud.Notification.CodeInvalid": "잘못되었거나 만료된 코드입니다. 다시 시도하세요.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "코드는 승인되었지만 이 월드를 연결할 수 없습니다. 새 코드를 요청한 뒤 다시 시도하세요.",
+  "BENEOS.Cloud.Notification.SignInFailed": "로그인에 실패했습니다. 다시 시도하세요.",
   "BENEOS.Cloud.ConnectAccount.Resend": "코드 다시 보내기",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "코드를 보내는 중",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "코드 만료까지 {time}",

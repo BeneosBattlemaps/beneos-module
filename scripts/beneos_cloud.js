@@ -27,6 +27,7 @@ import { inDerKette, entsperre, sperre, sperreNach, wartetAufNutzer } from "./ko
 import { wartehinweis } from "./kompendium-wartehinweis.mjs"
 import { kontoWechsel } from "./cloud-v2/konto-wechsel.mjs"
 import { anmeldungVerloren } from "./cloud-v2/anmeldung-verloren.mjs"
+import { otpFehlerSchluessel } from "./cloud-v2/otp-fehler.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -1306,7 +1307,11 @@ export class BeneosCloudLogin extends FormApplication {
         this.rememberLoginEmail(email)
         this.pollForAccess(kennung)
       } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeInvalid"))
+        // MO-049: the server consumes the code before it creates the account and binds
+        // this world, so a failure there must not read "invalid code". The machine field
+        // code picks the notice; the English server text only goes to the console.
+        console.warn(`BENEOS Cloud | sign-in code refused (${data?.code || "no code"}): ${data?.information || "no detail"}`)
+        ui.notifications.error(game.i18n.localize(otpFehlerSchluessel(data)))
       }
     } catch (err) {
       game.beneos?.cloud?.markServerStatus?.(null, err)

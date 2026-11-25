@@ -1587,6 +1587,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "驗證",
   "BENEOS.Cloud.Notification.CodeSent": "驗證碼已寄出，請查看你的信箱。",
   "BENEOS.Cloud.Notification.CodeInvalid": "驗證碼無效或已過期，請再試一次。",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "驗證碼已接受，但無法連線此世界。請重新索取驗證碼後再試一次。",
+  "BENEOS.Cloud.Notification.SignInFailed": "登入失敗，請再試一次。",
   "BENEOS.Cloud.ConnectAccount.Resend": "重新傳送驗證碼",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "驗證碼傳送中",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "驗證碼將於 {time} 後失效",

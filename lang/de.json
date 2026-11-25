@@ -1595,6 +1595,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "Bestätigen",
   "BENEOS.Cloud.Notification.CodeSent": "Code gesendet. Sieh in deinem Postfach nach.",
   "BENEOS.Cloud.Notification.CodeInvalid": "Ungültiger oder abgelaufener Code. Bitte versuche es erneut.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "Dein Code wurde angenommen, aber diese Welt konnte nicht verbunden werden. Bitte fordere einen neuen Code an und versuche es erneut.",
+  "BENEOS.Cloud.Notification.SignInFailed": "Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
   "BENEOS.Cloud.ConnectAccount.Resend": "Code erneut senden",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "Code ist unterwegs",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "Code gültig noch {time}",

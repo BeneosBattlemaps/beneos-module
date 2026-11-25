@@ -1587,6 +1587,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "Verifica",
   "BENEOS.Cloud.Notification.CodeSent": "Codi enviat. Comprova el teu correu.",
   "BENEOS.Cloud.Notification.CodeInvalid": "Codi no vàlid o caducat. Torna-ho a provar.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "S'ha acceptat el codi, però no s'ha pogut connectar aquest món. Sol·licita un codi nou i torna-ho a provar.",
+  "BENEOS.Cloud.Notification.SignInFailed": "No s'ha pogut iniciar la sessió. Torna-ho a provar.",
   "BENEOS.Cloud.ConnectAccount.Resend": "Torna a enviar el codi",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "Codi en camí",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "El codi caduca en {time}",

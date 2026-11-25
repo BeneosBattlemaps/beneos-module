@@ -1636,6 +1636,8 @@
   "BENEOS.Cloud.ConnectAccount.VerifyCode": "Verify",
   "BENEOS.Cloud.Notification.CodeSent": "Code sent. Check your email.",
   "BENEOS.Cloud.Notification.CodeInvalid": "Invalid or expired code. Please try again.",
+  "BENEOS.Cloud.Notification.CodeAcceptedNotConnected": "Your code was accepted, but this world could not be connected. Please request a new code and try again.",
+  "BENEOS.Cloud.Notification.SignInFailed": "Sign-in failed. Please try again.",
   "BENEOS.Cloud.ConnectAccount.Resend": "Resend code",
   "BENEOS.Cloud.ConnectAccount.ResendCooldown": "Code on its way",
   "BENEOS.Cloud.ConnectAccount.CodeExpiresIn": "Code expires in {time}",
