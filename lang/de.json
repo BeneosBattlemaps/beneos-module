@@ -2474,7 +2474,7 @@
   "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt.",
   "BENEOS.CanvasGuard.Title": "Beneos: Foundry konnte den Canvas nicht zeichnen",
   "BENEOS.CanvasGuard.Headline": "Foundry konnte den Canvas nicht zeichnen.",
-  "BENEOS.CanvasGuard.NotAssets": "Deine Beneos-Karten sind nicht der Auslöser: Foundry bricht das Zeichnen ab, <i>bevor</i> es auch nur ein Bild lädt, also kann keine Karte in keiner Auflösung das verursachen.",
+  "BENEOS.CanvasGuard.NotAssets": "Deine Beneos-Karten sind nicht der Auslöser: Foundry bricht das Zeichnen ab, <i>bevor</i> es auch nur ein Bild lädt, also kann keine Karte das verursachen, in welcher Auflösung auch immer.",
   "BENEOS.CanvasGuard.Packages": "Ein Teil des Codes im Stack gehört zu: {packages}. Das ist ein Hinweis, kein Urteil, und er ist nicht immer vollständig.",
   "BENEOS.CanvasGuard.Session": "Foundry wiederholt diesen Fehler danach für den Rest der Sitzung, auch nach einem Szenenwechsel. Deshalb sieht jede Karte kaputt aus und nicht nur eine. <b>Ein Neuladen der Seite (F5) gibt dir wieder einen funktionierenden Canvas.</b>",
   "BENEOS.CanvasGuard.Find": "So findest du die Ursache: Deaktiviere alle Module außer Beneos und seinen Abhängigkeiten, lade neu und öffne eine Karte. Wird sie gezeichnet, aktiviere die Hälfte der übrigen wieder und wiederhole das.",

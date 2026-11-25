@@ -1145,7 +1145,7 @@
   "BENEOS.Cloud.Footer.ServerOffline": "Serwer nieosiągalny · konserwacja",
   "BENEOS.Cloud.Footer.ServerOfflineTooltip": "Serwer chmury Beneos jest nieosiągalny. Zwykle oznacza to konserwację lub tymczasową awarię, logowanie wznowi się automatycznie, gdy serwer powróci.",
   "BENEOS.Cloud.Footer.CatalogStale": "Katalog offline · pokazano zapisaną listę",
-  "BENEOS.Cloud.Footer.CatalogStaleTooltip": "Nie udało się odświeżyć katalogu wyszukiwania, więc ta lista jest zapisaną kopią. Twoje konto i pobrane pliki nie są tym objęte.",
+  "BENEOS.Cloud.Footer.CatalogStaleTooltip": "Nie udało się odświeżyć katalogu wyszukiwania, więc ta lista jest zapisaną kopią. Nie ma to wpływu na Twoje konto ani pobrane pliki.",
   "BENEOS.Cloud.Footer.Retry": "Odśwież",
   "BENEOS.Cloud.Footer.RetryTooltip": "Pobierz katalog wyszukiwania ponownie.",
   "BENEOS.Cloud.Footer.RetryOk": "Katalog Beneos odświeżony.",

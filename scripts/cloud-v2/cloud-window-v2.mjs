@@ -5333,8 +5333,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // a login, which is the same mistake in a different coat.
       //
       // The old key BENEOS.Cloud.Install.NoPackDir is deliberately left behind
-      // rather than reworded: it carries that wrong sentence in all thirteen
-      // languages, and rewording only English would keep twelve wrong ones in
+      // rather than reworded: it carries that wrong sentence in every language
+      // file, and rewording only English would keep all the others wrong in
       // service. The new keys carry all languages since MO-055 (OP-CLD-130).
       const grund = this._releaseNeedsLogin ? "needs_login"
                   : this._releaseLoadError  ? "catalog_load_failed"
@@ -5347,8 +5347,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         catalog_not_loaded:     "BENEOS.Cloud.Install.CatalogNotLoadedYet"
       }[grund]
       // No English literal beside the key: `game.i18n.has()` consults the
-      // fallback language too, so for an en-only key it answers true in all
-      // thirteen languages, and a local copy could only ever drift from
+      // fallback language too, so for an en-only key it answers true in every
+      // language, and a local copy could only ever drift from
       // lang/en.json.
       ui.notifications?.warn(game.i18n.localize(schluessel))
       console.warn("BeneosCloudWindowV2 | kein Verzeichnis fuer das Release", {
@@ -6813,8 +6813,9 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   #bmapCoverageLabel(info) {
     if (!info?.partial) return ""
     const c = info.sceneCoverage || { have: 0, want: 0 }
-    // No English literal as a fallback. The key is present in all thirteen
-    // language files, so the fallback is unreachable, and an unreachable
+    // No English literal as a fallback. The key is present in every language
+    // file (tools/sprachschluessel.test.mjs holds that in the commit gate), so
+    // the fallback is unreachable, and an unreachable
     // English sentence still ships to every customer.
     try {
       const s = game.i18n.format("BENEOS.Cloud.Card.InstalledPartial", { have: c.have, want: c.want })
