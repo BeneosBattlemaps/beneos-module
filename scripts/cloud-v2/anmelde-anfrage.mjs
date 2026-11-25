@@ -14,8 +14,9 @@
  * braucht keinen CORS-Preflight.
  *
  * Felder mit undefined, null oder leerem Text fallen weg. URLSearchParams
- * machte sonst den Text "undefined" daraus. Werte, die der Server strikt
- * vergleicht (confirmCreate === '1', otpv), uebergibt der Aufrufer als Text.
+ * machte sonst den Text "undefined" daraus. Jeder Wert reist als Text
+ * (String(wert)). otpv liest der Server als Zahl ab 2, bei confirmCreate zaehlt
+ * der Wert '1': ein Boolean wuerde zu "true" und fiele durch.
  *
  * @param {string} basis     Cloud-Basis ohne Schraegstrich am Ende
  * @param {string} endpunkt  Dateiname des Endpunkts, z. B. "foundry-otp-status.php"
