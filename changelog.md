@@ -18,6 +18,7 @@ All notable changes to this module will be documented in this file.
 - Fixed: The install report on The Forge no longer claims that every HD file fits your plan's per-file limit, because a few HD bonus videos are larger than 50 MB.
 - Fixed: In worlds that installed a battlemap release before it was renumbered, uninstalling another battlemap now frees its downloaded files again instead of leaving them on disk with a warning, and updates of that release now also reach scenes you renamed yourself.
 - Fixed: Installing several creatures, items or spells in a row, or while the world is still checking its installed assets after loading, no longer fails with locked compendium errors, that check no longer stops halfway with a "does not exist" error, and the Beneos compendiums no longer stay unlocked afterwards. Removing a creature or cleaning up orphaned entries now tells you when it has to wait for an install or for an open dialog, and clicking Remove twice no longer reports a failure.
+- Fixed: When you sign in to Beneos Cloud with a correct code but the world cannot be connected to your account, the module now says so and asks you to request a new code. Before, it reported the code as invalid or expired, although that code was already used up.
 
 **Changes**
 - Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`. Battlemaps install from the Beneos Cloud window as before.
