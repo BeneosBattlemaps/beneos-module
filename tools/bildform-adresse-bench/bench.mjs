@@ -150,20 +150,22 @@ pruefe("A1 der Schalter steht im Quelltext",
     : `const BILDFORM_ADRESSE_AN = ${schalterZeile[1]}`)
 
 /*
- * DIE VORGABE IST `false`, und dieser Satz ist ABSICHTLICH scharf.
+ * DIE VORGABE IST `true`, und dieser Satz ist ABSICHTLICH scharf.
  *
- * Er wird rot, sobald jemand sie auf `true` stellt, und das ist gewollt: das
- * Umstellen ist eine Betreiberentscheidung nach einem Deploy und einem
- * gesehenen Lauf, nicht eine Zeile im Vorbeigehen. Wer sie stellt, aendert
- * diesen Satz mit und schreibt den Grund dazu.
+ * Gestellt hat sie der Betreiber zu stre-T-063, nach dem Deploy des
+ * Serverteils (c33e458 und 9f0a9cf in 1fc2e34) und einem gruenen Sichttest
+ * (80 von 80 Bildern bytegleich mit base64). Der Satz wird rot, sobald jemand
+ * sie auf `false` zuruecknimmt, und das ist gewollt: auch die Ruecknahme ist
+ * eine Betreiberentscheidung. Wer sie trifft, aendert diesen Satz mit und
+ * schreibt den Grund dazu.
  */
-pruefe("A2 die Vorgabe ist AUS, bis der Betreiber sie stellt",
-  schalterZeile !== null && schalterZeile[1] === "false",
+pruefe("A2 die Vorgabe ist AN, seit dem Betreiberentscheid",
+  schalterZeile !== null && schalterZeile[1] === "true",
   schalterZeile === null ? "kein Schalter gefunden"
-    : schalterZeile[1] === "false"
-      ? "AUS. Der Installer verhaelt sich Zeichen fuer Zeichen wie vorher"
-      : "AN. Wenn das gewollt ist, gehoert dieser Satz mitgeaendert und der "
-        + "Grund in die Zeile daneben")
+    : schalterZeile[1] === "true"
+      ? "AN. Der Installer holt Bilder als Adresse"
+      : "AUS. Wenn die Ruecknahme gewollt ist, gehoert dieser Satz mitgeaendert "
+        + "und der Grund in die Zeile daneben")
 
 const anhang = schneide("_beneosBildformAnhang")
 pruefe("A3 der Anhang steht an EINER Stelle",

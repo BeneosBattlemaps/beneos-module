@@ -305,8 +305,9 @@ fi
 # Verhalten, vier am Quelltext.
 #
 # `A2` ist absichtlich scharf: er wird rot, sobald `BILDFORM_ADRESSE_AN` auf
-# `true` steht. Das Umstellen ist eine Betreiberentscheidung nach einem Deploy
-# und einem gesehenen Lauf, und wer sie trifft, aendert den Satz mit.
+# `false` zurueckgenommen wird. Der Betreiber hat ihn zu stre-T-063 auf `true`
+# gestellt; auch die Ruecknahme ist seine Entscheidung, und wer sie trifft,
+# aendert den Satz mit.
 #
 # Die Satzzahl in der Beschriftung veraltet still. Wer eine Zahl hier liest,
 # prueft sie am Lauf.

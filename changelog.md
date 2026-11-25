@@ -4,6 +4,18 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.12 # 2026-11-25
+
+**Changed**
+- Changed: Creature installs now fetch each picture on its own instead of
+  inside one large download, so creatures with many variants install more
+  reliably on slow connections.
+
+**Fixed**
+- Fixed: Installing several assets in a row, or while the world is still
+  checking its installed assets after loading, no longer fails with locked or
+  missing compendium errors.
+
 ### 14.5.0-beta.11 # 2026-11-14
 
 **New**

@@ -178,8 +178,8 @@ export const SABOTAGEN = [
   // TC-295 bildform-adresse. Die Wiki-Klassen: beide Richtungen des
   // Schalters, Vorpruefung zurueck auf image64, base64-Rueckfall weg,
   // Adressvorrang weg, zweiter Versuch weg, Draufsicht mit continue.
-  { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AUS"],
-    ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = false", "const BILDFORM_ADRESSE_AN = true"]] },
+  { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AN"],
+    ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = true", "const BILDFORM_ADRESSE_AN = false"]] },
   { bench: "bildform-adresse", ziel: ["A3 der Anhang steht an EINER Stelle"],
     ersetze: [[CLOUD, 'return BILDFORM_ADRESSE_AN ? "&bildform=adresse" : ""', 'return "&bildform=adresse"']] },
   { bench: "bildform-adresse", ziel: ["C2 keine Stelle ausser dem Helfer fragt nach image64", "C5 drei Vorpruefungen "],
@@ -291,8 +291,8 @@ export const SABOTAGEN = [
   // Die Absturzwache: ein Wurf in E5, davor schon ein echter Befund in A2.
   // Beide bleiben rot, und die Wurfzeile traegt den Namen der gestarteten
   // Probe; faellt der Name weg, wird "E5 " nicht rot und das hier ein Befund.
-  { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AUS", "E5 "],
-    ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = false", "const BILDFORM_ADRESSE_AN = true"], [BENCHDATEI("bildform-adresse"), "beginne(\"E5\")\n", "beginne(\"E5\")\nthrow new Error(\"Sabotage stre-T-162\")\n"]] },
+  { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AN", "E5 "],
+    ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = true", "const BILDFORM_ADRESSE_AN = false"], [BENCHDATEI("bildform-adresse"), "beginne(\"E5\")\n", "beginne(\"E5\")\nthrow new Error(\"Sabotage stre-T-162\")\n"]] },
   // Eine abgelehnte Zusage statt eines Wurfs.
   { bench: "bildform-adresse", ziel: ["E8 "],
     ersetze: [[BENCHDATEI("bildform-adresse"), "beginne(\"E8\")\n", "beginne(\"E8\")\nawait Promise.reject(new Error(\"Sabotage stre-T-162\"))\n"]] },
