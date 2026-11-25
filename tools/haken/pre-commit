@@ -188,6 +188,12 @@ fahre "tools/v14-import-bench/unit.mjs"           "v14-import unit.mjs, 53 Saetz
 # Pruefung genauso; eine Umbenennung erscheint dank --no-renames als D plus A.
 # Ist der Haken selbst vorgemerkt, laufen alle: eine Aenderung am Tor wird an
 # allen Pruefungen gemessen, die es faehrt.
+#
+# tools/sprachschluessel.test.mjs (MO-055) haelt jede lang/*.json auf genau
+# den Schluesseln und Platzhaltern von en.json. Am 2026-11-25 fehlten in elf
+# Sprachen je 19 Schluessel, weil en.json viermal ohne die anderen erweitert
+# wurde. Den Ordner lang/ nennt die Pruefung woertlich im new URL(), deshalb
+# waehlt betroffen.mjs sie bei jeder Sprachdatei und bei sich selbst.
 NACH_GEGENSTAND="scripts/cloud-v2/anmelde-anfrage.test.mjs
 scripts/cloud-v2/anmeldung-verloren.test.mjs
 scripts/cloud-v2/eingabeart.test.mjs
@@ -205,7 +211,8 @@ scripts/cloud-v2/retry-nachlauf.test.mjs
 scripts/cloud-v2/transfer-drossel.test.mjs
 scripts/canvas/map-sharpen-curve.test.mjs
 scripts/analytics-scene-pack.test.mjs
-tools/pruefe-katalog-offline.mjs"
+tools/pruefe-katalog-offline.mjs
+tools/sprachschluessel.test.mjs"
 
 git diff --cached --name-only --no-renames --diff-filter=ACMD \
   > "$TMP/gegenstand" 2>/dev/null

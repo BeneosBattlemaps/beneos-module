@@ -2471,5 +2471,16 @@
   "BENEOS.Cloud.WhatsNew.LoginToDownload": "Zum Download anmelden",
   "BENEOS.Cloud.WhatsNew.Locked": "Für dein Konto noch nicht freigeschaltet",
   "BENEOS.Settings.WhatsNewEnabled.Name": "Neue Veröffentlichungen beim Weltstart zeigen",
-  "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt."
+  "BENEOS.Settings.WhatsNewEnabled.Hint": "Öffnet beim Weltstart ein kurzes Fenster mit allem, was dein Konto seit der letzten Bestätigung freigeschaltet hat. Wird nur Spielleitern gezeigt.",
+  "BENEOS.CanvasGuard.Title": "Beneos: Foundry konnte den Canvas nicht zeichnen",
+  "BENEOS.CanvasGuard.Headline": "Foundry konnte den Canvas nicht zeichnen.",
+  "BENEOS.CanvasGuard.NotAssets": "Deine Beneos-Karten sind nicht der Auslöser: Foundry bricht das Zeichnen ab, <i>bevor</i> es auch nur ein Bild lädt, also kann keine Karte das verursachen, in welcher Auflösung auch immer.",
+  "BENEOS.CanvasGuard.Packages": "Ein Teil des Codes im Stack gehört zu: {packages}. Das ist ein Hinweis, kein Urteil, und er ist nicht immer vollständig.",
+  "BENEOS.CanvasGuard.Session": "Foundry wiederholt diesen Fehler danach für den Rest der Sitzung, auch nach einem Szenenwechsel. Deshalb sieht jede Karte kaputt aus und nicht nur eine. <b>Ein Neuladen der Seite (F5) gibt dir wieder einen funktionierenden Canvas.</b>",
+  "BENEOS.CanvasGuard.Find": "So findest du die Ursache: Deaktiviere alle Module außer Beneos und seinen Abhängigkeiten, lade neu und öffne eine Karte. Wird sie gezeichnet, aktiviere die Hälfte der übrigen wieder und wiederhole das.",
+  "BENEOS.CanvasGuard.Close": "Schließen",
+  "BENEOS.Cloud.Install.ReleaseNotInCatalog": "Diese Karte steht im Suchkatalog, aber dahinter liegt kein installierbares Release. Das ist ein Fehler auf unserer Seite, nicht auf deiner. Bitte melde ihn auf Discord, wir können ihn ohne Update beheben.",
+  "BENEOS.Cloud.Install.CatalogNotLoadedYet": "Die Release-Liste ist noch nicht fertig geladen. Warte einen Moment und klicke dann erneut auf Installieren.",
+  "BENEOS.Cloud.Install.CatalogNeedsLogin": "Melde dich zuerst bei der Beneos Cloud an. Die Liste der installierbaren Releases gibt es nur für ein angemeldetes Konto.",
+  "BENEOS.Cloud.Install.CatalogLoadFailed": "Die Liste der installierbaren Releases konnte nicht geladen werden. Nutze Erneut versuchen in der Kartenliste und installiere dann noch einmal."
 }
