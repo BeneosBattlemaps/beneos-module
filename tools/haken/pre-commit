@@ -257,6 +257,25 @@ if { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK" \
   fi
 fi
 
+# DER KOMPENDIUM-RIEGEL (MO-050, stre-T-233). Pruefung beim Start und
+# Installation sperren dieselben vier Welt-Kompendien ueber einen gemeinsamen
+# Riegel. Die Bench faehrt scripts/kompendium-riegel.mjs gegen Attrappen und
+# misst am Quelltext, dass jeder Weg ihn benutzt. Kein Netz, kein Foundry,
+# unter einer Sekunde. betroffen.mjs sieht ihre Ziele nicht, weil sie ueber
+# join() und readFileSync liest; der Gegenstand steht deshalb hier.
+# Ausgeloest von jedem Skript unter scripts/, auch in Unterordnern, weil B1
+# jede Sperrstelle im ganzen Modul sucht: eine neue in einer anderen Datei
+# kaeme sonst durch. Derselbe Ausloeser wie in stre (tools/haken/wachen/
+# stre.sh), mit einer Abweichung: hier zaehlt auch eine geloeschte Datei (D),
+# wie ueberall in diesem Haken. Gemessen MO-050: die Sabotage n > 1 zu n > 0
+# in kompendium-riegel.mjs ging vorher gruen durch alle 11 gewaehlten
+# Pruefungen.
+if [ "$ALLE_GEGENSTAND" -eq 1 ] \
+   || grep -qE -e '^scripts/.*\.(js|mjs)$' -e '^tools/kompendium-riegel-bench/' \
+        "$TMP/gegenstand"; then
+  fahre "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench, Gegenstand vorgemerkt"
+fi
+
 # ----------------------------------------------------------------- Ausgang ---
 if [ "$ROT" -gt 0 ]; then
   meld ""
