@@ -282,9 +282,13 @@ fi
 # (Kalt-Review MO-051). Gemessen MO-050: die Sabotage n > 1 zu n > 0
 # in kompendium-riegel.mjs ging vorher gruen durch alle 11 gewaehlten
 # Pruefungen.
+# Auch von lang/*.json (MO-053, stre-T-486): B20a liest den Doppelklick-
+# Hinweis aus jeder Sprachdatei, ein Commit nur an einer Sprachdatei kaeme
+# sonst durch. Die Indexkopie oben traegt lang/ schon, anders als in stre
+# braucht fahre dafuer nichts.
 if [ "$ALLE_GEGENSTAND" -eq 1 ] \
    || grep -qE -e '^scripts/.*\.(js|mjs)$' -e '^tools/kompendium-riegel-bench/' \
-        "$TMP/gegenstand"; then
+        -e '^lang/.*\.json$' "$TMP/gegenstand"; then
   fahre "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench, Gegenstand vorgemerkt"
 fi
 
