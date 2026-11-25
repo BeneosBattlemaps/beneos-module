@@ -113,6 +113,11 @@
  * Karten zaehlt, deren Dateien wirklich liegen, und dass die Heilmeldung ohne
  * Datei keinen Erfolg nennt. Den Satz gibt es an der Basis nicht.
  *
+ * Seit tick-T-050 dazu `anmeldecode` (`scripts/cloud-login-code.test.mjs`):
+ * die Code-Anmeldung meldet otpv=3, fragt bei new_account erst beim Pruefen
+ * und schickt denselben Code mit confirmCreate an dieselbe Kennung, send_failed
+ * hat eine eigene Meldung in jeder Sprache. An der Basis gibt es ihn nicht.
+ *
  * VIERUNDZWANZIG SAETZE seit stre-T-135. `kennung` haelt fest, dass die
  * Anmeldung bei einer gesperrten Weltkennung genau einmal neu wuerfelt und
  * eine saubere `foundry_id` aus der Antwort uebernimmt. Auch ihn gibt es an
@@ -236,6 +241,7 @@ const SATZ_AUSSERHALB = {
   bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
   kaufknopf: "scripts/cloud-v2/cloud-kaufknopf.test.mjs",
   kennung: "scripts/cloud-login-kennung.test.mjs",
+  anmeldecode: "scripts/cloud-login-code.test.mjs",
   kodexreiter: "scripts/codex2/codex-sheet-wiring.test.mjs",
   doppelwache: "tools/haken/vorhaken.test.mjs",
   vorpush: "tools/haken/vorpush.test.mjs",
@@ -296,6 +302,7 @@ const EXPORT = "scripts/stream/stream-export.mjs";
 // stre-T-142 B2: maskiere und wandle zogen aus stream-export hierher um.
 const TORMASKE = "scripts/stream/stream-tormaske.mjs";
 const KENNUNG = "scripts/cloud-login-kennung.mjs";
+const ANMELDECODE = "scripts/cloud-login-code.mjs";
 const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
 const TOUR = "scripts/beneos_tours.js";
 const HAKEN = "tools/haken/pre-commit";
@@ -1747,8 +1754,57 @@ const SABOTAGEN = [
   { satz: "kennung", ziel: ["[Struktur] beide Wege melden sich ueber anmeldenMitKennung an"], ersetze: [[CLOUD, "    anmeldenMitKennung(sende, userId, () => foundry.utils.randomID(32))\n", "    anmeldenMitKennung(sende, this.foundryId ?? userId, () => foundry.utils.randomID(32))\n"]] },
   { satz: "kennung", ziel: ["[Struktur] beide Wege pollen mit der Kennung aus der Anmeldung","[Struktur] kein Weg pollt mit der alten Kennung"], ersetze: [[CLOUD, "        this.pollForAccess(kennung)\n", "        this.pollForAccess(userId)\n", 2, 2]] },
   { satz: "kennung", ziel: ["[Struktur] die Passwortanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const cloudLoginURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php", "const cloudLoginURL = (`${BeneosUtility.cloudBase()}/foundry-login.php"]] },
-  { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php", "const verURL = (`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"]] },
+  { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const verURL = pruefAdresse(BeneosUtility.cloudBase()", "const verURL = mitFaehig(BeneosUtility.cloudBase()"]] },
   { satz: "kennung", ziel: ["die Adresse bekommt faehig=1 angehaengt"], ersetze: [[KENNUNG, "  return `${url}&faehig=1`\n", "  return url\n"]] },
+  // ---------------------------------------------------------------- anmeldecode (tick-T-050)
+  { satz: "anmeldecode", ziel: ["das Modul laesst sich laden"], ersetze: [[ANMELDECODE, "export const OTP_STUFE = 3\n", "throw new Error(\"Sabotage\")\nexport const OTP_STUFE = 3\n"]] },
+  { satz: "anmeldecode", ziel: ["Anfrage meldet otpv=3","Pruefung meldet otpv=3"], ersetze: [[ANMELDECODE, "export const OTP_STUFE = 3\n", "export const OTP_STUFE = 2\n"]] },
+  { satz: "anmeldecode", ziel: ["Anfrage ohne Bestaetigung traegt kein confirmCreate"], ersetze: [[ANMELDECODE, "  if (bestaetigt) url += \"&confirmCreate=1\"\n  return url\n", "  url += \"&confirmCreate=1\"\n  return url\n"]] },
+  { satz: "anmeldecode", ziel: ["Anfrage mit Bestaetigung traegt confirmCreate=1"], ersetze: [[ANMELDECODE, "  if (bestaetigt) url += \"&confirmCreate=1\"\n  return url\n", "  return url\n"]] },
+  { satz: "anmeldecode", ziel: ["Anfrage kodiert die Adresse"], ersetze: [[ANMELDECODE, "foundry-otp-request.php?email=${encodeURIComponent(email)}", "foundry-otp-request.php?email=${email}"]] },
+  { satz: "anmeldecode", ziel: ["Pruefung ohne Bestaetigung traegt kein confirmCreate"], ersetze: [[ANMELDECODE, "  if (bestaetigt) url += \"&confirmCreate=1\"\n  return mitFaehig(url)\n", "  url += \"&confirmCreate=1\"\n  return mitFaehig(url)\n"]] },
+  { satz: "anmeldecode", ziel: ["Pruefung mit Bestaetigung traegt confirmCreate=1"], ersetze: [[ANMELDECODE, "  if (bestaetigt) url += \"&confirmCreate=1\"\n  return mitFaehig(url)\n", "  return mitFaehig(url)\n"]] },
+  { satz: "anmeldecode", ziel: ["Pruefung traegt faehig=1"], ersetze: [[ANMELDECODE, "  return mitFaehig(url)\n", "  return url\n"]] },
+  { satz: "anmeldecode", ziel: ["OK: Stufe ok mit ttl"], ersetze: [[ANMELDECODE, "ttl: Number(daten.ttl) || 600,", "ttl: 600,"]] },
+  { satz: "anmeldecode", ziel: ["OK ohne ttl: 600"], ersetze: [[ANMELDECODE, "ttl: Number(daten.ttl) || 600,", "ttl: Number(daten.ttl) || 0,"]] },
+  { satz: "anmeldecode", ziel: ["send_failed: eigene Meldung CodeSendFailed"], ersetze: [[ANMELDECODE, "  if (r === \"send_failed\") return", "  if (false) return"]] },
+  { satz: "anmeldecode", ziel: ["send_failed: Stufe error"], ersetze: [[ANMELDECODE, "if (r === \"send_failed\") return { status: \"error\"", "if (r === \"send_failed\") return { status: \"ok\""]] },
+  { satz: "anmeldecode", ziel: ["unbekannte Antwort: LoginFailed wie bisher"], ersetze: [[ANMELDECODE, "  return { status: \"error\", ttl: 0, retryAfter: 0, meldung: \"BENEOS.Cloud.Notification.LoginFailed\" }\n", "  return { status: \"error\", ttl: 0, retryAfter: 0, meldung: \"BENEOS.Cloud.Notification.CodeSendFailed\" }\n"]] },
+  { satz: "anmeldecode", ziel: ["rate_limited: retry_after kommt mit"], ersetze: [[ANMELDECODE, "retryAfter: Number(daten.retry_after) || 0,", "retryAfter: 0,"]] },
+  { satz: "anmeldecode", ziel: ["new_account beim Anfordern (alter Server): keine Meldung"], ersetze: [[ANMELDECODE, "status: \"new_account\", ttl: 0, retryAfter: 0, meldung: null }", "status: \"new_account\", ttl: 0, retryAfter: 0, meldung: \"BENEOS.Cloud.Notification.LoginFailed\" }"]] },
+  { satz: "anmeldecode", ziel: ["undeliverable: Meldung wie bisher"], ersetze: [[ANMELDECODE, "meldung: \"BENEOS.Cloud.Notification.CodeUndeliverable\"", "meldung: \"BENEOS.Cloud.Notification.LoginFailed\""]] },
+  { satz: "anmeldecode", ziel: ["Konto: ein Ruf, keine Rueckfrage","Konto: die Antwort kommt zurueck"], ersetze: [[ANMELDECODE, "if (daten?.result !== \"new_account\" || bestaetigt) return", "if (bestaetigt) return"]] },
+  { satz: "anmeldecode", ziel: ["neu und anlegen: genau eine Rueckfrage","neu und anlegen: zwei Rufe","neu und anlegen: erster Ruf ohne, zweiter mit Bestaetigung","neu und anlegen: beide Rufe mit derselben Kennung","neu und anlegen: die Antwort des zweiten Rufs kommt zurueck","neu und anlegen: die Wahl kommt zurueck","neu und pruefen: die Wahl kommt zurueck"], ersetze: [[ANMELDECODE, "if (daten?.result !== \"new_account\" || bestaetigt) return { daten, kennung: k, wahl: null }", "return { daten, kennung: k, wahl: null }"]] },
+  { satz: "anmeldecode", ziel: ["schon bestaetigt und new_account: keine zweite Rueckfrage"], ersetze: [[ANMELDECODE, "if (daten?.result !== \"new_account\" || bestaetigt) return", "if (daten?.result !== \"new_account\") return"]] },
+  { satz: "anmeldecode", ziel: ["schon bestaetigt: Ruf mit Bestaetigung, keine Rueckfrage"], ersetze: [[ANMELDECODE, "(x) => sende(x, bestaetigt)", "(x) => sende(x, false)"]] },
+  { satz: "anmeldecode", ziel: ["neu und anlegen: erster Ruf ohne, zweiter mit Bestaetigung"], ersetze: [[ANMELDECODE, "(x) => sende(x, true), k, wuerfle)", "(x) => sende(x, false), k, wuerfle)"]] },
+  { satz: "anmeldecode", ziel: ["gesperrt, dann neu: der Bestaetigungsruf traegt die neue Kennung","gesperrt, dann neu: die neue Kennung kommt zurueck"], ersetze: [[ANMELDECODE, "(x) => sende(x, true), k, wuerfle)", "(x) => sende(x, true), kennung, wuerfle)"]] },
+  { satz: "anmeldecode", ziel: ["neu und pruefen: kein zweiter Ruf"], ersetze: [[ANMELDECODE, "if (wahl !== \"create\") return", "if (wahl === null) return"]] },
+  { satz: "anmeldecode", ziel: ["neu und geschlossen: kein zweiter Ruf","neu und geschlossen: new_account bleibt die Antwort"], ersetze: [[ANMELDECODE, "if (wahl !== \"create\") return", "if (wahl === \"check\") return"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] keine Anfrage mehr mit otpv=2","[Struktur] die Anfrage baut ihre Adresse ueber anfrageAdresse"], ersetze: [[CLOUD, "const reqURL = anfrageAdresse(BeneosUtility.cloudBase(), email, userId, confirmCreate)", "const reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}&otpv=2`"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] die Anfrage wertet ueber anfrageStufe aus"], ersetze: [[CLOUD, "anfrageStufe(await resp.json())", "anfrageStufe({ result: \"OK\" })"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] die Pruefung fragt bei new_account ueber confirmNewAccountDialog"], ersetze: [[CLOUD, "() => this.confirmNewAccountDialog(email), confirmed)", "async () => null, confirmed)"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] der Codedialog zeigt die Adresse von Anfang an"], ersetze: [[CLOUD, "<p class=\"bc-login-form__email\">${safeEmail}</p>\n        <button type=\"button\" class=\"bc-login-form__resend\" data-bc-change-email>", "<button type=\"button\" class=\"bc-login-form__resend\" data-bc-change-email>"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] der Knopf Adresse aendern schliesst mit Adresswechsel"], ersetze: [[CLOUD, "?.addEventListener(\"click\", () => {\n            wantsEmailChange = true\n", "?.addEventListener(\"click\", () => {\n            wantsEmailChange = false\n"]] },
+  // Kalt-Review M2: die Sperre beim Bestaetigungsruf wuerfelt keine neue Kennung.
+  { satz: "anmeldecode", ziel: ["gesperrt beim Bestaetigen: erst alte, dann neue Kennung, beide bestaetigt","gesperrt beim Bestaetigen: die neue Kennung kommt zurueck"], ersetze: [[ANMELDECODE, "(x) => sende(x, true), k, wuerfle)", "(x) => sende(x, true), k, () => k)"]] },
+  { satz: "anmeldecode", ziel: ["gesperrt beim Bestaetigen: drei Rufe","gesperrt beim Bestaetigen: die neue Kennung kommt zurueck"], ersetze: [[ANMELDECODE, ";({ daten, kennung: k } = await anmeldenMitKennung((x) => sende(x, true), k, wuerfle))", "daten = await sende(k, true)"]] },
+  // Kalt-Review M1: der Ausgang nach dem Pruefen, je Zweig.
+  { satz: "anmeldecode", ziel: ["HTTP-Fehler: nichts weiter, auch nach check"], ersetze: [[ANMELDECODE, "  if (daten?.result === \"http\") return \"http\"\n", ""]] },
+  { satz: "anmeldecode", ziel: ["check: zurueck zum Formular"], ersetze: [[ANMELDECODE, "  if (wahl === \"check\") return \"zurueck\"\n", ""]] },
+  { satz: "anmeldecode", ziel: ["Rueckfrage geschlossen: still"], ersetze: [[ANMELDECODE, "&& wahl !== \"create\") return \"still\"", "&& wahl === \"nie\") return \"still\""]] },
+  { satz: "anmeldecode", ziel: ["OK: anmelden, auch nach create"], ersetze: [[ANMELDECODE, "if (daten?.result === \"OK\") return \"anmelden\"", "if (daten?.result === \"OK\" && wahl === null) return \"anmelden\""]] },
+  { satz: "anmeldecode", ziel: ["Fehler oder new_account nach create: ungueltig"], ersetze: [[ANMELDECODE, "  return \"ungueltig\"\n}", "  return \"anmelden\"\n}"]] },
+  // Kalt-Review M3: die Adresse im Codedialog wird maskiert.
+  { satz: "anmeldecode", ziel: ["htmlSicher maskiert < > & und Anfuehrungszeichen"], ersetze: [[ANMELDECODE, "replace(/[&<>\"]/g,", "replace(/[&<>]/g,"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] der Codedialog maskiert die Adresse ueber htmlSicher"], ersetze: [[CLOUD, "const safeEmail = htmlSicher(email)", "const safeEmail = email"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] connectWithCode verzweigt ueber ausgangNachPruefung"], ersetze: [[CLOUD, "const ausgang = ausgangNachPruefung(data, wahl)", "const ausgang = ausgangNachPruefung(data, null)"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] die Rueckfrage beim Anfordern merkt die Bestaetigung"], ersetze: [[CLOUD, "      confirmed = true\n      first = await this.requestCode(email, userId, true)", "      first = await this.requestCode(email, userId, true)"]] },
+  { satz: "anmeldecode", ziel: ["[Struktur] Adresse aendern fuehrt mit vorbefuellter Adresse zurueck"], ersetze: [[CLOUD, "if (codeData && codeData.changeEmail) { return this.loginRequest(null, email) }", "if (codeData && codeData.changeEmail) { return this.loginRequest() }"]] },
+  // Kalt-Review M6: eine verwaiste Resend-Rueckfrage sendet doch.
+  { satz: "anmeldecode", ziel: ["[Struktur] eine verwaiste Resend-Rueckfrage sendet nicht"], ersetze: [[CLOUD, "if (wantsEmailChange || !root.isConnected) return", "if (!root.isConnected) return"]] },
+  { satz: "anmeldecode", ziel: ["englischer Wortlaut nach Betreiberentscheid E3","jede Sprache traegt CodeSendFailed"], ersetze: [["lang/en.json", "  \"BENEOS.Cloud.Notification.CodeSendFailed\": \"We could not send the code right now. Please try again in a moment.\",\n", ""]] },
+  { satz: "anmeldecode", ziel: ["jede Sprache traegt CodeSendFailed"], ersetze: [["lang/ja.json", "  \"BENEOS.Cloud.Notification.CodeSendFailed\": ", "  \"BENEOS.Cloud.Notification.CodeSendFailedX\": "]] },
   // ---------------------------------------------------------------- kodexreiter (stre-T-156)
   { satz: "kodexreiter", ziel: ["[Struktur] ein V2-Bogen bekommt am renderActorSheet keinen Reiter"], ersetze: [[KODEX, "  if (sheet instanceof foundry.applications.api.ApplicationV2) return\n", ""]] },
   { satz: "kodexreiter", ziel: ["[Struktur] ein V1-Bogen einer Beneos-Kreatur bekommt genau einen Reiter"], ersetze: [[KODEX, "  haengeKodexReiter(sheet, html)\n})", "  void haengeKodexReiter\n})"]] },
@@ -2702,6 +2758,10 @@ const SABOTAGEN = [
  */
 const VM_VORLAGE = "Aussage ueber die Vorlage des Erzeugers, nicht ueber das Modul: keine Sabotage am Modul kann sie rot machen. Bewacht beim Erzeuger, /4 in beneos-cloud-server tests/test-vertrag-manifest.php, /2 in beneos-stream-beta test_vertrag_manifest2.py; aendert ein Erzeuger seine Form, wird sie hier rot, sobald die Vorlage auf dem Integrationszweig liegt.";
 const EIGENPROBEN = {
+  "anmeldecode": {
+    "alle Sprachdateien gelesen (mindestens 13)":
+      "Vorbedingung des Abschnitts Sprachen (tick-T-050): ohne gelesene Dateien waere \"jede Sprache traegt CodeSendFailed\" leer und gruen. Der Laeufer kann keine Datei entfernen; bewacht sind die beiden Proben daneben.",
+  },
   "einbau": {
     "Modus an: init laeuft in der Attrappe durch":
       "Vorbedingung der Einbauprobe (stre-T-208): ohne sie koennte ein Wurf im init mit Modus an die Meldestelle verfehlen und den Befund verdecken. Bewacht ist \"Modus an: die Meldestelle ist eingebaut und haelt die Meldung im Szenenaufbau zurueck\".",
@@ -3021,7 +3081,7 @@ if (process.argv.includes("--alle-saetze")) {
 // sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz betreffkennung.
 const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "anmeldecode", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

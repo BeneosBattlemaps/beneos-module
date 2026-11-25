@@ -1600,6 +1600,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "Změnit e-mail",
   "BENEOS.Cloud.Notification.CodeRateLimited": "Před vyžádáním dalšího kódu počkejte {seconds}s.",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "Na tento e-mail se nepodařilo doručit. Použijte jinou adresu nebo kontaktujte podporu.",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "Kód se teď nepodařilo odeslat. Zkus to prosím za chvíli znovu.",
   "BENEOS.Cloud.CodeHelp.Title": "Nepřišel e-mail?",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "Zkontrolujte složku se spamem.",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "Použijte přesně e-mail z účtu Patreon.",

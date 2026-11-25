@@ -4,6 +4,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 // cloud-v2/beneos-install-state, and neither reaches back here.
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { anmeldenMitKennung, mitFaehig } from "./cloud-login-kennung.mjs"
+import { anfrageAdresse, anfrageStufe, ausgangNachPruefung, htmlSicher, pruefAdresse, pruefenMitRueckfrage } from "./cloud-login-code.mjs"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 import {
@@ -1250,11 +1251,15 @@ export class BeneosCloudLogin extends FormApplication {
     // address, and that is the moment to ask. This holds for the "Create account"
     // button too; a typo there forked a customer's identity away from their
     // Patreon/shop entitlements just as easily, and they then found nothing they paid for.
+    // tick-T-050: with otpv=3 the server never answers new_account here, it asks
+    // at verify instead (see cloud-login-code.mjs). An older server still asks here.
     let first = await this.requestCode(email, userId, false)
+    let confirmed = false
     if (first.status === 'new_account') {
       const choice = await this.confirmNewAccountDialog(email)
       if (choice === "check") return this.loginRequest(null, email)
       if (choice !== "create") return
+      confirmed = true
       first = await this.requestCode(email, userId, true)
     }
     if (first.status !== 'ok') return
@@ -1266,15 +1271,17 @@ export class BeneosCloudLogin extends FormApplication {
 
     // Step 2: collect the code (with live TTL, resend + help) and verify it.
     const codeData = await this.codeDialog(email, userId, first.ttl)
-    // User decided the address was wrong while resending: restart at the email step.
-    if (codeData && codeData.changeEmail) { return this.loginRequest() }
+    // User decided the address was wrong: restart at the email step with it filled in.
+    if (codeData && codeData.changeEmail) { return this.loginRequest(null, email) }
     if (!codeData || typeof codeData !== "object" || !codeData.code?.trim()) return
     const code = codeData.code.trim()
 
     // stre-T-135: the Cloud checks a revoked foundry id BEFORE it consumes the
     // code, so the one retry with a fresh id still has a valid code.
-    const sende = async (kennung) => {
-      const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&foundryId=${encodeURIComponent(kennung)}`)
+    // tick-T-050: an unknown address answers new_account and keeps the code; after
+    // "create" the same code goes again with confirmCreate=1.
+    const sende = async (kennung, mitBestaetigung) => {
+      const verURL = pruefAdresse(BeneosUtility.cloudBase(), email, code, kennung, mitBestaetigung)
       const resp = await fetch(verURL, { credentials: 'same-origin' })
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
@@ -1284,9 +1291,11 @@ export class BeneosCloudLogin extends FormApplication {
       return resp.json()
     }
     try {
-      const { daten: data, kennung } = await anmeldenMitKennung(sende, userId, () => foundry.utils.randomID(32))
-      if (data.result === "http") return
-      if (data.result === 'OK') {
+      const { daten: data, kennung, wahl } = await pruefenMitRueckfrage(sende, userId, () => foundry.utils.randomID(32), () => this.confirmNewAccountDialog(email), confirmed)
+      const ausgang = ausgangNachPruefung(data, wahl)
+      if (ausgang === "http" || ausgang === "still") return
+      if (ausgang === "zurueck") return this.loginRequest(null, email)
+      if (ausgang === "anmelden") {
         // Remember the verified address (this machine only) for next time.
         this.rememberLoginEmail(email)
         this.pollForAccess(kennung)
@@ -1306,11 +1315,10 @@ export class BeneosCloudLogin extends FormApplication {
   // status object; only emits notifications for the failure cases the caller shares.
   // @returns {Promise<{status:'ok'|'new_account'|'rate_limited'|'undeliverable'|'error', ttl:number, retryAfter:number}>}
   async requestCode(email, userId, confirmCreate = false) {
-    // otpv=2 marks this client as understanding the new responses (new_account /
-    // rate_limited / undeliverable). The server keeps legacy behavior for clients
-    // that omit it, so the hardened endpoint is safe to deploy before this module ships.
-    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}&otpv=2`
-    if (confirmCreate) reqURL += `&confirmCreate=1`
+    // otpv marks which responses this client understands (cloud-login-code.mjs).
+    // The server keeps legacy behavior for clients that omit it, so the hardened
+    // endpoint is safe to deploy before this module ships.
+    const reqURL = anfrageAdresse(BeneosUtility.cloudBase(), email, userId, confirmCreate)
     try {
       const resp = await fetch(reqURL, { credentials: 'same-origin' })
       game.beneos?.cloud?.markServerStatus?.(resp, null)
@@ -1319,25 +1327,12 @@ export class BeneosCloudLogin extends FormApplication {
         else ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
         return { status: 'error', ttl: 0, retryAfter: 0 }
       }
-      const data = await resp.json()
-      if (data.result === 'OK') {
-        return { status: 'ok', ttl: Number(data.ttl) || 600, retryAfter: 0 }
-      }
-      if (data.result === 'new_account') {
-        // Caller decides whether to confirm; no notification here.
-        return { status: 'new_account', ttl: 0, retryAfter: 0 }
-      }
-      if (data.result === 'rate_limited') {
-        const retryAfter = Number(data.retry_after) || 0
-        ui.notifications.warn(game.i18n.format("BENEOS.Cloud.Notification.CodeRateLimited", { seconds: retryAfter }))
-        return { status: 'rate_limited', ttl: 0, retryAfter }
-      }
-      if (data.result === 'undeliverable') {
-        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeUndeliverable"))
-        return { status: 'undeliverable', ttl: 0, retryAfter: 0 }
-      }
-      ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginFailed"))
-      return { status: 'error', ttl: 0, retryAfter: 0 }
+      // new_account carries no notification: the caller decides whether to confirm.
+      const { meldung, ...stufe } = anfrageStufe(await resp.json())
+      // Key spelled out so the language bench sees the {seconds} placeholder filled.
+      if (stufe.status === 'rate_limited') ui.notifications.warn(game.i18n.format("BENEOS.Cloud.Notification.CodeRateLimited", { seconds: stufe.retryAfter }))
+      else if (meldung) ui.notifications.error(game.i18n.localize(meldung))
+      return stufe
     } catch (err) {
       game.beneos?.cloud?.markServerStatus?.(null, err)
       console.error("BENEOS Cloud OTP request error:", err)
@@ -1446,7 +1441,10 @@ export class BeneosCloudLogin extends FormApplication {
     let resendReadyAt = Date.now() + RESEND_COOLDOWN * 1000
     let countdownTimer = null
     let resendCount = 0          // first resend is frictionless; from the 2nd we re-check the email
-    let wantsEmailChange = false // set when the user picks "change email" in the confirm dialog
+    let wantsEmailChange = false // set when the user picks "change email" (button or confirm dialog)
+    // tick-T-050 (E2): the address is shown from the start, so a typo is visible
+    // before the first resend.
+    const safeEmail = htmlSicher(email)
 
     const fmt = (totalSeconds) => {
       const s = Math.max(0, Math.floor(totalSeconds))
@@ -1457,6 +1455,10 @@ export class BeneosCloudLogin extends FormApplication {
 
     const content = `<section class="bc-login-form">
       <p class="bc-login-form__hint">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeDescription")}</p>
+      <div class="bc-login-form__address">
+        <p class="bc-login-form__email">${safeEmail}</p>
+        <button type="button" class="bc-login-form__resend" data-bc-change-email>${game.i18n.localize("BENEOS.Cloud.ConnectAccount.ResendConfirmEdit")}</button>
+      </div>
       <div class="bc-login-form__field">
         <label for="code" class="bc-login-form__label">${game.i18n.localize("BENEOS.Cloud.ConnectAccount.CodeLabel")}</label>
         <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="bc-login-form__input" />
@@ -1521,6 +1523,11 @@ export class BeneosCloudLogin extends FormApplication {
           tick()
           countdownTimer = setInterval(tick, 1000)
 
+          root.querySelector("[data-bc-change-email]")?.addEventListener("click", () => {
+            wantsEmailChange = true
+            dialog.close()
+          })
+
           resendBtn?.addEventListener("click", async () => {
             if (resendBtn.disabled) return
             resendBtn.disabled = true // also guards against double-clicks during the confirm dialog
@@ -1528,11 +1535,15 @@ export class BeneosCloudLogin extends FormApplication {
             // the address. Show it and ask before sending again; let the user go back to edit.
             if (resendCount >= 1) {
               const answer = await this.confirmEmailDialog(email)
+              // tick-T-050: the confirm dialog is not modal; if the code dialog closed
+              // meanwhile (Change email, Cancel), this answer must not send anything.
+              if (wantsEmailChange || !root.isConnected) return
               if (answer === 'change') { wantsEmailChange = true; dialog.close(); return }
               if (answer !== 'yes') { tick(); return } // dismissed: re-enable per cooldown, no send
             }
-            // By the time this dialog is open the account creation is already confirmed
-            // (or the account exists), so a resend must always send, never re-prompt.
+            // With otpv=3 the server ignores confirmCreate on request and asks at verify.
+            // An older server opens this dialog only after the account question (or for
+            // an existing account), so a resend must always send, never re-prompt.
             const res = await this.requestCode(email, userId, true)
             const now = Date.now()
             if (res.status === 'ok') {

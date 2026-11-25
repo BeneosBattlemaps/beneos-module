@@ -1600,6 +1600,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "Canvia el correu",
   "BENEOS.Cloud.Notification.CodeRateLimited": "Espera {seconds}s abans de demanar un altre codi.",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "No hem pogut lliurar a aquest correu. Fes servir una altra adreça o contacta amb el suport.",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "Ara mateix no hem pogut enviar el codi. Torna-ho a provar d'aquí a un moment.",
   "BENEOS.Cloud.CodeHelp.Title": "No arriba el correu?",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "Comprova la carpeta de correu brossa.",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "Fes servir exactament el correu del teu compte de Patreon.",
