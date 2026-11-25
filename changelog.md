@@ -36,6 +36,11 @@ All notable changes to this module will be documented in this file.
   colour for every origin, including Beastforged, Infernal and Mutation
   items, which showed no icon before. The emblem comes with the module, so
   it also appears offline.
+- Fixed: When Beneos Cloud no longer recognises a world's sign-in, the GM
+  now gets a one-time notice to sign in again, also in worlds without a
+  linked Patreon account. Before, such worlds were signed out without any
+  explanation, and worlds with a linked Patreon account but no active
+  membership were told about Patreon access they never had.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
