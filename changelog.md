@@ -24,6 +24,10 @@ All notable changes to this module will be documented in this file.
 - Fixed: In the Beneos Cloud library the loot mechanics buttons now have a
   clearly visible edge, and the search field and the source checkboxes show
   a gold focus ring, so you can always see where keyboard input goes.
+- Fixed: In a narrow Beneos Cloud window the "Filters" button now stays in
+  place while you scroll through the open filters.
+- Fixed: In the Beneos Cloud library the filter dropdowns now show a gold
+  focus ring when you reach them with the keyboard.
 
 ### 14.5.0-beta.13 # 2026-11-25
 

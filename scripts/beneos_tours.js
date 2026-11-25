@@ -5812,6 +5812,8 @@ class BeneosTutorialSceneTour extends TourBase {
       // input lives at the very top of the sidebar — reset the sidebar's
       // scroll so it's actually visible for this step.
       try { document.querySelector(".bc-sidebar")?.scrollTo({ top: 0, behavior: "instant" }); } catch (e) {}
+      // MO-042: in a narrow Cloud window the filter list scrolls on its own.
+      try { document.querySelector("#bc-filter-panel")?.scrollTo({ top: 0, behavior: "instant" }); } catch (e) {}
       try {
         const input = document.querySelector("#beneos-search-text");
         if (input) {
