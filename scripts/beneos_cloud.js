@@ -10,6 +10,7 @@ import { insKompendiumImportieren } from "./cloud-v2/kompendium-import.mjs"
 import { kontoWechsel } from "./cloud-v2/konto-wechsel.mjs"
 import { anmeldungVerloren } from "./cloud-v2/anmeldung-verloren.mjs"
 import { otpFehlerSchluessel } from "./cloud-v2/otp-fehler.mjs"
+import { anmeldeAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
 import { inDerKette, entsperre, sperre, sperreNach, wartetAufNutzer } from "./kompendium-riegel.mjs"
 import { wartehinweis } from "./kompendium-wartehinweis.mjs"
 
@@ -743,9 +744,10 @@ export class BeneosCloudLogin extends FormApplication {
     if (!codeData || typeof codeData !== "object" || !codeData.code?.trim()) return
     const code = codeData.code.trim()
 
-    let verURL = `${BeneosUtility.cloudBase()}/foundry-otp-verify.php?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&foundryId=${encodeURIComponent(userId)}`
+    // MO-054: address, code and Foundry id travel in the POST body, never in the URL.
+    const verify = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-verify.php", { email, code, foundryId: userId })
     try {
-      const resp = await fetch(verURL, { credentials: 'same-origin' })
+      const resp = await fetch(verify.url, verify.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
@@ -779,10 +781,14 @@ export class BeneosCloudLogin extends FormApplication {
     // otpv=2 marks this client as understanding the new responses (new_account /
     // rate_limited / undeliverable). The server keeps legacy behavior for clients
     // that omit it, so the hardened endpoint is safe to deploy before this module ships.
-    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}&otpv=2`
-    if (confirmCreate) reqURL += `&confirmCreate=1`
+    // MO-054: every field goes in the POST body. Once foundryId is in the body the server
+    // reads only the body, so otpv and confirmCreate must be there too. The server compares
+    // confirmCreate with the text "1", hence the string and not the boolean.
+    const anfrage = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-request.php", {
+      email, foundryId: userId, otpv: "2", confirmCreate: confirmCreate ? "1" : undefined,
+    })
     try {
-      const resp = await fetch(reqURL, { credentials: 'same-origin' })
+      const resp = await fetch(anfrage.url, anfrage.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
@@ -822,8 +828,9 @@ export class BeneosCloudLogin extends FormApplication {
   scheduleDeliveryCheck(email) {
     setTimeout(async () => {
       try {
-        const url = `${BeneosUtility.cloudBase()}/foundry-otp-status.php?email=${encodeURIComponent(email)}`
-        const resp = await fetch(url, { credentials: 'same-origin' })
+        // MO-054: the address goes in the POST body, never in the URL.
+        const status = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-status.php", { email })
+        const resp = await fetch(status.url, status.init)
         if (!resp.ok) return
         const data = await resp.json()
         if (data.result === 'OK' && data.deliverable === false) {
