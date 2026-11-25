@@ -318,6 +318,7 @@
   "BENEOS.Tour.StartHere.StartWelcome.Content": "<div class=\"beneos-countdown-box beneos-countdown-compact\"><p>Ваш гайд начнется через <strong><span id=\"beneos-countdown\">10</span></strong> секунд</p></div>",
   "BENEOS.Tour.StartHere.StartExplainer.Title": "Гайд по началу работы с Beneos",
   "BENEOS.Tour.StartHere.StartExplainer.Content": "<p>Это <strong>гайд по началу работы с Beneos</strong>.</p><p>Мы проведём вас через все аспекты <strong>обоих Patreon Beneos</strong>:</p><ul><li><strong>Beneos Battle Maps</strong></li><li><strong>Beneos Tokens, Spells &amp; Items</strong></li></ul><p>Используйте кнопки <strong>Далее</strong> и <strong>Назад</strong> внизу для движения по гайду в своём темпе.</p>",
+  "BENEOS.Tour.StartHere.StartExplainer.Note": "",
   "BENEOS.Tour.StartHere.StartBattlemapsInfo.Title": "Боевые карты Beneos",
   "BENEOS.Tour.StartHere.StartBattlemapsInfo.Content": "<p><strong>Beneos Battle Maps</strong> предлагает полную библиотеку для захватывающего игрового опыта:</p><ul><li><strong>2500+ сцен</strong></li><li><strong>Введения</strong></li><li><strong>Сценерии</strong></li><li><strong>Звуковые файлы</strong></li><li><strong>Раздаточные материалы</strong></li></ul><p>Всё предварительно настроено и готово к использованию.</p>",
   "BENEOS.Tour.StartHere.StartTokensInfo.Title": "Токены, заклинания и предметы Beneos",

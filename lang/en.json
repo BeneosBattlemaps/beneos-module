@@ -318,6 +318,7 @@
   "BENEOS.Tour.StartHere.StartWelcome.Content": "<div class=\"beneos-countdown-box beneos-countdown-compact\"><p>Your tour starts in <strong><span id=\"beneos-countdown\">10</span></strong> seconds</p></div>",
   "BENEOS.Tour.StartHere.StartExplainer.Title": "Beneos Getting Started Tour",
   "BENEOS.Tour.StartHere.StartExplainer.Content": "<p>This is the <strong>Beneos Getting Started Tour</strong>.</p><p>We'll walk you through every aspect of <strong>both Beneos Patreons</strong>:</p><ul><li><strong>Beneos Battle Maps</strong></li><li><strong>Beneos Tokens, Spells &amp; Items</strong></li></ul><p>Use the <strong>Next</strong> and <strong>Previous</strong> buttons at the bottom to move through the tour at your own pace.</p>",
+  "BENEOS.Tour.StartHere.StartExplainer.Note": "",
   "BENEOS.Tour.StartHere.StartBattlemapsInfo.Title": "Beneos Battle Maps",
   "BENEOS.Tour.StartHere.StartBattlemapsInfo.Content": "<p><strong>Beneos Battle Maps</strong> offers a complete library for an immersive gameplay experience:</p><ul><li><strong>2500+ scenes</strong></li><li><strong>Intro sequences</strong></li><li><strong>Sceneries</strong></li><li><strong>Audio files</strong></li><li><strong>Handouts</strong></li></ul><p>Everything pre-configured and ready to use.</p>",
   "BENEOS.Tour.StartHere.StartTokensInfo.Title": "Beneos Tokens, Spells & Items",
