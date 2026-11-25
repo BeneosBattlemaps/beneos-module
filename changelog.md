@@ -23,6 +23,7 @@ All notable changes to this module will be documented in this file.
 - Fixed: When you sign in to Beneos Cloud with a correct code but the world cannot be connected to your account, the module now says so and asks you to request a new code. Before, it reported the code as invalid or expired, although that code was already used up.
 - Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic question once instead of twice.
 - Fixed: Czech and European Portuguese now address you in the same informal way throughout. Install messages, sign-in steps and setting hints that still used the formal form now match the tour and the rest of the module.
+- Fixed: Japanese texts now use Japanese punctuation instead of stray English commas, two tour pages now explain the documentation and the Beneos Cloud with the same sentence structure in every language, several messages in German, French, Spanish, Italian, Polish, Portuguese and Catalan now show their accented letters, the German journal pin setting now addresses you informally like the rest of the module, and the Awoken origin rules no longer misspell "becomes".
 
 **Changes**
 - Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`. Battlemaps install from the Beneos Cloud window as before.
