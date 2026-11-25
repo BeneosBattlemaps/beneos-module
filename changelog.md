@@ -57,7 +57,9 @@ All notable changes to this module will be documented in this file.
   when it has to wait for another change to the Beneos compendiums, or for
   an open dialog that needs your answer.
 - Fixed: Clicking Remove twice on the same creature no longer reports that
-  removing failed.
+  removing failed; it tells you a removal is already open or in progress.
+- Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic
+  question once instead of twice.
 
 ### 14.5.0-beta.12 # 2026-11-25
 

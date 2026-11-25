@@ -484,6 +484,46 @@ export const SABOTAGEN = [
   // Entfernen ohne Sperre je Asset: der Doppelklick reiht sich ein.
   { bench: "kompendium-riegel", ziel: ["B20 "],
     ersetze: [["scripts/cloud-v2/cloud-window-v2.mjs", "    const lauf = await einmalJe(`remove:${key}`, () => this.#removeAsset(key, name))", "    const lauf = { lief: true, ergebnis: await this.#removeAsset(key, name) }"]] },
+  // stre-T-486: der Pact-Dialog meldet sich nur aus der Kette am Riegel.
+  // Huelle aus drainPendingItemDrops entfernt: Warten hinter einem Pact-Dialog bleibt stumm.
+  { bench: "kompendium-riegel", ziel: ["B18a "],
+    ersetze: [[CLOUD, "          const choice = await wartetAufNutzer(BeneosUtility.askPactMagicChoice({", "          const choice = await (BeneosUtility.askPactMagicChoice({"]] },
+  // Huelle zurueck in die Funktion: auch der Hook meldet einen offenen Dialog.
+  { bench: "kompendium-riegel", ziel: ["B18b "],
+    ersetze: [
+      [UTIL, "        result = await DialogV2.wait({\n          window: { title },\n          classes: [\"beneos-pact-magic-dialog\"],", "        result = await wartetAufNutzer(DialogV2.wait({\n          window: { title },\n          classes: [\"beneos-pact-magic-dialog\"],"],
+      [UTIL, "          close: () => ({ choice: \"normal\", applyAll: false })\n        });", "          close: () => ({ choice: \"normal\", applyAll: false })\n        }));"],
+    ] },
+  // Hook-Aufruf umhuellt: der Dialog ausserhalb der Kette meldet sich am Riegel.
+  { bench: "kompendium-riegel", ziel: ["B18b "],
+    ersetze: [
+      ["scripts/beneos_module.js", "      choice = await BeneosUtility.askPactMagicChoice({", "      choice = await wartetAufNutzer(BeneosUtility.askPactMagicChoice({"],
+      ["scripts/beneos_module.js", "        batchToken: \"\" // no batch cache for manual compendium drops\n      });", "        batchToken: \"\" // no batch cache for manual compendium drops\n      }));"],
+    ] },
+  // Ein dritter, unbewerteter Aufrufer: niemand hat entschieden, ob er meldet.
+  { bench: "kompendium-riegel", ziel: ["B18a "],
+    ersetze: [["scripts/cloud-v2/cloud-window-v2.mjs", "    const lauf = await einmalJe(`remove:${key}`", "    void BeneosUtility.askPactMagicChoice({})\n    const lauf = await einmalJe(`remove:${key}`"]] },
+  // Ein neuer Weg zur umhuellten Stelle ausserhalb eines Kettenauftrags.
+  { bench: "kompendium-riegel", ziel: ["B18a "],
+    ersetze: [[CLOUD, "      if (kind === \"spell\") await this.importSpellsFromCloud(itemKey, undefined, false, { gated: true })", "      await this.drainPendingItemDrops(itemKey, kind)\n      if (kind === \"spell\") await this.importSpellsFromCloud(itemKey, undefined, false, { gated: true })"]] },
+  // Die Importfunktion ohne enqueueInstall gerufen: der Drain laeuft ausserhalb der Kette.
+  { bench: "kompendium-riegel", ziel: ["B18a "],
+    ersetze: [[CLOUD, "      if (kind === \"spell\") await this.importSpellsFromCloud(itemKey, undefined, false, { gated: true })", "      await this.importSpellToCompendium({}, undefined)\n      if (kind === \"spell\") await this.importSpellsFromCloud(itemKey, undefined, false, { gated: true })"]] },
+  // Anlegen ohne Schutzflag: der Hook fragt den Warlock ein zweites Mal.
+  { bench: "kompendium-riegel", ziel: ["B18c "],
+    ersetze: [[CLOUD, "        await actor.createEmbeddedDocuments(\"Item\", [itemData], { beneosPactMagicHandled: true })", "        await actor.createEmbeddedDocuments(\"Item\", [itemData])"]] },
+  // Eine Uebersetzung faellt auf den alten Wortlaut zurueck.
+  { bench: "kompendium-riegel", ziel: ["B20a "],
+    ersetze: [["lang/de.json", "\"Das Entfernen von {name} ist bereits geöffnet oder läuft.\"", "\"{name} wird bereits entfernt, bitte warten.\""]] },
+  // Ein Gedankenstrich in einer Uebersetzung.
+  { bench: "kompendium-riegel", ziel: ["B20a "],
+    ersetze: [["lang/fr.json", "\"Une suppression de {name} est déjà ouverte ou en cours.\"", `"Une suppression de {name} ${String.fromCharCode(0x2014)} déjà ouverte ou en cours."`]] },
+  // Alter Text: behauptet "wird entfernt", obwohl erst der Dialog offen ist.
+  { bench: "kompendium-riegel", ziel: ["B20a "],
+    ersetze: [["lang/en.json", "\"A removal of {name} is already open or in progress.\"", "\"{name} is already being removed, please wait.\""]] },
+  // Eine Uebersetzung ohne Platzhalter: der Kunde sieht nicht, welches Asset.
+  { bench: "kompendium-riegel", ziel: ["B20a "],
+    ersetze: [["lang/de.json", "\"Das Entfernen von {name} ist bereits geöffnet oder läuft.\"", "\"Das Entfernen ist bereits geöffnet oder läuft.\""]] },
 ]
 
 /*

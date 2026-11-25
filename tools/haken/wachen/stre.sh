@@ -327,10 +327,12 @@ fi
 # ganzen Modul sucht: eine neue in einer anderen Datei kaeme sonst durch.
 # Gegen den Index (fahre_weich), aus demselben Grund: eine fremde
 # unverfolgte Datei auf der Platte darf keinen sauberen Commit sperren.
-if git diff --cached --name-only --diff-filter=ACM      -- 'scripts/*.js' 'scripts/*.mjs' tools/kompendium-riegel-bench    | grep -q .
+# Auch von lang/*.json (stre-T-486): B20a liest den Doppelklick-Hinweis aus
+# jeder Sprachdatei, ein Commit nur an einer Sprachdatei kaeme sonst durch.
+if git diff --cached --name-only --diff-filter=ACM      -- 'scripts/*.js' 'scripts/*.mjs' 'lang/*.json' tools/kompendium-riegel-bench    | grep -q .
 then
   meld "pre-commit: Kompendium-Riegel vorgemerkt, der Stand laeuft mit"
-  fahre_weich "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench"
+  fahre_weich "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench" lang
 fi
 
 # DER HAKEN SELBST (stre-T-157). Wird er angefasst, faehrt sein eigener Satz

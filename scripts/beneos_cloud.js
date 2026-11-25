@@ -2291,15 +2291,24 @@ export class BeneosCloud {
             && itemData.type === "spell"
             && (itemData.system?.level ?? 0) > 0
             && BeneosUtility.isWarlockActor(actor)) {
-          const choice = await BeneosUtility.askPactMagicChoice({
+          // This runs inside an install job of the compendium chain, so
+          // whoever waits behind it is told that a dialog is open. The
+          // wrapper sits here and not in askPactMagicChoice, because the
+          // preCreateItem hook calls that function outside any chain job,
+          // where answering the dialog would not let anything continue
+          // (stre-T-486).
+          const choice = await wartetAufNutzer(BeneosUtility.askPactMagicChoice({
             spellItem: worldItem,
             actor,
             batchToken: drop.batchToken
-          });
+          }));
           if (choice === "pact") BeneosUtility.applyPactMagicToSpellData(itemData);
         }
 
-        await actor.createEmbeddedDocuments("Item", [itemData])
+        // The Pact-Magic question was answered above. Without this flag the
+        // preCreateItem hook would see a Beneos spell on a Warlock, cancel
+        // this create and ask a second time (stre-T-486).
+        await actor.createEmbeddedDocuments("Item", [itemData], { beneosPactMagicHandled: true })
       } catch (err) {
         console.error("BeneosModule: failed to add cloud item to actor", itemKey, drop, err)
       }
