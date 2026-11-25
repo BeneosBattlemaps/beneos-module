@@ -95,18 +95,19 @@ t.gleich("die Adresse bekommt faehig=1 angehaengt",
 
 t.abschnitt("Einbindung in beneos_cloud.js")
 {
-  // Der Baustein ist oben bewacht; hier die zwei Anmeldewege, die ihn nutzen.
+  // Der Baustein ist oben bewacht; hier der Anmeldeweg, der ihn nutzt. Seit
+  // stre-T-494 ist es nur noch die Codeanmeldung: der Passwortweg ist mit
+  // MO-036 (42b31f9) entfernt.
   const { readFileSync } = await import("node:fs")
   const quelle = readFileSync(new URL("./beneos_cloud.js", import.meta.url), "utf8")
   const zahl = (s) => quelle.split(s).length - 1
   // tick-T-050: die Codeanmeldung ruft anmeldenMitKennung ueber pruefenMitRueckfrage
-  // (cloud-login-code.mjs, dort bewacht im Satz `anmeldecode`).
-  t.gleich("[Struktur] beide Wege melden sich ueber anmeldenMitKennung an",
-    zahl("anmeldenMitKennung(sende, userId") + zahl("pruefenMitRueckfrage(sende, userId"), 2)
-  t.gleich("[Struktur] beide Wege pollen mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 2)
+  // (cloud-login-code.mjs, dort bewacht im Satz `anmeldecode`). Der Passwortweg ist seit
+  // stre-T-494 weg, es bleibt genau ein Anmeldeweg.
+  t.gleich("[Struktur] die Codeanmeldung meldet sich ueber pruefenMitRueckfrage an", zahl("pruefenMitRueckfrage(sende, userId"), 1)
+  t.gleich("[Struktur] die Codeanmeldung pollt mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 1)
   t.gleich("[Struktur] kein Weg pollt mit der alten Kennung", zahl("this.pollForAccess(userId)"), 0)
-  t.gleich("[Struktur] die Passwortanmeldung traegt faehig=1",
-    zahl("mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php"), 1)
+  t.gleich("[Struktur] es gibt keinen Passwortweg mehr", zahl("foundry-login.php"), 0)
   // tick-T-050: faehig=1 haengt pruefAdresse an (cloud-login-code.mjs).
   t.gleich("[Struktur] die Codeanmeldung traegt faehig=1",
     zahl("const verURL = pruefAdresse(BeneosUtility.cloudBase()"), 1)
