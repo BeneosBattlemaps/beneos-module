@@ -28,6 +28,12 @@ All notable changes to this module will be documented in this file.
   place while you scroll through the open filters.
 - Fixed: In the Beneos Cloud library the filter dropdowns now show a gold
   focus ring when you reach them with the keyboard.
+- Fixed: In the Beneos Cloud library the Origin filter no longer lists
+  Technoarcane and Giantforged twice, each option now finds all of its
+  items, and newly installed loot of one origin lands in one compendium
+  folder. Choosing Arcane no longer also shows Technoarcane items, and the
+  item details now show the origin icon for Technoarcane, Giantforged,
+  Dwarvenforged and Crystalline items too.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
