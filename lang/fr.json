@@ -2346,6 +2346,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Impossible de déterminer quelle sortie retirer.",
   "BENEOS.Cloud.Uninstall.Failed": "Le retrait de la sortie a échoué. Voir la console du navigateur.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud ne reconnaît plus la connexion de ce monde, l'accès Patreon enregistré a donc été effacé. Ouvrez la fenêtre Beneos Cloud et reconnectez-vous pour le rétablir.",
+  "BENEOS.Cloud.AccountRebound": "Ce monde est désormais lié à un autre compte Beneos. Reconnectez-vous pour revenir à votre compte.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nouveaux téléchargements pour votre soutien Patreon",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Débloqué pour votre compte depuis votre dernière visite.",

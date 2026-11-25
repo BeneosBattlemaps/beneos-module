@@ -25,6 +25,7 @@ import {
 import { karteGibtEs, kartenVergessen } from "./stream/stream-karten.mjs"
 import { inDerKette, entsperre, sperre, sperreNach, wartetAufNutzer } from "./kompendium-riegel.mjs"
 import { wartehinweis } from "./kompendium-wartehinweis.mjs"
+import { kontoWechsel } from "./cloud-v2/konto-wechsel.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -1197,6 +1198,8 @@ export class BeneosCloudLogin extends FormApplication {
               access_token: data.access_token ? "<redacted>" : undefined
             })
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
+            // MO-045: this world's own sign-in, a switch of account is wanted here.
+            await game.beneos.cloud.uebernehmeKontoRef(data, { eigeneAnmeldung: true })
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
             // Persist per-campaign Patreon membership so the patron-aware
             // UI survives a Foundry restart without requiring a re-login.
@@ -1773,6 +1776,8 @@ export class BeneosCloud {
           // F7: re-point the ScenePacker session + drop stale browse caches so
           // the storefront reflects the new entitlement without a reload.
           game.beneos.cloud.refreshCloudBrowseSession()
+          // MO-045: tell the GM when the cloud moved this world to another account.
+          await game.beneos.cloud.uebernehmeKontoRef(data, { eigeneAnmeldung: false })
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!data.token_patron)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!data.battlemap_patron)
@@ -1878,9 +1883,36 @@ export class BeneosCloud {
     }
   }
 
+  /**
+   * Compares the account_ref of a check=1 answer with the one this world
+   * remembers (MO-045). The cloud may move a Foundry ID to another account when
+   * someone signs in with a different email; copies of the world then get that
+   * account's access without noticing. A different value tells the GM once and
+   * is stored; the new account's access stays. See cloud-v2/konto-wechsel.mjs.
+   *
+   * @param {object} data                      the check=1 answer (result OK)
+   * @param {object} opts
+   * @param {boolean} opts.eigeneAnmeldung     true for this world's own sign-in
+   */
+  async uebernehmeKontoRef(data, { eigeneAnmeldung }) {
+    if (!game.user?.isGM) return          // world settings are GM-writable only
+    const M = BeneosUtility.moduleID()
+    let gespeichert = ""
+    try { gespeichert = game.settings.get(M, "beneos-cloud-account-ref") || "" } catch (_e) { gespeichert = "" }
+    const { speichern, hinweis } = kontoWechsel({ gespeichert, neu: data?.account_ref, eigeneAnmeldung })
+    if (speichern === null) return
+    try {
+      await game.settings.set(M, "beneos-cloud-account-ref", speichern)
+    } catch (e) {
+      console.warn("BENEOS Cloud | could not store the account reference", e)
+    }
+    if (hinweis) ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.AccountRebound"))
+  }
+
   async disconnect() {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-account-ref", "")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", "no_patreon")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", false)

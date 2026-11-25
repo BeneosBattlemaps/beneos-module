@@ -36,6 +36,10 @@ All notable changes to this module will be documented in this file.
   colour for every origin, including Beastforged, Infernal and Mutation
   items, which showed no icon before. The emblem comes with the module, so
   it also appears offline.
+- Fixed: When someone signs in to Beneos Cloud with a different account and
+  the cloud moves the world's link to that account, copies of the world now
+  tell the GM "This world is now linked to another Beneos account. Sign in
+  again to switch back." instead of switching accounts silently.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
