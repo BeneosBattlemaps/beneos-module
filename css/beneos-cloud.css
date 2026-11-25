@@ -163,6 +163,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
+  /* MO-042: Tab scrolls a control only to the edge with its border box, so
+     the focus ring (2 px offset, 2 px line) below it was cut by 3.4 px. */
+  scroll-padding-block: var(--bc-space-1);
   /* Wave B-8d-fix-6: slim modern scrollbar; the Firefox properties are
    * declared at the wrapper level and the WebKit pseudo-element rules
    * are scoped to the same selector below. */
