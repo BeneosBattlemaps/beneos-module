@@ -588,7 +588,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // out — battlemaps have no per-asset update channel.
       let hasNewAssets = false
       let hasUpdatedAssets = false
-      let hasNewForUserAssets = false
       if (this.searchMode === "bmap") {
         hasNewAssets = true
         // A5: surface the "Only updated" option when at least one installed
@@ -600,8 +599,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         for (const data of Object.values(all)) {
           if (data?.isNew) hasNewAssets = true
           if (data?.isUpdate) hasUpdatedAssets = true
-          if (data?.isNewForUser) hasNewForUserAssets = true
-          if (hasNewAssets && hasUpdatedAssets && hasNewForUserAssets) break
+          if (hasNewAssets && hasUpdatedAssets) break
         }
       }
       // Wave B-8k-4: capitalise every dropdown label and lift "Any" to
@@ -658,7 +656,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         biomeHasAny: biomeChips.length > 0 || biomeAvailable.length > 0,
         hasNewAssets,
         hasUpdatedAssets,
-        hasNewForUserAssets,
         // V7: pre-computed flags for the Show-dropdown's `selected` attribute.
         // Foundry's Handlebars doesn't ship a guaranteed `eq` helper, so we
         // surface the comparison result as a boolean per option. This pre-
@@ -2171,7 +2168,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
                 && !cardIsIncompatible
                 && !isCloudAvailable,
       isNew: !!data.isNew,
-      isNewForUser: !!data.isNewForUser,
       isUpdate: assetType === "bmap" ? bmapUpdate : !!data.isUpdate,
       // Teil 3: marker-only installed state for battlemap scene cards.
       bmapInstalled,
