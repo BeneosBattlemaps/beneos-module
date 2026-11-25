@@ -162,6 +162,30 @@ export class BeneosUtility {
       restricted: true
     })
 
+    // MO-045: the account this world's Foundry ID belonged to at the last
+    // check (account_ref from check=1). A different value later means the
+    // cloud moved the ID to another account, see cloud-v2/konto-wechsel.mjs.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-account-ref', {
+      name: 'Internal storage of the Beneos Cloud account reference',
+      default: "",
+      type: String,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
+    // MO-046: the Foundry ID this world last reported as unknown to the cloud,
+    // so the GM is told once per lost binding. Cleared again on every
+    // successful sign-in and on disconnect, see cloud-v2/anmeldung-verloren.mjs.
+    game.settings.register(BeneosUtility.moduleID(), 'beneos-cloud-signin-lost-notified', {
+      name: 'Internal storage of the last reported lost Beneos Cloud sign-in',
+      default: "",
+      type: String,
+      scope: 'world',
+      config: false,
+      restricted: true
+    })
+
     // Eine Zufallskennung fuer Welten OHNE Cloud-Anmeldung.
     //
     // WARUM SIE GEBRAUCHT WIRD. Die Telemetrie haengte bisher vollstaendig an

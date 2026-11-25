@@ -1,5 +1,6 @@
 import { BeneosUtility } from "./beneos_utility.js"
 import { BeneosCloudLogin } from "./beneos_cloud.js"
+import { herkunftSchluessel } from "./cloud-v2/origin-schluessel.mjs"
 
 /********************************************************************************** */
 //const tokenDBURL = "https://www.beneos-database.com/data/tokens/beneos_tokens_database.json"
@@ -634,7 +635,6 @@ export class BeneosDatabaseHolder {
     }
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    tokenData.isNewForUser = !!game.beneos.cloud.getTokenIsNewForUser(tokenData.key)
     {
       const f = this.beneosComputeNewUpdate(tokenData, {
         type:        "token",
@@ -649,9 +649,6 @@ export class BeneosDatabaseHolder {
     tokenData.properties.install = ["Any", "All"] // Used for filtering
     if (tokenData.isNew) {
       tokenData.properties.install.push("New")
-    }
-    if (tokenData.isNewForUser) {
-      tokenData.properties.install.push("NewForYou")
     }
     if (tokenData.isUpdate) {
       tokenData.properties.install.push("Updated")
@@ -679,7 +676,6 @@ export class BeneosDatabaseHolder {
     itemData.isInstallable = (itemData.isInstalled || itemData.isCloudAvailable)
 
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    itemData.isNewForUser = !!game.beneos.cloud.getItemIsNewForUser(itemData.key)
     {
       const f = this.beneosComputeNewUpdate(itemData, {
         type:        "item",
@@ -693,9 +689,6 @@ export class BeneosDatabaseHolder {
     itemData.properties.install = ["Any", "All"] // Used for filtering
     if (itemData.isNew) {
       itemData.properties.install.push("New")
-    }
-    if (itemData.isNewForUser) {
-      itemData.properties.install.push("NewForYou")
     }
     if (itemData.isUpdate) {
       itemData.properties.install.push("Updated")
@@ -731,7 +724,6 @@ export class BeneosDatabaseHolder {
       //spellData.picture = BeneosUtility.getLocalAvatarPicture(spellData.key)
     }
     // Prepare update/new status (Teil 4: unified release_date / updated_date)
-    spellData.isNewForUser = !!game.beneos.cloud.getSpellIsNewForUser(spellData.key)
     {
       const f = this.beneosComputeNewUpdate(spellData, {
         type:        "spell",
@@ -745,9 +737,6 @@ export class BeneosDatabaseHolder {
     spellData.properties.install = ["Any", "All"] // Used for filtering
     if (spellData.isNew) {
       spellData.properties.install.push("New")
-    }
-    if (spellData.isNewForUser) {
-      spellData.properties.install.push("NewForYou")
     }
     if (spellData.isUpdate) {
       spellData.properties.install.push("Updated")
@@ -935,6 +924,14 @@ export class BeneosDatabaseHolder {
         // deshalb kein Sammeln. **Was damit nicht geschieht:** eine Stufe
         // ohne Gegenstaende verschwindet nicht aus dem Filter. Das war vorher
         // genauso, siehe die Liste bei `this.itemRarity`.
+
+        // MO-043: the catalog carries some origins twice ("techno_arcane" next
+        // to "technoarcane"). Canonicalise once here; the filter options, the
+        // origin filter, the compendium folder, hover text and tag translation
+        // all read this same object.
+        if (itemData.properties.origin != null) {
+          itemData.properties.origin = herkunftSchluessel(itemData.properties.origin)
+        }
         foundry.utils.mergeObject(this.itemOrigin, this.buildList(itemData.properties.origin))
         foundry.utils.mergeObject(this.itemType, this.buildList(itemData.properties.item_type))
         foundry.utils.mergeObject(this.itemTier, this.buildList(itemData.properties.tier))

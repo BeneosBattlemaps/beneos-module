@@ -27,6 +27,8 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { V2_FILTER_DEFS } from "./filter-defs.mjs"
+import { herkunftIconUrl, herkunftFarbe } from "./origin-schluessel.mjs"
 import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { inDerKette, entsperre, sperre, einmalJe } from "../kompendium-riegel.mjs"
@@ -36,6 +38,8 @@ import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { kaufKnopf } from "./cloud-kaufknopf.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
 import { staleInstallTooltip } from "./install-badge.mjs"
+import { countActiveFilters, countShownFilters, filterStateOf } from "./filter-count.mjs"
+import { markInputKind, wireWindowInputKind } from "./eingabeart.mjs"
 import { HomeController } from "./home/home-controller.mjs"
 import { BeneosPatchlogWindow } from "./home/patchlog-window.mjs"
 import { fetchNewsFeed, markNewsRead } from "./services/news-api.mjs"
@@ -94,54 +98,7 @@ function beneosFormatMarkup(str, { escape = false } = {}) {
   return out
 }
 
-// Property keys (mirrors a subset of the v1 __propertyDefList from
-// beneos_search_engine.js). Keeping it local avoids exporting the v1
-// internal — the V2 filter logic only needs the selector → property name
-// mapping.
-// Wave B-8h-1: each entry now declares which asset types it applies to.
-// Without this, switching tabs (e.g. Maps → Creatures) crashed because
-// the OLD bmap selectors (still in the DOM until the sidebar re-renders)
-// had stale values and #applyDropdownFilters fired searchByProperty for
-// "grid" on a token, where item.properties.grid is undefined and v1's
-// helper does `item.properties.grid.match(...)` (beneos_search_engine.js:700).
-const V2_FILTER_DEFS = [
-  // Tokens
-  { types: ["token"], selector: "faction-selector",       prop: "faction"       },
-  { types: ["token"], selector: "campaign-selector",      prop: "campaign"      },
-  { types: ["token"], selector: "token-types",            prop: "type"          },
-  { types: ["token", "item", "spell"], selector: "installation-selector",  prop: "installed"     },
-  { types: ["token"], selector: "token-fight-style",      prop: "fightingstyle" },
-  { types: ["token"], selector: "token-purpose",          prop: "purpose"       },
-  // Battlemaps
-  // Wave B-8k-2: bmap-bioms-selector dropped — biome is now a chip-
-  // dropdown shared with the token mode, filtered via #applyBiomeFilter.
-  { types: ["bmap"],  selector: "bmap-brightness",        prop: "brightness"    },
-  { types: ["bmap"],  selector: "bmap-adventure",         prop: "adventure"     },
-  { types: ["bmap"],  selector: "bmap-grid",              prop: "grid"          },
-  { types: ["bmap"],  selector: "kind-selector",          prop: "type"          },
-  // Items
-  { types: ["item"],  selector: "item-type",              prop: "item_type"     },
-  // Rarity matches exactly (strict): the values "common"/"rare" are substrings of
-  // "uncommon"/"very rare", so a substring match would over-select.
-  { types: ["item"],  selector: "rarity-selector",        prop: "rarity", strict: true },
-  { types: ["item"],  selector: "origin-selector",        prop: "origin"        },
-  // Wave B-8i-3: tier dropdown for items (was already in dbHolder.getData()
-  // as `tier` but had no V2 surface).
-  { types: ["item"],  selector: "tier-selector",          prop: "tier"          },
-  // Own id beside the spell tab's class-selector, one id per tab like the rest.
-  { types: ["item"],  selector: "item-class-selector",    prop: "classes"       },
-  // Spells
-  { types: ["spell"], selector: "level-selector",         prop: "level"         },
-  { types: ["spell"], selector: "school-selector",        prop: "school"        },
-  { types: ["spell"], selector: "class-selector",         prop: "classes"       },
-  // Wave B-8e-fix-3: spell DB exposes casting_time (Action / Bonus
-  // Action / Reaction / 1 Minute / 10 Minutes / 1 Hour) and spell_type
-  // (Area Damage / Buff / Curse / Debuff / Melee Damage / Mobility /
-  // Protection / Ranged Damage / Regeneration / Restoration / Summon /
-  // Utility / etc.) — both deserve their own dropdown.
-  { types: ["spell"], selector: "casting-time-selector",  prop: "casting_time"  },
-  { types: ["spell"], selector: "spell-type-selector",    prop: "spell_type"    }
-]
+// Dropdown filter definitions live in filter-defs.mjs (moved there in MO-043).
 
 // Thumbnail base URLs by asset type (CDN paths from beneos_search_engine.js:5–10).
 const THUMB_BASE = {
@@ -213,6 +170,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       openLgc:                 BeneosCloudWindowV2._onOpenLgc,
       resetFilters:            BeneosCloudWindowV2._onResetFilters,
       clearShowFilter:         BeneosCloudWindowV2._onClearShowFilter,
+      toggleFilters:           BeneosCloudWindowV2._onToggleFilters,
       beneosResyncCatalog:     BeneosCloudWindowV2._onResyncCatalog,
       beneosCancelBulkInstall: BeneosCloudWindowV2._onCancelBulkInstall,
       switchView:              BeneosCloudWindowV2._onSwitchView,
@@ -630,7 +588,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // out — battlemaps have no per-asset update channel.
       let hasNewAssets = false
       let hasUpdatedAssets = false
-      let hasNewForUserAssets = false
       if (this.searchMode === "bmap") {
         hasNewAssets = true
         // A5: surface the "Only updated" option when at least one installed
@@ -642,8 +599,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         for (const data of Object.values(all)) {
           if (data?.isNew) hasNewAssets = true
           if (data?.isUpdate) hasUpdatedAssets = true
-          if (data?.isNewForUser) hasNewForUserAssets = true
-          if (hasNewAssets && hasUpdatedAssets && hasNewForUserAssets) break
+          if (hasNewAssets && hasUpdatedAssets) break
         }
       }
       // Wave B-8k-4: capitalise every dropdown label and lift "Any" to
@@ -700,7 +656,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
         biomeHasAny: biomeChips.length > 0 || biomeAvailable.length > 0,
         hasNewAssets,
         hasUpdatedAssets,
-        hasNewForUserAssets,
         // V7: pre-computed flags for the Show-dropdown's `selected` attribute.
         // Foundry's Handlebars doesn't ship a guaranteed `eq` helper, so we
         // surface the comparison result as a boolean per option. This pre-
@@ -1377,34 +1332,52 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // collapse it into Rest (filtered list — user is hunting something
   // specific, the New highlight stays useful but Update is noise).
   #hasActiveFilter(type) {
-    if (this._textFilter) return true
-    if (type === "token") {
-      if (this.crMin > 0) return true
-      if (this.crMax < BeneosCloudWindowV2.CR_NO_LIMIT) return true
-      if (this.sourceHidden.size > 0) return true
-      if (this.biomeFilters.size > 0) return true
-    }
-    // Wave B-8i-3: item gold range filter.
-    if (type === "item") {
-      if (this.goldMin > 0) return true
-      if (this.goldMax != null && this.goldMax < this.#getMaxItemPrice()) return true
-    }
-    // Wave B-8k-2: bmap biome chip filter.
-    if (type === "bmap") {
-      if (this.bmapBiomeFilters.size > 0) return true
-    }
+    return countActiveFilters(type, this.#filterState()) > 0
+  }
+
+  // MO-040: the filter state of the window as input for filter-count.mjs,
+  // where the rules and this mapping live so a node test can drive both
+  // (filter-zaehler.test.mjs). Dropdown values come from the DOM (Wave
+  // B-8h-1 type guard included there); a missing select is skipped.
+  #filterState() {
+    return filterStateOf(this, {
+      crNoLimit: BeneosCloudWindowV2.CR_NO_LIMIT,
+      maxItemPrice: () => this.#getMaxItemPrice(),
+      hiddenSourceInTab: () => this.#buildSourceCheckboxes().some(c => !c.checked),
+      root: this.element,
+      defs: V2_FILTER_DEFS,
+    })
+  }
+
+  // MO-040: below 420 px of window content the library turns single-column
+  // and the filters fold behind a button (css/beneos-cloud.css, container
+  // bc-window). The open state lives on the instance and as data-bc-filters
+  // on the window element, so it survives part renders. Wide windows ignore
+  // it: the button is hidden there and the filters always show.
+  #filtersOpen = false
+
+  setFiltersOpen(open) {
+    this.#filtersOpen = !!open
+    this.#syncFilterToggle()
+  }
+
+  static _onToggleFilters(event, _target) {
+    event?.preventDefault?.()
+    this.setFiltersOpen(!this.#filtersOpen)
+  }
+
+  #syncFilterToggle() {
     const root = this.element
-    if (root) {
-      for (const def of V2_FILTER_DEFS) {
-        // Wave B-8h-1: same type guard as #applyDropdownFilters.
-        if (def.types && !def.types.includes(type)) continue
-        const sel = root.querySelector("#" + def.selector)
-        if (!sel) continue
-        const v = sel.value
-        if (v && v.toLowerCase() !== "any") return true
-      }
+    if (!root) return
+    root.dataset.bcFilters = this.#filtersOpen ? "open" : "closed"
+    const btn = root.querySelector(".bc-filter-toggle")
+    if (!btn) return
+    btn.setAttribute("aria-expanded", this.#filtersOpen ? "true" : "false")
+    const countEl = btn.querySelector(".bc-filter-toggle-count")
+    if (countEl) {
+      const n = this.searchMode === "home" ? 0 : countShownFilters(this.searchMode, this.#filterState())
+      countEl.textContent = n > 0 ? `(${n})` : ""
     }
-    return false
   }
 
   #groupHeading(kind) {
@@ -1905,11 +1878,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-9-fix-9: item-specific tags. Result cards for loot show
     // rarity + origin + type + tier + price as tags so the row reads
     // naturally ("Very Rare · Vampiric · Melee Weapon · T3 · 52800 gp").
-    // Origin gets a small icon next to the label when the matching file
-    // exists on the CDN (https://www.beneos-database.com/icons/<key>.webp);
-    // loadError on <img> degrades to text-only without a broken icon.
+    // itemOriginIcon and itemOriginColor feed the codex emblem in the item
+    // detail drawer (results-pane.hbs), not these card tags: the disc bundled
+    // with the module (herkunftIconUrl), tinted in the origin's glow colour
+    // (herkunftFarbe), MO-044. Origins without an entry (srd) get no emblem.
     let itemOrigin = null
     let itemOriginIcon = null
+    let itemOriginColor = null
     let itemOriginLabel = null
     let itemOriginDescription = null
     let itemTypeLabel = null
@@ -1920,7 +1895,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (assetType === "item") {
       if (props.origin) {
         itemOrigin = String(props.origin).toLowerCase()
-        itemOriginIcon = `https://www.beneos-database.com/icons/${itemOrigin}.webp`
+        itemOriginIcon = herkunftIconUrl(itemOrigin)
+        itemOriginColor = herkunftFarbe(itemOrigin)
         const tOrigin = game.beneos?.databaseHolder?.localizeTag?.("item.origin", itemOrigin)
         itemOriginLabel = (tOrigin && tOrigin !== itemOrigin) ? tOrigin : this.#capitalize(itemOrigin)
         // Wave B-9-fix-14: pull the origin description out of the
@@ -2127,6 +2103,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       school: props.school || null,
       itemOrigin,
       itemOriginIcon,
+      itemOriginColor,
       itemOriginLabel,
       itemOriginDescription,
       itemTypeLabel,
@@ -2191,7 +2168,6 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
                 && !cardIsIncompatible
                 && !isCloudAvailable,
       isNew: !!data.isNew,
-      isNewForUser: !!data.isNewForUser,
       isUpdate: assetType === "bmap" ? bmapUpdate : !!data.isUpdate,
       // Teil 3: marker-only installed state for battlemap scene cards.
       bmapInstalled,
@@ -3649,6 +3625,10 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Mark the window with the active mode so CSS can rearrange the
     // grid (Home swaps sidebar+results for the full-width feed).
     if (this.element) this.element.dataset.bcMode = this.searchMode
+    this.#syncFilterToggle()
+    // MO-042: last input kind for the select focus ring (eingabeart.mjs).
+    // Registered once per page; a reopened window takes the current kind.
+    markInputKind(this.element, wireWindowInputKind(window, document, this.id))
     // Auch beim ERSTEN Zeichnen pruefen, nicht erst beim Reiterwechsel.
     //
     // GEMESSEN am 03.09.2026 in der V13-Streaming-Welt: Fenster geoeffnet,
@@ -3666,6 +3646,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     this.#refreshFilterInfoIcons()
     this.#injectSelectDividers()
     this.#wireFooterFit()
+    this.#wireResultsFit()
     requestAnimationFrame(() => BeneosCloudWindowV2.#fitCardTags(this.element))
     this.#updateTitleBadge(context)
     this.#injectTitleQuote()
@@ -3799,6 +3780,29 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // the fallback font would pick too generous a stage, so measure again
     // once the fonts are in.
     document.fonts?.ready.then(refit)
+  }
+
+  // MO-040: the virtualized list pins its height when it renders. Folding
+  // the filters in or out, or dragging the window across the narrow
+  // threshold, changes the height of the results region without a render,
+  // and the pinned list would then reach below its clipped bottom. So the
+  // pin is renewed whenever that height changes. Re-pinning sizes the list
+  // inside the region, not the region itself, so this cannot loop.
+  #wireResultsFit() {
+    this._resultsObserver?.disconnect()
+    this._resultsObserver = null
+    const results = this.element?.querySelector(".bc-results")
+    if (!results) return
+    let lastHeight = null
+    this._resultsObserver = new ResizeObserver(([entry]) => {
+      const height = Math.round(entry.contentRect.height)
+      const first = lastHeight === null
+      if (height === lastHeight) return
+      lastHeight = height
+      if (first) return   // the first delivery is the size just rendered
+      requestAnimationFrame(() => { if (this._virt) this.#setupVirtualization() })
+    })
+    this._resultsObserver.observe(results)
   }
 
   // Grid cards: a tag that does not fit whole into the tag box of its card
@@ -5402,8 +5406,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
   // spinner gives the user a "working on it" cue. Fast renders never
   // see the spinner thanks to the rAF chain.
   async #renderPreservingSidebarScroll(parts) {
+    // MO-042: in a narrow window the filter list (#bc-filter-panel) scrolls
+    // instead of the sidebar, so both positions are kept.
     const oldSidebar = this.element?.querySelector(".bc-sidebar")
     const scrollTop = oldSidebar?.scrollTop || 0
+    const panelScrollTop = this.element?.querySelector("#bc-filter-panel")?.scrollTop || 0
     this.#showLoading()
     return new Promise((resolve) => {
       requestAnimationFrame(() => {
@@ -5412,6 +5419,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
             await this.render({ parts })
             const newSidebar = this.element?.querySelector(".bc-sidebar")
             if (newSidebar) newSidebar.scrollTop = scrollTop
+            const newPanel = this.element?.querySelector("#bc-filter-panel")
+            if (newPanel) newPanel.scrollTop = panelScrollTop
           } catch (err) {
             console.warn("[Beneos]", err)
           } finally {
@@ -7712,6 +7721,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       this._lazyObservers = null
     }
     if (this._footerObserver) { this._footerObserver.disconnect(); this._footerObserver = null }
+    if (this._resultsObserver) { this._resultsObserver.disconnect(); this._resultsObserver = null }
     if (game.beneos?.cloudWindowV2 === this) game.beneos.cloudWindowV2 = undefined
     if (game.beneos?.searchEngine === this) game.beneos.searchEngine = undefined
     if (game.beneosTokens?.searchEngine === this) game.beneosTokens.searchEngine = undefined

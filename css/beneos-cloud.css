@@ -63,6 +63,14 @@
    into the 280px sidebar slot and left the 1fr results slot empty —
    the source of the "Settings only uses 30% of the window width"
    user complaint. Keep this restricted to the cloud main window. */
+/* MO-040: the window is the size container for the narrow layout further
+   down (search "container bc-window"). A Foundry window can be dragged down
+   to 200 px (core .application min-width), and @media would only see the
+   browser viewport, never the window. */
+#beneos-cloud-window-v2 {
+  container: bc-window / inline-size;
+}
+
 #beneos-cloud-window-v2 .window-content {
   display: grid !important;
   /* Sidebar content is as wide as the filter selects (12rem, 192px):
@@ -155,6 +163,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
+  /* MO-042: Tab scrolls a control only to the edge with its border box, so
+     the focus ring (2 px offset, 2 px line) below it was cut by 3.4 px. */
+  scroll-padding-block: var(--bc-space-1);
   /* Wave B-8d-fix-6: slim modern scrollbar; the Firefox properties are
    * declared at the wrapper level and the WebKit pseudo-element rules
    * are scoped to the same selector below. */
@@ -232,6 +243,23 @@
 .beneos-cloud-app .bc-select:focus {
   outline: none;
   border-color: var(--bc-accent);
+}
+/* MO-041, COL-10: the gold edge alone equals the hover state. With the
+   pointer resting on the search field or its label, keyboard focus changed
+   nothing (measured). The text field gets the accent ring of the other
+   controls; Chromium also shows it after a click into the field, which is
+   where the typing goes. */
+.beneos-cloud-app .bc-input:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
+/* MO-042: the selects get the same ring, but only for keyboard focus.
+   Chromium shows :focus-visible on a select after a click as well, and a
+   pointer focus gets no ring (beneos-ui.css, QLT-07), so the window carries
+   the last input kind in data-bc-input (scripts/cloud-v2/eingabeart.mjs). */
+#beneos-cloud-window-v2[data-bc-input="key"] .bc-select:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
 }
 
 /* color-scheme tells Chromium to render the native <option> popup dark;
@@ -605,6 +633,12 @@
   accent-color: var(--bc-accent);
   cursor: pointer;
   margin: 0;
+}
+/* MO-041, COL-10: Foundry draws the checkbox as a glyph in ::before and puts
+   its focus ring there, in a violet that measured 2.36:1 on the panel. The
+   ring keeps its place on the glyph and takes the accent. */
+.beneos-cloud-app .bc-checkbox {
+  --input-focus-outline-color: var(--bc-accent);
 }
 .beneos-cloud-app .bc-checkbox-label {
   flex: 1 1 auto;
@@ -2502,8 +2536,8 @@
 /* Wave B-9-fix-14: drawer origin info section. Sits at the bottom of
    the drawer body for items that have an origin assigned. Above the
    section a thin gold divider visually separates it from the asset's
-   own description. The recoloured icon picks up the same white-mask
-   filter as the inline tag icon. */
+   own description. The icon is the shared codex emblem
+   (.lgc-origin-emblem.md in beneos-lgc.css, MO-044), unfiltered. */
 .beneos-cloud-app .bc-drawer-origin {
   margin-top: var(--bc-space-3);
 }
@@ -2527,16 +2561,6 @@
   align-items: center;
   gap: var(--bc-space-2);
   margin-bottom: var(--bc-space-2);
-}
-.beneos-cloud-app .bc-drawer-origin-icon {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex: 0 0 36px;
-  /* Wave B-9-fix-17: recolours the white origin icon. It used to tint it
-     gold; gold is reserved for the main action (COL-05), so the chain now
-     lands on the primary text tone. */
-  filter: brightness(0) invert(91%);
 }
 .beneos-cloud-app .bc-drawer-origin-name {
   margin: 0;
@@ -4243,7 +4267,10 @@ button.beneos-icon-logo {
   padding: 6px 10px;
   background: var(--bc-card);
   color: var(--bc-text);
-  border: 1px solid var(--bc-border);
+  /* MO-041, COL-10: a control edge needs 3:1 against its surroundings. The
+     hairline --bc-border measured 1.25:1 on the sidebar panel, the control
+     edge measures 4.08:1. */
+  border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   font-size: 13px;
   font-family: var(--bc-font-control);
@@ -4254,6 +4281,90 @@ button.beneos-icon-logo {
 .beneos-cloud-app .bc-sidebar-button:hover {
   background: var(--bc-card-hover);
   border-color: var(--bc-accent);
+}
+/* Keyboard focus of every sidebar button (loot mechanics and the MO-040
+   filter button) gets the 2px accent ring with offset of the other sidebar
+   controls. A pointer focus is already ring-free through beneos-ui.css. */
+.beneos-cloud-app .bc-sidebar-button:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* MO-040: "Filters (n)" button of a narrow window. Hidden in a wide window;
+   the container query below shows it. Two classes, so it beats the
+   display: flex of .bc-sidebar-button above. Edge, hover and focus come
+   from .bc-sidebar-button. */
+.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle {
+  display: none;
+  gap: var(--bc-space-1);
+}
+
+/* MO-040: narrow window, container bc-window. Below 420 px of window content
+   the 235 px filter column (grid rule at the top of this file) leaves less
+   than one full card: 150 px card plus 2 x 12 px list padding plus the
+   11 px scrollbar of the result list = 185 px.
+   Measured: at a 375 px window the card was cut by 24 px. Here the library
+   turns single-column, the filter bar sits above the results and folds
+   behind its button (pattern: design/referenz/your-library-template.html).
+   The filter bar takes at most half the height and scrolls inside, as it
+   already does in the wide layout. Home has its own single-column grid and
+   is left out. The folded filters stay in the DOM, so the dropdown filters
+   that are read from it keep working. */
+@container bc-window (width < 420px) {
+  #beneos-cloud-window-v2:not([data-bc-mode="home"]) .window-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto fit-content(50%) minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "header"
+      "sidebar"
+      "results"
+      "footer" !important;
+  }
+  /* MO-042: the bar is a column. The button stays on top and only the
+     filter list below it scrolls, so "Filters (n)" never scrolls out of view
+     while the filters are open. scrollbar-gutter would reserve the scrollbar
+     width on the sidebar even with overflow hidden, so it moves to the list. */
+  #beneos-cloud-window-v2 .bc-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--bc-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    scrollbar-gutter: auto;
+  }
+  #beneos-cloud-window-v2 .bc-sidebar-button.bc-filter-toggle {
+    display: flex;
+    flex: none;
+  }
+  /* The 4 px inner space keeps the focus rings (2 px ring, 2 px offset) of
+     the controls at the list edge inside its clip box. The negative margins
+     undo it, and on the right also the thin scrollbar, which so sits in the
+     padding of the bar and the controls end where the button ends. 11 px is
+     the scrollbar gutter the grid at the top of this file measured in
+     Foundry's Chromium (Playwright's Chromium draws 10 px, Firefox 8 px;
+     there the controls run 1 or 3 px past the button). scroll-padding keeps
+     the ring below a control that Tab scrolls to the list's lower edge. */
+  #beneos-cloud-window-v2 #bc-filter-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bc-border-control) transparent;
+    padding: var(--bc-space-1);
+    margin-left: calc(-1 * var(--bc-space-1));
+    margin-right: calc(-1 * (var(--bc-space-1) + 11px));
+    scroll-padding-block: var(--bc-space-1);
+  }
+  /* 16 px to the first filter, 4 px of them are the list's inner space. */
+  #beneos-cloud-window-v2[data-bc-filters="open"] .bc-sidebar-button.bc-filter-toggle {
+    margin-bottom: calc(var(--bc-space-4) - var(--bc-space-1));
+  }
+  #beneos-cloud-window-v2:not([data-bc-filters="open"]) #bc-filter-panel {
+    display: none;
+  }
 }
 /* Wave B-9-fix-60: icon rules dropped — the loot mechanics buttons
    no longer carry icons. Left as a comment so a future reader sees

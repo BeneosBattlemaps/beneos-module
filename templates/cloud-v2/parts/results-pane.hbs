@@ -197,7 +197,7 @@
             {{/if}}
           </div>
         {{/if}}
-        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isNewForUser}} bc-card-new-for-user{{/if}}{{#if card.isReleaseLocked}} bc-release-locked{{/if}}{{#if card.isReleaseCard}} bc-card-release{{/if}}"
+        <article class="bc-result-card bc-card-group-{{card.groupKind}}{{#if card.isInstalled}} bc-card-installed{{/if}}{{#if card.isCloudAvailable}} bc-card-cloud{{/if}}{{#if card.isInstalling}} bc-card-installing{{/if}}{{#if card.justInstalled}} bc-card-just-installed{{/if}}{{#if card.isSelected}} bc-card-selected{{/if}}{{#if card.isBeneosOriginal}} bc-card-beneos-original{{/if}}{{#if card.isReleaseLocked}} bc-release-locked{{/if}}{{#if card.isReleaseCard}} bc-card-release{{/if}}"
                  data-asset-key="{{card.key}}"
                  data-asset-type="{{card.assetType}}"
                  data-document-id="{{card.documentId}}"
@@ -1163,18 +1163,28 @@
         {{/if}}
 
         {{!-- Wave B-9-fix-14: dedicated Origin section for items. The
-             icon recolouring (filter) lives in CSS so missing origin
-             icons (onerror=this.remove) degrade to text-only without
-             a broken-image placeholder. The set-bonus hint is a passive
-             pointer to the Origin Set Bonuses sidebar button. --}}
+             icon is the codex emblem (MO-044): the disc bundled with the
+             module, tinted in the origin's glow colour with the shared
+             lgc-origin-emblem markup (same as lgc-ping-card.hbs). Origins
+             without an entry, like srd, show no emblem. The set-bonus hint
+             is a passive pointer to the Origin Set Bonuses sidebar button. --}}
         {{#if drawer.asset.itemOriginLabel}}
           <section class="bc-drawer-origin{{#if drawer.asset.isLocked}} bc-drawer-blur{{/if}}">
             <hr class="bc-drawer-origin-divider" />
             <header class="bc-drawer-origin-head">
-              {{#if drawer.asset.itemOriginIcon}}
-                <img class="bc-drawer-origin-icon" src="{{drawer.asset.itemOriginIcon}}"
-                     alt="" onerror="this.remove()" loading="lazy" />
-              {{/if}}
+              {{#if drawer.asset.itemOriginIcon}}{{#if drawer.asset.itemOriginColor}}
+                <span class="lgc-origin-emblem md">
+                  <span class="emblem-disc has-image" style="--origin-color: {{drawer.asset.itemOriginColor}};">
+                    <span class="emblem-tint-wrap">
+                      <span class="emblem-tint-base"
+                            style="background-color: {{drawer.asset.itemOriginColor}};
+                                   -webkit-mask: url('{{drawer.asset.itemOriginIcon}}') center / contain no-repeat;
+                                           mask: url('{{drawer.asset.itemOriginIcon}}') center / contain no-repeat;"></span>
+                      <img class="emblem-tint-detail" src="{{drawer.asset.itemOriginIcon}}" alt="" />
+                    </span>
+                  </span>
+                </span>
+              {{/if}}{{/if}}
               <h3 class="bc-drawer-origin-name">{{drawer.asset.itemOriginLabel}}</h3>
             </header>
             {{#if drawer.asset.itemOriginDescription}}

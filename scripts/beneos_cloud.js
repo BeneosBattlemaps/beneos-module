@@ -25,6 +25,9 @@ import {
 import { karteGibtEs, kartenVergessen } from "./stream/stream-karten.mjs"
 import { inDerKette, entsperre, sperre, sperreNach, wartetAufNutzer } from "./kompendium-riegel.mjs"
 import { wartehinweis } from "./kompendium-wartehinweis.mjs"
+import { kontoWechsel } from "./cloud-v2/konto-wechsel.mjs"
+import { anmeldungVerloren } from "./cloud-v2/anmeldung-verloren.mjs"
+import { otpFehlerSchluessel } from "./cloud-v2/otp-fehler.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -1197,6 +1200,10 @@ export class BeneosCloudLogin extends FormApplication {
               access_token: data.access_token ? "<redacted>" : undefined
             })
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", userId)
+            // MO-045: this world's own sign-in, a switch of account is wanted here.
+            await game.beneos.cloud.uebernehmeKontoRef(data, { eigeneAnmeldung: true })
+            // MO-046: signed in again, a later loss of the binding is reported again.
+            await game.beneos.cloud.vergissAnmeldungVerloren()
             await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
             // Persist per-campaign Patreon membership so the patron-aware
             // UI survives a Foundry restart without requiring a re-login.
@@ -1300,7 +1307,11 @@ export class BeneosCloudLogin extends FormApplication {
         this.rememberLoginEmail(email)
         this.pollForAccess(kennung)
       } else {
-        ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.CodeInvalid"))
+        // MO-049: the server consumes the code before it creates the account and binds
+        // this world, so a failure there must not read "invalid code". The machine field
+        // code picks the notice; the English server text only goes to the console.
+        console.warn(`BENEOS Cloud | sign-in code refused (${data?.code || "no code"}): ${data?.information || "no detail"}`)
+        ui.notifications.error(game.i18n.localize(otpFehlerSchluessel(data)))
       }
     } catch (err) {
       game.beneos?.cloud?.markServerStatus?.(null, err)
@@ -1773,6 +1784,10 @@ export class BeneosCloud {
           // F7: re-point the ScenePacker session + drop stale browse caches so
           // the storefront reflects the new entitlement without a reload.
           game.beneos.cloud.refreshCloudBrowseSession()
+          // MO-045: tell the GM when the cloud moved this world to another account.
+          await game.beneos.cloud.uebernehmeKontoRef(data, { eigeneAnmeldung: false })
+          // MO-046: signed in again, a later loss of the binding is reported again.
+          await game.beneos.cloud.vergissAnmeldungVerloren()
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", data.patreon_status)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", !!data.token_patron)
           await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", !!data.battlemap_patron)
@@ -1813,8 +1828,13 @@ export class BeneosCloud {
    * The cloud no longer recognises this world's Foundry ID. Forget the patron
    * claim that was persisted from an earlier, working session so the UI stops
    * promising access the server will refuse, and tell the GM what to do about
-   * it. Idempotent: with nothing left to clear it does nothing at all, so the
-   * repeated init check cannot loop on notifications.
+   * it.
+   *
+   * MO-046: every GM is told, not only those who had stored patron flags. A
+   * world that had access reads SessionExpired, every other world SignInLost.
+   * The notice comes once per lost binding: the world remembers the Foundry ID
+   * it reported for, and a successful check, its own sign-in or a disconnect
+   * clears that marker again (see cloud-v2/anmeldung-verloren.mjs).
    *
    * The Foundry ID itself is kept. A fresh sign-in reuses it and rebinds the
    * same identity, which keeps the world's install history meaningful.
@@ -1827,25 +1847,62 @@ export class BeneosCloud {
     if (!game.user?.isGM) return          // world settings are GM-writable only
 
     const M = BeneosUtility.moduleID()
-    const had = ["beneos-cloud-patreon-status", "beneos-cloud-token-patron", "beneos-cloud-battlemap-patron"]
-      .some(key => {
-        try { const v = game.settings.get(M, key); return v === true || (typeof v === "string" && v && v !== "no_patreon") }
-        catch (_e) { return false }
-      })
-    if (!had) return
+    const lies = key => { try { return game.settings.get(M, key) } catch (_e) { return undefined } }
+    const status = lies("beneos-cloud-patreon-status")
+    const tokenPatron = lies("beneos-cloud-token-patron") === true
+    const battlemapPatron = lies("beneos-cloud-battlemap-patron") === true
+    // Anything but "no_patreon" is stale now, also a linked account without an
+    // active membership ("not_active_patron"). Access means a campaign flag or
+    // an active membership, and only that decides the wording.
+    // INTENTIONAL-SPECIAL-CASE: "no_patreon" and "active_patron" are the
+    // patreon_status values check=1 sends (beneos-cloud-server foundry-manager.php).
+    const zuLeeren = tokenPatron || battlemapPatron || (typeof status === "string" && !!status && status !== "no_patreon")
+    const hatteZugang = tokenPatron || battlemapPatron || status === "active_patron"
 
-    console.warn(`BENEOS Cloud | this world's Foundry ID is unknown to the cloud (${serverInformation || "no detail"}); `
-      + "clearing the stored Patreon entitlement so the storefront stops showing patron access")
-    try {
-      await game.settings.set(M, "beneos-cloud-patreon-status", "no_patreon")
-      await game.settings.set(M, "beneos-cloud-token-patron", false)
-      await game.settings.set(M, "beneos-cloud-battlemap-patron", false)
-    } catch (e) {
-      console.warn("BENEOS Cloud | could not clear the stale entitlement", e)
-      return
+    // Logged on every path, so a report about SignInLost still shows the server's reason.
+    console.warn(`BENEOS Cloud | this world's Foundry ID is unknown to the cloud (${serverInformation || "no detail"})`)
+    if (zuLeeren) {
+      console.warn("BENEOS Cloud | clearing the stored Patreon entitlement so the storefront stops showing patron access")
+      try {
+        await game.settings.set(M, "beneos-cloud-patreon-status", "no_patreon")
+        await game.settings.set(M, "beneos-cloud-token-patron", false)
+        await game.settings.set(M, "beneos-cloud-battlemap-patron", false)
+      } catch (e) {
+        console.warn("BENEOS Cloud | could not clear the stale entitlement", e)
+        return
+      }
+      this.refreshCloudBrowseSession()
     }
-    this.refreshCloudBrowseSession()
-    ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.SessionExpired"))
+
+    const { hinweis, merken } = anmeldungVerloren({
+      hatteZugang,
+      foundryId: lies("beneos-cloud-foundry-id"),
+      gemeldetFuer: lies("beneos-cloud-signin-lost-notified")
+    })
+    if (!hinweis) return
+    try {
+      await game.settings.set(M, "beneos-cloud-signin-lost-notified", merken)
+    } catch (e) {
+      console.warn("BENEOS Cloud | could not remember the sign-in notice", e)
+    }
+    ui.notifications?.warn?.(game.i18n.localize(hinweis === "patron" ? "BENEOS.Cloud.SessionExpired" : "BENEOS.Cloud.SignInLost"))
+  }
+
+  /**
+   * MO-046: the world is signed in again, so a later loss of the binding must
+   * be reported again. Writes only when a marker is set, which keeps the check
+   * on every world load free of setting writes. A failure is logged and never
+   * breaks the sign-in it runs in.
+   */
+  async vergissAnmeldungVerloren() {
+    if (!game.user?.isGM) return          // world settings are GM-writable only
+    const M = BeneosUtility.moduleID()
+    try {
+      if (!game.settings.get(M, "beneos-cloud-signin-lost-notified")) return
+      await game.settings.set(M, "beneos-cloud-signin-lost-notified", "")
+    } catch (e) {
+      console.warn("BENEOS Cloud | could not reset the sign-in notice", e)
+    }
   }
 
   /**
@@ -1878,9 +1935,37 @@ export class BeneosCloud {
     }
   }
 
+  /**
+   * Compares the account_ref of a check=1 answer with the one this world
+   * remembers (MO-045). The cloud may move a Foundry ID to another account when
+   * someone signs in with a different email; copies of the world then get that
+   * account's access without noticing. A different value tells the GM once and
+   * is stored; the new account's access stays. See cloud-v2/konto-wechsel.mjs.
+   *
+   * @param {object} data                      the check=1 answer (result OK)
+   * @param {object} opts
+   * @param {boolean} opts.eigeneAnmeldung     true for this world's own sign-in
+   */
+  async uebernehmeKontoRef(data, { eigeneAnmeldung }) {
+    if (!game.user?.isGM) return          // world settings are GM-writable only
+    const M = BeneosUtility.moduleID()
+    let gespeichert = ""
+    try { gespeichert = game.settings.get(M, "beneos-cloud-account-ref") || "" } catch (_e) { gespeichert = "" }
+    const { speichern, hinweis } = kontoWechsel({ gespeichert, neu: data?.account_ref, eigeneAnmeldung })
+    if (speichern === null) return
+    try {
+      await game.settings.set(M, "beneos-cloud-account-ref", speichern)
+    } catch (e) {
+      console.warn("BENEOS Cloud | could not store the account reference", e)
+    }
+    if (hinweis) ui.notifications?.warn?.(game.i18n.localize("BENEOS.Cloud.AccountRebound"))
+  }
+
   async disconnect() {
     this.setLoginStatus(false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-foundry-id", "")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-account-ref", "")
+    await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-signin-lost-notified", "")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-patreon-status", "no_patreon")
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-token-patron", false)
     await game.settings.set(BeneosUtility.moduleID(), "beneos-cloud-battlemap-patron", false)
@@ -2384,10 +2469,10 @@ export class BeneosCloud {
     return false
   }
 
-  // Hash + per-user "new" lookups against the cached available-content
-  // list. Both are tolerant to the server not (yet) shipping the field
-  // — they return empty string / false respectively. Defensive against
-  // malformed entries that lack a `key`.
+  // Shared lookup of one entry in a cached available-content list, used by
+  // the hash getters and getTokenVariantCount below. Returns the entry or
+  // null. Defensive against malformed entries that lack a `key`. The hash
+  // getters turn a missing entry or a missing contentSignature into "".
   _beneosFindCloudAsset(list, key) {
     if (!Array.isArray(list) || !list.length || !key) return null
     const k = String(key).toLowerCase().replaceAll("-", "_")
@@ -2406,9 +2491,6 @@ export class BeneosCloud {
   // 0 means "catalog did not say", and the caller must not read that as zero
   // variants.
   getTokenVariantCount(key) { return Number(this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.nb_variants) || 0 }
-  getTokenIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.tokens, key)?.isNewForUser }
-  getItemIsNewForUser(key)  { return !!this._beneosFindCloudAsset(this.availableContent?.items,  key)?.isNewForUser }
-  getSpellIsNewForUser(key) { return !!this._beneosFindCloudAsset(this.availableContent?.spells, key)?.isNewForUser }
 
   isNew(key) {
     let content = this.availableContent.tokens
