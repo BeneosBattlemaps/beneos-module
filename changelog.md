@@ -4,7 +4,7 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 14.5.0-beta.13 # 2026-11-25
+### Unreleased
 
 **Changed**
 - Changed: Once the matching Beneos Cloud update is live, signing in with an
@@ -17,6 +17,10 @@ All notable changes to this module will be documented in this file.
 **Fixed**
 - Fixed: When the code could not be sent, the message now says so and asks
   you to try again, instead of asking you to check your credentials.
+
+### 14.5.0-beta.13 # 2026-11-25
+
+**Fixed**
 - Fixed: Removing a creature or cleaning up orphaned entries now tells you
   when it has to wait for another change to the Beneos compendiums, or for
   an open dialog that needs your answer.
