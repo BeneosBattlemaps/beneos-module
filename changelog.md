@@ -45,6 +45,10 @@ All notable changes to this module will be documented in this file.
   account, for example in a copied world, the GM now gets a one-time notice.
   The world then uses that other account. To switch back, use Disconnect and
   sign in again.
+- Fixed: When you sign in to Beneos Cloud with a correct code but the world
+  cannot be connected to your account, the module now says so and asks you
+  to request a new code. Before, it reported the code as invalid or expired,
+  although that code was already used up.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
