@@ -6,7 +6,17 @@ All notable changes to this module will be documented in this file.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
+**Changed**
+- Changed: Once the matching Beneos Cloud update is live, signing in with an
+  email code always sends the code first. If there is no Beneos account for
+  your address yet, you are asked whether to create one after you enter the
+  code, and the same code is used.
+- Changed: The code dialog shows the address the code was sent to right away,
+  with a Change email button, so a typo is easy to spot.
+
 **Fixed**
+- Fixed: When the code could not be sent, the message now says so and asks
+  you to try again, instead of asking you to check your credentials.
 - Fixed: Removing a creature or cleaning up orphaned entries now tells you
   when it has to wait for another change to the Beneos compendiums, or for
   an open dialog that needs your answer.

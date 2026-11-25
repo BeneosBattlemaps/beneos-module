@@ -1600,6 +1600,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "更改電子郵件",
   "BENEOS.Cloud.Notification.CodeRateLimited": "請等待 {seconds} 秒後再索取新的驗證碼。",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "無法寄送至此電子郵件。請改用其他地址或聯絡客服。",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "目前無法傳送驗證碼，請稍後再試一次。",
   "BENEOS.Cloud.CodeHelp.Title": "沒收到郵件？",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "請檢查垃圾郵件匣。",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "請使用與 Patreon 帳號完全相同的電子郵件。",

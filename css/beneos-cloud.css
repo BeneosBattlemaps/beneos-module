@@ -873,6 +873,21 @@
   color: var(--bc-text);
   word-break: break-all;
 }
+/* OTP code dialog (tick-T-050): the address with "Change email" from the start. */
+.beneos-cloud-login-dialog .bc-login-form__address {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bc-space-2);
+}
+.beneos-cloud-login-dialog .bc-login-form__address .bc-login-form__email {
+  margin: 0;
+  text-align: left;
+}
+.beneos-cloud-login-dialog .bc-login-form__address .bc-login-form__resend {
+  align-self: center;
+  flex: none;
+}
 
 /* Dialog button row — keep buttons compact, right-align, gold accent on primary */
 .beneos-cloud-login-dialog .form-footer,

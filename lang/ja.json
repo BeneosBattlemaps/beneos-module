@@ -1600,6 +1600,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "メールを変更",
   "BENEOS.Cloud.Notification.CodeRateLimited": "次のコードを要求するまで {seconds} 秒お待ちください。",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "このメールアドレスに配信できませんでした。別のアドレスを使用するか、サポートにお問い合わせください。",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "現在コードを送信できませんでした。しばらくしてからもう一度お試しください。",
   "BENEOS.Cloud.CodeHelp.Title": "メールが届きませんか？",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "迷惑メールフォルダーを確認してください。",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "Patreon アカウントとまったく同じメールアドレスを使用してください。",

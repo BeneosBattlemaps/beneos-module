@@ -1602,6 +1602,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "Изменить адрес электронной почты",
   "BENEOS.Cloud.Notification.CodeRateLimited": "Подождите {seconds}s перед запросом другого кода.",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "Мы не смогли доставить на этот адрес электронной почты. Пожалуйста, используйте другой адрес или свяжитесь с поддержкой.",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "Сейчас не удалось отправить код. Пожалуйста, попробуйте ещё раз через минуту.",
   "BENEOS.Cloud.CodeHelp.Title": "Нет электронной почты?",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "Проверьте папку спама.",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "Используйте точную электронную почту из своей учётной записи Patreon.",

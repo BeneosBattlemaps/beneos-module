@@ -1600,6 +1600,7 @@
   "BENEOS.Cloud.ConnectAccount.ResendConfirmEdit": "Cambia email",
   "BENEOS.Cloud.Notification.CodeRateLimited": "Attendi {seconds}s prima di richiedere un altro codice.",
   "BENEOS.Cloud.Notification.CodeUndeliverable": "Impossibile recapitare a questa email. Usa un altro indirizzo o contatta il supporto.",
+  "BENEOS.Cloud.Notification.CodeSendFailed": "Al momento non è stato possibile inviare il codice. Riprova tra un attimo.",
   "BENEOS.Cloud.CodeHelp.Title": "Nessuna email?",
   "BENEOS.Cloud.CodeHelp.CheckSpam": "Controlla la cartella spam.",
   "BENEOS.Cloud.CodeHelp.UsePatreonEmail": "Usa esattamente l'email del tuo account Patreon.",
