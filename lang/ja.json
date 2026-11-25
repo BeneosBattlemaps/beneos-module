@@ -1241,7 +1241,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "「{name}」とそのすべてのバリアントを、加えた変更も含めてこのワールドから削除します。すでにシーンに配置したクリーチャーは残ります。",
   "BENEOS.Cloud.Card.RemoveDone": "{name} をこのワールドから削除しました。",
   "BENEOS.Cloud.Card.RemoveFailed": "削除に失敗しました。ブラウザのコンソールを確認してください。",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} は既に削除中です。お待ちください。",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} の削除は既に開かれているか、進行中です。",
   "BENEOS.Cloud.Card.RemoveGmOnly": "ワールドからコンテンツを削除できるのはGMだけです。",
   "BENEOS.Cloud.Card.NotAvailable": "利用不可",
   "BENEOS.Cloud.Card.LevelShort": "Lv",

@@ -1241,7 +1241,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' e todas as suas variantes serão excluídos deste mundo, incluindo suas alterações. Criaturas já colocadas em uma cena permanecem.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} foi removido deste mundo.",
   "BENEOS.Cloud.Card.RemoveFailed": "Falha ao remover. Veja o console do navegador.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} já está sendo removido, aguarde.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "Uma remoção de {name} já está aberta ou em andamento.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Somente um Mestre pode remover conteúdo do mundo.",
   "BENEOS.Cloud.Card.NotAvailable": "Indisponível",
   "BENEOS.Cloud.Card.LevelShort": "Nv.",

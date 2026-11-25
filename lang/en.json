@@ -1249,7 +1249,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' and all its variants will be deleted from this world, including changes you made to them. Creatures already placed on a scene stay.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} removed from this world.",
   "BENEOS.Cloud.Card.RemoveFailed": "Removing failed. See the browser console.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} is already being removed, please wait.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "A removal of {name} is already open or in progress.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Only a Gamemaster can remove content from the world.",
   "BENEOS.Cloud.Card.NotAvailable": "Unavailable",
   "BENEOS.Cloud.Card.LevelShort": "Lvl",
