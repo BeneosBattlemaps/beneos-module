@@ -5,6 +5,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 // Asset existence probe, shared with the missing-asset watcher: srcExists plus
 // a no-store HEAD that also rejects HTML fallback pages answering 200.
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
+import { entsperre, sperre, verwirfImRiegel } from "./kompendium-riegel.mjs";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -824,15 +825,14 @@ export class BeneosUtility {
   static getSpellPack() {
     return game.packs.get("world.beneos_module_spells")
   }
+  // Ueber den Zaehler des gemeinsamen Riegels (stre-T-233): ein Sperren gibt
+  // nur die eigene Entsperrung zurueck und sperrt erst, wenn kein anderer Weg
+  // die Kompendien noch offen haelt. Jedes Entsperren braucht deshalb genau
+  // ein Sperren.
   static async lockUnlockAllPacks(flag = false) {
-    let actorPack = this.getActorPack()
-    let journalPack = this.getJournalPack()
-    let itemPack = this.getItemPack()
-    let spellPack = this.getSpellPack()
-    if (actorPack) await actorPack.configure({ locked: flag })
-    if (journalPack) await journalPack.configure({ locked: flag })
-    if (itemPack) await itemPack.configure({ locked: flag })
-    if (spellPack) await spellPack.configure({ locked: flag })
+    const packs = [this.getActorPack(), this.getJournalPack(), this.getItemPack(), this.getSpellPack()]
+    if (flag) await sperre(packs)
+    else await entsperre(packs)
   }
 
 
@@ -904,20 +904,28 @@ export class BeneosUtility {
     BeneosUtility.packIndexReady = true
 
     let probe = { total: 0, failed: 0, outage: false }
-    let actorDelete = []
-    let itemDelete = []
-    let spellDelete = []
+    // Registry-Schluessel auf die Id des Kompendium-Dokuments, das mit ihm geht.
+    let actorDelete = new Map()
+    let itemDelete = new Map()
+    let spellDelete = new Map()
     // Nothing is removed from the registry while the loops run. The outage
     // verdict is only known at the end, and a run that turns out to be an outage
     // must leave the registry exactly as it found it.
     let tokenDrop = []
     let itemDrop = []
     let spellDrop = []
+    // Der Eintrag, wie die Pruefung ihn gelesen hat (stre-T-233). Verworfen wird
+    // spaeter nur, wenn er noch genau so dasteht. Erfasst beim Lesen, nicht
+    // nach den Proben: in den rund 17 s dazwischen kann eine Installation ihn
+    // ersetzen, und ein spaeter erfasster Stand wuerde den neuen Eintrag treffen.
+    let tokenStand = new Map()
+    let itemStand = new Map()
+    let spellStand = new Map()
 
     for (let [fullKey, token] of Object.entries(this.beneosTokens)) {
       if (token?.actorId && !actorPack.index.some(i => i._id == token.actorId)) {
         BeneosUtility.debugMessage("Beneos Compendium actor not found for token", fullKey, token.actorId)
-        tokenDrop.push(fullKey)
+        tokenDrop.push(fullKey); tokenStand.set(fullKey, JSON.stringify(token))
       } else {
         // Check if the image/token are still present in the filesystem
         // Get the actor from the compendium
@@ -929,8 +937,8 @@ export class BeneosUtility {
           }
           if (!ret) {
             BeneosUtility.debugMessage("Beneos Compendium actor image not found for token", fullKey, actor.img)
-            actorDelete.push(actor._id)
-            tokenDrop.push(fullKey)
+            actorDelete.set(fullKey, actor._id)
+            tokenDrop.push(fullKey); tokenStand.set(fullKey, JSON.stringify(token))
           }
         }
       }
@@ -939,15 +947,15 @@ export class BeneosUtility {
     for (let [fullKey, item] of Object.entries(this.beneosItems)) {
       if (item.itemId && !itemPack.index.some(i => i._id == item.itemId)) {
         BeneosUtility.debugMessage("Beneos Compendium item not found for item", fullKey, item.itemId)
-        itemDrop.push(fullKey)
+        itemDrop.push(fullKey); itemStand.set(fullKey, JSON.stringify(item))
       } else {
         let itemC = itemPack.index.find(i => i._id == item.itemId)
         if (itemC) {
           let ret = await BeneosUtility.#probeAsset(itemC.img, probe)
           if (!ret) {
             BeneosUtility.debugMessage("Beneos Compendium item image not found for item", fullKey, itemC.img)
-            itemDelete.push(itemC._id)
-            itemDrop.push(fullKey)
+            itemDelete.set(fullKey, itemC._id)
+            itemDrop.push(fullKey); itemStand.set(fullKey, JSON.stringify(item))
           }
         }
       }
@@ -956,15 +964,15 @@ export class BeneosUtility {
     for (let [fullKey, spell] of Object.entries(this.beneosSpells)) {
       if (spell.spellId && !spellPack.index.some(i => i._id == spell.spellId)) {
         BeneosUtility.debugMessage("Beneos Compendium spell not found for spell", fullKey, spell.spellId)
-        spellDrop.push(fullKey)
+        spellDrop.push(fullKey); spellStand.set(fullKey, JSON.stringify(spell))
       } else {
         let spellC = spellPack.index.find(i => i._id == spell.spellId)
         if (spellC) {
           let ret = await BeneosUtility.#probeAsset(spellC.img, probe)
           if (!ret) {
             BeneosUtility.debugMessage("Beneos Compendium spell image not found for spell", fullKey, spellC.img)
-            spellDelete.push(spellC._id)
-            spellDrop.push(fullKey)
+            spellDelete.set(fullKey, spellC._id)
+            spellDrop.push(fullKey); spellStand.set(fullKey, JSON.stringify(spell))
           }
         }
       }
@@ -978,37 +986,54 @@ export class BeneosUtility {
     let toSave = tokenDrop.length > 0 || itemDrop.length > 0 || spellDrop.length > 0
     if (!toSave) return
 
-    for (let fullKey of tokenDrop) delete this.beneosTokens[fullKey]
-    for (let fullKey of itemDrop) delete this.beneosItems[fullKey]
-    for (let fullKey of spellDrop) delete this.beneosSpells[fullKey]
-
-    if (!game.user.isGM) return
-
-    await BeneosUtility.lockUnlockAllPacks(false) // Unlock the packs before deleting
-    for (let id of actorDelete) {
-      await Actor.deleteDocuments([id], { pack: "world.beneos_module_actors" })
+    // Ein Spieler darf die Kompendien nicht anfassen; ihm wird nur die
+    // Registry im Speicher bereinigt, wie bisher.
+    if (!game.user.isGM) {
+      for (let fullKey of tokenDrop) delete this.beneosTokens[fullKey]
+      for (let fullKey of itemDrop) delete this.beneosItems[fullKey]
+      for (let fullKey of spellDrop) delete this.beneosSpells[fullKey]
+      return
     }
-    for (let id of itemDelete) {
-      await Item.deleteDocuments([id], { pack: "world.beneos_module_items" })
-    }
-    for (let id of spellDelete) {
-      await Item.deleteDocuments([id], { pack: "world.beneos_module_spells" })
-    }
-    await BeneosUtility.lockUnlockAllPacks(true) // Lock the packs after deleting
 
-    // These three writes used to be fired without await, immediately followed by
-    // a chat message telling the user to press F5. The refresh killed them: the
-    // compendium documents were gone while the registry still claimed them, so
-    // every card read "installed" and offered no way to download it again. The
-    // reload prompt must never overtake the write it depends on.
-    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
-    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
-    await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
+    // Der Schreibteil laeuft als EIN Auftrag in derselben Kette wie jede
+    // Installation (stre-T-233). Vorher lief er daneben: eine Installation
+    // sperrte ihm die Kompendien zu, oder er loeschte, was sie gerade ersetzt
+    // hatte. Die Registry wird erst nach den Loeschungen bereinigt, und nur
+    // fuer Eintraege, die sich seit der Pruefung nicht geaendert haben.
+    const eintrag = (registry, stand, fullKey, loesche) => ({
+      registry, key: fullKey, stand: stand.get(fullKey), loesche
+    })
+    const tokens = () => this.beneosTokens
+    const items = () => this.beneosItems
+    const spells = () => this.beneosSpells
+    const eintraege = [
+      ...tokenDrop.map(k => eintrag(tokens, tokenStand, k, actorDelete.has(k)
+        ? () => Actor.deleteDocuments([actorDelete.get(k)], { pack: "world.beneos_module_actors" }) : null)),
+      ...itemDrop.map(k => eintrag(items, itemStand, k, itemDelete.has(k)
+        ? () => Item.deleteDocuments([itemDelete.get(k)], { pack: "world.beneos_module_items" }) : null)),
+      ...spellDrop.map(k => eintrag(spells, spellStand, k, spellDelete.has(k)
+        ? () => Item.deleteDocuments([spellDelete.get(k)], { pack: "world.beneos_module_spells" }) : null)),
+    ]
+    await verwirfImRiegel({
+      packs: [actorPack, BeneosUtility.getJournalPack(), itemPack, spellPack],
+      eintraege,
+      nachher: async (verworfen) => {
+        if (verworfen === 0) return
+        // These three writes used to be fired without await, immediately followed by
+        // a chat message telling the user to press F5. The refresh killed them: the
+        // compendium documents were gone while the registry still claimed them, so
+        // every card read "installed" and offered no way to download it again. The
+        // reload prompt must never overtake the write it depends on.
+        await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-tokenconfig', JSON.stringify(this.beneosTokens))
+        await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-itemconfig', JSON.stringify(this.beneosItems))
+        await game.settings.set(BeneosUtility.moduleID(), 'beneos-json-spellconfig', JSON.stringify(this.beneosSpells))
 
-    // Post chat message to inform the user that the world will reload
-    ChatMessage.create({
-      content: `<div class="beneos-module"><p>${game.i18n.localize("BENEOS.Cleanup.AssetsReset")}</p></div>`,
-    });
+        // Post chat message to inform the user that the world will reload
+        ChatMessage.create({
+          content: `<div class="beneos-module"><p>${game.i18n.localize("BENEOS.Cleanup.AssetsReset")}</p></div>`,
+        });
+      }
+    })
   }
 
   /********************************************************************************** */
@@ -1126,7 +1151,11 @@ export class BeneosUtility {
     this.reloadInternalSettings()
     // Check if folder exists
     if (game.user.isGM) {
+      // Nicht awaited, aus demselben Grund wie darunter; der catch faengt die
+      // Ablehnung, die sonst unbehandelt bliebe (stre-T-233). Die Kompendien
+      // sperrt im Fehlerfall das finally des Riegels.
       this.createCompendiums()
+        .catch(err => console.warn("[Beneos] compendium setup or check rejected", err))
       // Bewusst nicht awaited: ready() ist synchron, und getDeathScope()
       // liefert bis zum Abschluss ohnehin die richtige Stufe aus dem alten
       // Wert. Der Umschrieb dient der Oberflaeche, die eine gueltige Marke
