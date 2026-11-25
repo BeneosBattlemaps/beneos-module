@@ -4,6 +4,15 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
+### 14.5.0-beta.13 # 2026-11-25
+
+**Fixed**
+- Fixed: Removing a creature or cleaning up orphaned entries now tells you
+  when it has to wait for another change to the Beneos compendiums, or for
+  an open dialog that needs your answer.
+- Fixed: Clicking Remove twice on the same creature no longer reports that
+  removing failed.
+
 ### 14.5.0-beta.12 # 2026-11-25
 
 **Changed**

@@ -22,7 +22,8 @@ import {
   zerlegeAdresse,
 } from "./stream/stream-settings.mjs"
 import { karteGibtEs, kartenVergessen } from "./stream/stream-karten.mjs"
-import { inDerKette, entsperre, sperre } from "./kompendium-riegel.mjs"
+import { inDerKette, entsperre, sperre, sperreNach, wartetAufNutzer } from "./kompendium-riegel.mjs"
+import { wartehinweis } from "./kompendium-wartehinweis.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -2795,6 +2796,7 @@ export class BeneosCloud {
     // Block bleibt bewusst uneingerueckt, damit der cherry-pick auf main klein
     // bleibt; das finally steht am Ende der Methode.
     let itemGesperrt = isBatch
+    let wurf = null
     try {
 
     for (let itemKey in itemArray) {
@@ -3041,8 +3043,11 @@ export class BeneosCloud {
       this.updateInstalledAssets() // Update the installed assets count
     }
 
+    } catch (f) {
+      wurf = f
+      throw f
     } finally {
-      if (!itemGesperrt) await sperre([itemPack])
+      if (!itemGesperrt) await sperreNach([itemPack], wurf)
     }
   }
 
@@ -3074,6 +3079,7 @@ export class BeneosCloud {
     }
     // stre-T-233: siehe importItemToCompendium, das finally steht am Ende.
     let spellGesperrt = isBatch
+    let wurf = null
     try {
 
     for (let spellKey in spellArray) {
@@ -3222,8 +3228,11 @@ export class BeneosCloud {
       this.updateInstalledAssets() // Update the installed assets count
     }
 
+    } catch (f) {
+      wurf = f
+      throw f
     } finally {
-      if (!spellGesperrt) await sperre([spellPack])
+      if (!spellGesperrt) await sperreNach([spellPack], wurf)
     }
   }
 
@@ -3656,7 +3665,7 @@ export class BeneosCloud {
 
       let dialogResult
       try {
-        dialogResult = await foundry.applications.api.DialogV2.wait({
+        dialogResult = await wartetAufNutzer(foundry.applications.api.DialogV2.wait({
           window: { title: game.i18n.localize("BENEOS.Cloud.Update.Title") },
           classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
           position: { width: 560 },
@@ -3669,7 +3678,7 @@ export class BeneosCloud {
             { action: "no",         label: game.i18n.localize("BENEOS.Cloud.Update.No"),                        callback: () => "no"         }
           ],
           rejectClose: false
-        })
+        }))
       } catch (err) {
         console.warn("[Beneos Cloud] Update-confirm dialog failed", err)
         dialogResult = "no"
@@ -3827,7 +3836,7 @@ export class BeneosCloud {
     // Compact confirmation — count only, no scene list.
     let confirmResult
     try {
-      confirmResult = await foundry.applications.api.DialogV2.wait({
+      confirmResult = await wartetAufNutzer(foundry.applications.api.DialogV2.wait({
         window: { title: game.i18n.localize("BENEOS.Cloud.Update.Reset") },
         classes: ["dialog", "app", "window-app", "beneos-cloud-app", "beneos-confirm"],
         content: `<p>${game.i18n.format("BENEOS.Cloud.Update.ResetConfirm", {
@@ -3840,7 +3849,7 @@ export class BeneosCloud {
           { action: "no",  label: game.i18n.localize("BENEOS.Cloud.Update.No"),                      callback: () => "no"  }
         ],
         rejectClose: false
-      })
+      }))
     } catch (err) {
       console.warn("[Beneos Cloud] _resetAndReinstall confirm dialog failed", err)
       confirmResult = "no"
@@ -4109,12 +4118,16 @@ export class BeneosCloud {
     const imRiegel = (schreibe) => inDerKette(async () => {
       const wasLocked = actorPack.locked
       if (wasLocked) await entsperre([actorPack])
+      let wurf = null
       try {
         await schreibe()
+      } catch (f) {
+        wurf = f
+        throw f
       } finally {
-        if (wasLocked) await sperre([actorPack])
+        if (wasLocked) await sperreNach([actorPack], wurf)
       }
-    })
+    }, { beimWarten: wartehinweis })
 
     // Relink branch: instead of deleting, we set folder=null on the
     // selected entries. The compendium view then shows them at the pack
@@ -4200,6 +4213,7 @@ export class BeneosCloud {
     }
     // stre-T-233: siehe importItemToCompendium, das finally steht am Ende.
     let tokenGesperrt = isBatch
+    let wurf = null
     try {
 
     for (let tokenKey in tokenArray) {
@@ -4708,8 +4722,11 @@ export class BeneosCloud {
       }
     }
 
+    } catch (f) {
+      wurf = f
+      throw f
     } finally {
-      if (!tokenGesperrt) await sperre([actorPack, journalPack])
+      if (!tokenGesperrt) await sperreNach([actorPack, journalPack], wurf)
     }
   }
 
@@ -4794,6 +4811,7 @@ export class BeneosCloud {
     // first imports finishing and they'd still create world copies.
     const prevNoWorldImport = this.noWorldImport
     this.noWorldImport = deferWorldImport || this.noWorldImport
+    let wurf = null
     try {
       const pending = []
       // Loop thru the filtered assetList and install them
@@ -4811,9 +4829,17 @@ export class BeneosCloud {
       }
       // Wait for every in-flight import to finish before resetting the flag.
       await Promise.allSettled(pending)
+    } catch (f) {
+      wurf = f
+      throw f
     } finally {
       this.noWorldImport = prevNoWorldImport
-      await inDerKette(() => BeneosUtility.lockUnlockAllPacks(true)) // Lock all packs after batch install
+      // Lock all packs after batch install. A relock failure after a failed
+      // batch is logged, so the first error reaches the caller (stre-T-485).
+      await inDerKette(() => BeneosUtility.lockUnlockAllPacks(true)).catch((f) => {
+        if (!wurf) throw f
+        console.error("[Beneos] relock after a failed batch install failed", f)
+      })
     }
   }
 

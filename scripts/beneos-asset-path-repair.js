@@ -13,6 +13,7 @@
 import { schluesselfreiAdresse, leinwandAdresse, streamKey, schluesselStellen } from "./stream/stream-settings.mjs";
 import { htmlSchluesselfrei, formAAdresse, nurBildadressenGetauscht } from "./stream/stream-html.mjs";
 import { inDerKette, entsperre, sperre } from "./kompendium-riegel.mjs";
+import { einmalHinweis } from "./kompendium-wartehinweis.mjs";
 
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
@@ -1967,12 +1968,14 @@ async function _restlicheWurzelnNachziehen(abbildung, kompendien = null, onProgr
   // 43 Sekunden Laden. Eine Meldung je Dokument waere also viel Laerm fuer die
   // Strecke, auf der ohnehin nicht gewartet wird.
   const familien = [..._weltFamilien(), ...geladen];
+  // Ein Wartehinweis fuer den ganzen Nachzug, nicht einer je Familie.
+  const hinweis = einmalHinweis();
   let nr = 0;
   for (const fam of familien) {
     nr += 1;
     try { onProgress?.({ phase: "familie", current: nr, total: familien.length, docName: fam.id ?? fam.name }); }
     catch (_e) { /* ein Fortschrittsrueckruf darf den Lauf nie anhalten */ }
-    await _familieNachziehen(fam, abbildung, bericht);
+    await _familieNachziehen(fam, abbildung, bericht, hinweis);
   }
   return bericht;
 }
@@ -2018,7 +2021,7 @@ function _weltFamilien() {
  * angefasst, und das Fenster, in dem ein zweiter Browser in ein offenes
  * Kompendium schreiben koennte, entsteht nur dort, wo es unvermeidlich ist.
  */
-async function _familieNachziehen(fam, abbildung, bericht) {
+async function _familieNachziehen(fam, abbildung, bericht, beimWarten) {
   const wer = fam.id ?? fam.name;
 
   const plaene = [];
@@ -2049,7 +2052,7 @@ async function _familieNachziehen(fam, abbildung, bericht) {
   // daneben gelesen, sperrte dieser Lauf einer laufenden Installation die
   // Kompendien unter den Fuessen zu. Eine Weltfamilie hat kein Kompendium und
   // wartet nicht hinter Installationen.
-  return fam.pack ? inDerKette(schreibe) : schreibe();
+  return fam.pack ? inDerKette(schreibe, { beimWarten }) : schreibe();
 }
 
 /**

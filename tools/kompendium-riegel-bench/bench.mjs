@@ -26,6 +26,7 @@
  */
 
 import { readFileSync, readdirSync } from "node:fs"
+import { setImmediate } from "node:timers"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
@@ -65,7 +66,7 @@ function absturz(fehler) {
 process.on("uncaughtException", absturz)
 process.on("unhandledRejection", absturz)
 
-const { inDerKette, entsperre, sperre, verwirfImRiegel } =
+const { inDerKette, entsperre, sperre, verwirfImRiegel, sperreNach, wartetAufNutzer, einmalJe } =
   await import(pathToFileURL(RIEGEL).href)
 
 // ═══════════════════════════════════════════════════════════ Attrappen ═════
@@ -431,6 +432,240 @@ pruefe("A16 ein zweiter Aufrufer wartet auf das laufende Oeffnen",
   a16 === false && JOURNAL.locked === true && JOURNAL.spur.join(",") === "auf,zu",
   `beim Zurueckkehren des zweiten ${a16 ? "NOCH GESPERRT" : "offen"} · Spur ${JOURNAL.spur.join(",")}`)
 
+// ─────────────────────────────────────────── Nachschaerfung stre-T-485 ─────
+//
+// Ein Wiedereintritt in die Kette aus einem laufenden Auftrag wartete still
+// auf sich selbst und hielt danach jeden Folgeauftrag an (CQ-R-06). Jede
+// Probe hat deshalb eine Zeitgrenze: ohne die Pruefung waere ein Satz sonst
+// kein roter Satz, sondern ein haengender Bench.
+
+const fehltA = (n, f) => typeof f === "function" ? "" : `${n} FEHLT IM RIEGEL`
+const ZEITGRENZE_MS = 500
+function zeitgrenze(p) {
+  return Promise.race([
+    Promise.resolve(p).then((v) => v, (e) => `abgelehnt: ${e?.message ?? e}`),
+    new Promise((r) => setTimeout(() => r("HAENGT"), ZEITGRENZE_MS)),
+  ])
+}
+// Ruft die Kette und meldet "warf", wenn der Aufruf selbst wirft, sonst das
+// Ergebnis innerhalb der Zeitgrenze.
+async function ruf(aufruf) {
+  let glied
+  try { glied = aufruf() } catch { return "warf" }
+  return zeitgrenze(glied)
+}
+
+beginne("A17")
+// Die Messfaelle des Wiedereintritts. Abgewiesen wird mit einer abgelehnten
+// Promise, nie mit einem synchronen Wurf ("warf" ist rot). Der letzte Fall
+// ist die bekannte Grenze: aus einem setTimeout-Rueckruf fehlt der
+// asynchrone Stapel, der Aufruf reiht sich ein wie vor stre-T-485.
+const abgewiesen = (v) => typeof v === "string" && v.startsWith("abgelehnt: kompendium-riegel: re-entry")
+// Das Riegel-Modul protokolliert jede Abweisung; im Bench waere das Laerm.
+const a17errorAlt = console.error
+console.error = () => { }
+const a17 = {}
+a17.innenNachAwait = await zeitgrenze(inDerKette(async () => {
+  await takt()
+  const tief = async () => { await takt(); return ruf(() => inDerKette(async () => "innen")) }
+  return tief()
+}))
+a17.innenAusThen = await zeitgrenze(inDerKette(() => takt().then(() => ruf(() => inDerKette(async () => "innen")))))
+// Tiefer als das uebliche Stapellimit von 10 Rahmen. Das `return await` ist
+// noetig: ohne await entsteht kein asynchroner Stapelrahmen, und die Probe
+// waere flach (gemessen: ohne await bleibt die Marke in jeder Tiefe sichtbar,
+// mit await faellt sie bei Limit 10 ab Tiefe 8 heraus).
+async function tiefRuf(n) {
+  await takt()
+  return n === 0 ? ruf(() => inDerKette(async () => "innen")) : await tiefRuf(n - 1)
+}
+a17.tief12 = await zeitgrenze(inDerKette(() => tiefRuf(12)))
+// Ohne await: der laufende Auftrag laeuft zu Ende, die Abweisung erreicht
+// das angehaengte catch.
+let a17ohneAwait = null
+a17.ohneAwaitAuftrag = await zeitgrenze(inDerKette(async () => {
+  inDerKette(async () => "innen").then(() => { a17ohneAwait = "lief" }, (e) => { a17ohneAwait = `abgelehnt: ${e.message}` })
+  await takt()
+  return "Auftrag fertig"
+}))
+await takte(3)
+a17.ohneAwaitCatch = a17ohneAwait
+let a17halt
+const a17lauf = inDerKette(() => new Promise((r) => { a17halt = r }))
+const a17aussen = ruf(() => inDerKette(async () => "aussen"))
+await takte(3)
+a17halt()
+await a17lauf
+a17.aussenWaehrendLauf = await a17aussen
+let a17spaet = null
+await zeitgrenze(inDerKette(() => new Promise((r) => setTimeout(() => {
+  try { a17spaet = inDerKette(async () => "spaet") } catch { a17spaet = Promise.resolve("warf") }
+  r()
+}, 1))))
+a17.ausTimeout = await zeitgrenze(a17spaet)
+console.error = a17errorAlt
+pruefe("A17 ein Wiedereintritt aus einem Auftrag wird abgewiesen, ein Aufruf von aussen reiht sich ein",
+  abgewiesen(a17.innenNachAwait) && abgewiesen(a17.innenAusThen) && abgewiesen(a17.tief12)
+    && a17.ohneAwaitAuftrag === "Auftrag fertig" && abgewiesen(a17.ohneAwaitCatch)
+    && a17.aussenWaehrendLauf === "aussen" && a17.ausTimeout === "spaet",
+  Object.entries(a17).map(([k, v]) => `${k}: ${abgewiesen(v) ? "abgewiesen" : v}`).join(" · "))
+
+beginne("A18")
+// Der Auftrag wartet OHNE Zeitgrenze auf seinen Wiedereintritt, so wie ein
+// echter Fehler es taete. Der Folgeauftrag muss trotzdem laufen.
+const a18errorAlt = console.error
+console.error = () => { }
+const a18haenger = inDerKette(async () => {
+  await takt()
+  return await inDerKette(async () => "innen")
+}).then(() => "lief", () => "abgewiesen")
+const a18folge = await zeitgrenze(inDerKette(async () => "weiter"))
+const a18erst = await zeitgrenze(a18haenger)
+console.error = a18errorAlt
+pruefe("A18 nach einem abgewiesenen Wiedereintritt laeuft der Folgeauftrag",
+  a18folge === "weiter" && a18erst === "abgewiesen",
+  `Folgeauftrag: ${a18folge} · Auftrag mit Wiedereintritt: ${a18erst}`)
+
+beginne("A19")
+// Der erste Fehler kommt beim Aufrufer an (F3). Nachgebaut nach den drei
+// Importfunktionen: catch haelt den Wurf fest, das finally sperrt ueber
+// sperreNach.
+const a19fehlt = fehltA("sperreNach", sperreNach)
+function sturerPack(id) {
+  const p = new Pack(id)
+  p.configure = async ({ locked }) => {
+    await takt()
+    if (locked) throw new Error("Sperren abgelehnt")
+    p.locked = false
+  }
+  return p
+}
+async function importNachbau(packs, rumpfWirft) {
+  await entsperre(packs)
+  let gesperrt = false
+  let wurf = null
+  try {
+    if (rumpfWirft) throw new Error("Rumpf gescheitert")
+    await sperre(packs)
+    gesperrt = true
+  } catch (f) {
+    wurf = f
+    throw f
+  } finally {
+    if (!gesperrt) await sperreNach(packs, wurf)
+  }
+}
+const a19protokoll = []
+const errorAlt = console.error
+console.error = (...a) => { a19protokoll.push(a.map((x) => String(x?.message ?? x)).join(" ")) }
+let a19rumpf = null, a19nurSperre = null, a19direkt = null
+try {
+  if (!a19fehlt) {
+    a19rumpf = await importNachbau([sturerPack("x1")], true).then(() => "kein Fehler", (e) => e.message)
+    a19nurSperre = await importNachbau([sturerPack("x2")], false).then(() => "kein Fehler", (e) => e.message)
+    a19direkt = await sperreNach([sturerPack("x3")], null).then(() => "kein Fehler", (e) => e.message)
+  }
+} finally {
+  console.error = errorAlt
+}
+pruefe("A19 der erste Fehler kommt an, der Sperrfehler steht im Protokoll",
+  !a19fehlt && a19rumpf === "Rumpf gescheitert" && a19nurSperre === "Sperren abgelehnt"
+    && a19direkt === "Sperren abgelehnt" && a19protokoll.some((z) => z.includes("Sperren abgelehnt")),
+  a19fehlt || `Rumpf und Sperre scheitern: ${a19rumpf} · nur Sperre: ${a19nurSperre} · ohne ersten Fehler: ${a19direkt} · Protokoll ${a19protokoll.length} Zeile(n)`)
+
+beginne("A20")
+// Der Wartehinweis: bei freier Kette keiner, bei belegter genau einer, und
+// bei einem offenen Dialog im Auftrag mit dialogOffen.
+const a20fehlt = fehltA("wartetAufNutzer", wartetAufNutzer)
+const a20 = { frei: [], belegt: [], dialog: [], danach: [], wurfErgebnis: null, dialogErgebnis: null }
+if (!a20fehlt) {
+  await zeitgrenze(inDerKette(async () => "a", { beimWarten: (i) => a20.frei.push(i) }))
+  let halt
+  const h1 = inDerKette(() => new Promise((r) => { halt = r }))
+  const b1 = inDerKette(async () => "b", { beimWarten: (i) => a20.belegt.push(i) })
+  await takte(3); halt(); await zeitgrenze(h1); await zeitgrenze(b1)
+
+  let antwort
+  const dlg = inDerKette(() => wartetAufNutzer(new Promise((r) => { antwort = r })))
+  await takte(3)
+  const c1 = inDerKette(async () => "c", { beimWarten: (i) => a20.dialog.push(i) })
+  antwort("ja"); a20.dialogErgebnis = await zeitgrenze(dlg); await zeitgrenze(c1)
+
+  const h2 = inDerKette(() => new Promise((r) => { halt = r }))
+  const d1 = inDerKette(async () => "d", { beimWarten: (i) => a20.danach.push(i) })
+  await takte(3); halt(); await zeitgrenze(h2); await zeitgrenze(d1)
+
+  const h3 = inDerKette(() => new Promise((r) => { halt = r }))
+  const w1 = inDerKette(async () => "lief trotzdem", { beimWarten: () => { throw new Error("Hinweis kaputt") } })
+  await takte(3); halt(); await zeitgrenze(h3); a20.wurfErgebnis = await zeitgrenze(w1)
+}
+const a20eins = (l, offen) => l.length === 1 && l[0]?.dialogOffen === offen
+pruefe("A20 der Wartehinweis kommt nur bei belegter Kette und nennt den offenen Dialog",
+  !a20fehlt && a20.frei.length === 0 && a20eins(a20.belegt, false) && a20eins(a20.dialog, true)
+    && a20eins(a20.danach, false) && a20.dialogErgebnis === "ja" && a20.wurfErgebnis === "lief trotzdem",
+  a20fehlt || `frei ${a20.frei.length} · belegt ${JSON.stringify(a20.belegt)} · Dialog ${JSON.stringify(a20.dialog)} · danach ${JSON.stringify(a20.danach)} · Hinweis wirft: ${a20.wurfErgebnis}`)
+
+beginne("A21")
+// Ein zweiter Klick auf dasselbe Asset reiht sich nicht ein, ein Klick auf
+// ein anderes schon; nach dem Ende, auch nach einem Fehler, ist der
+// Schluessel wieder frei.
+const a21fehlt = fehltA("einmalJe", einmalJe)
+const a21 = {}
+if (!a21fehlt) {
+  let loese
+  let zweitGerufen = 0
+  const erst = einmalJe("remove:a", () => new Promise((r) => { loese = r }))
+  a21.zweit = await zeitgrenze(einmalJe("remove:a", async () => { zweitGerufen++; return "zweit" }))
+  a21.anders = await zeitgrenze(einmalJe("remove:b", async () => "b"))
+  loese("a")
+  a21.erst = await zeitgrenze(erst)
+  a21.wieder = await zeitgrenze(einmalJe("remove:a", async () => "wieder"))
+  a21.wurf = await zeitgrenze(einmalJe("remove:c", async () => { throw new Error("Entfernen scheitert") }))
+  a21.nachWurf = await zeitgrenze(einmalJe("remove:c", async () => "c"))
+  a21.zweitGerufen = zweitGerufen
+}
+pruefe("A21 derselbe Schluessel laeuft nur einmal, ein anderer laeuft",
+  !a21fehlt && a21.zweit?.lief === false && a21.zweitGerufen === 0
+    && a21.anders?.lief === true && a21.anders?.ergebnis === "b"
+    && a21.erst?.lief === true && a21.erst?.ergebnis === "a"
+    && a21.wieder?.lief === true && a21.wurf === "abgelehnt: Entfernen scheitert" && a21.nachWurf?.lief === true,
+  a21fehlt || JSON.stringify(a21))
+
+beginne("A22")
+// Der Text des Wartehinweises: bei offenem Dialog der Dialogschluessel, sonst
+// der neutrale. Ein Vorgang ueber mehrere Packs meldet nur einmal. ui und game
+// sind Attrappen, die nur festhalten, was gezeigt wurde.
+const a22gezeigt = []
+const a22alt = { ui: globalThis.ui, game: globalThis.game }
+globalThis.ui = { notifications: { info: (t) => a22gezeigt.push(t) } }
+globalThis.game = { i18n: { localize: (k) => `<${k}>` } }
+const a22 = {}
+try {
+  const { wartehinweis, einmalHinweis } = await import(pathToFileURL(join(WURZEL, "scripts", "kompendium-wartehinweis.mjs")).href)
+  wartehinweis({ dialogOffen: false })
+  wartehinweis({ dialogOffen: true })
+  a22.ohneUndMit = a22gezeigt.splice(0)
+  const einmal = einmalHinweis()
+  einmal({ dialogOffen: false })
+  einmal({ dialogOffen: true })
+  a22.einmal = a22gezeigt.splice(0)
+  const zweiterVorgang = einmalHinweis()
+  zweiterVorgang({ dialogOffen: true })
+  a22.zweiterVorgang = a22gezeigt.splice(0)
+} catch (e) {
+  a22.fehler = e.message
+} finally {
+  globalThis.ui = a22alt.ui
+  globalThis.game = a22alt.game
+}
+const A22_TASK = "<BENEOS.Cloud.Notification.WaitingForTask>"
+const A22_DIALOG = "<BENEOS.Cloud.Notification.WaitingForDialog>"
+pruefe("A22 der Wartehinweis nennt den Dialog nur bei offenem Dialog und meldet je Vorgang einmal",
+  !a22.fehler && JSON.stringify(a22.ohneUndMit) === JSON.stringify([A22_TASK, A22_DIALOG])
+    && JSON.stringify(a22.einmal) === JSON.stringify([A22_TASK])
+    && JSON.stringify(a22.zweiterVorgang) === JSON.stringify([A22_DIALOG]),
+  JSON.stringify(a22))
+
 // ═══════════════════════════════════════════════════════════ Lage B ════════
 //
 // Der Quelltext. Ohne Foundry erreicht kein Lauf beneos_cloud.js und
@@ -468,20 +703,31 @@ function alleSkripte(dir) {
   }
   return aus
 }
+// Jeder Aufruf von configure zaehlt, unabhaengig von Leerzeichen, der
+// Reihenfolge der Schluessel, optionalem Aufruf oder Klammerzugriff, und
+// auch mit einer Variablen als Argument (MO-051). Ob das Ziel ein Pack ist,
+// laesst sich am Text nicht sehen; deshalb ist ausserhalb des Riegels jeder
+// configure-Aufruf ein Befund, bis er hier begruendet ausgenommen wird.
+const CONFIGURE = /(?:\bconfigure|\[\s*["'`]configure["'`]\s*\])\s*(?:\?\.)?\s*\(/
 const sperrstellen = alleSkripte(join(WURZEL, "scripts")).flatMap((datei) =>
   nurCode(readFileSync(datei, "utf8")).split("\n")
-    .filter((z) => /\.configure\(\{\s*locked/.test(z))
+    .filter((z) => CONFIGURE.test(z) && !/\bfunction\s+configure\b|^\s*(?:async\s+)?configure\s*\([^)]*\)\s*\{/.test(z))
     .map((z) => ({ datei: relative(WURZEL, datei).replaceAll("\\", "/"), zeile: z.trim() })))
 const imRiegel = sperrstellen.filter((s) => s.datei === "scripts/kompendium-riegel.mjs")
 const ausserhalb = sperrstellen.filter((s) => s.datei !== "scripts/kompendium-riegel.mjs")
 pruefe("B1 kein Skript sperrt mehr an den Riegeln vorbei",
   ausserhalb.length === 0,
-  ausserhalb.length === 0 ? "keine Sperrstelle ausserhalb des Riegels"
-    : `${ausserhalb.length} Stelle(n): ${ausserhalb.map((s) => `${s.datei}: ${s.zeile.slice(0, 50)}`).join(" | ")}`)
-// GEGENPROBE: die zwei Stellen im Riegel selbst muss dieselbe Suche finden.
-// Findet sie sie nicht, sucht sie nicht mehr, und B1 waere leer gruen.
-pruefe("B2 die Suche findet die zwei Sperrstellen im Riegel",
-  imRiegel.length === 2, `${imRiegel.length} von 2`)
+  ausserhalb.length === 0 ? "kein configure-Aufruf ausserhalb des Riegels"
+    : `${ausserhalb.length} Stelle(n): ${ausserhalb.map((s) => `${s.datei}: ${s.zeile.slice(0, 60)}`).join(" | ")}`)
+// GEGENPROBE: die zwei Stellen im Riegel selbst muss dieselbe Suche finden,
+// und beide setzen locked als festen Wert. Findet die Suche sie nicht, sucht
+// sie nicht mehr, und B1 waere leer gruen; ein Argument als Variable liesse
+// offen, was gesetzt wird.
+const festeSperre = imRiegel.filter((s) => /\.configure\(\{ locked: (?:true|false) \}\)/.test(s.zeile))
+pruefe("B2 die Suche findet die zwei Sperrstellen im Riegel, beide mit festem Wert",
+  imRiegel.length === 2 && festeSperre.length === 2,
+  `${imRiegel.length} von 2 gefunden, ${festeSperre.length} mit festem Wert`
+    + (festeSperre.length < imRiegel.length ? `: ${imRiegel.filter((s) => !festeSperre.includes(s)).map((s) => s.zeile.slice(0, 60)).join(" | ")}` : ""))
 
 // Die drei Wege, die ausserhalb der Installation schreiben, laufen in der
 // Kette und lesen die Sperre erst dort.
@@ -491,9 +737,9 @@ const familie = /async function _familieNachziehen\([\s\S]*?\n\}/.exec(repair)?.
 const ausPack = methode(fenster, "#deleteFromPack")
 const waisen = methode(cloud, "runOrphanCleanup")
 const wege = [
-  ["_familieNachziehen", familie, /const schreibe = async \(\) => \{\s*const warGesperrt[\s\S]*return fam\.pack \? inDerKette\(schreibe\) : schreibe\(\);/],
+  ["_familieNachziehen", familie, /const schreibe = async \(\) => \{\s*const warGesperrt[\s\S]*return fam\.pack \? inDerKette\(schreibe(?:, \{ beimWarten(?:: wartehinweis)? \})?\) : schreibe\(\);/],
   ["#deleteFromPack", ausPack, /return inDerKette\(async \(\) => \{[\s\S]{0,120}const wasLocked/],
-  ["runOrphanCleanup", waisen, /inDerKette\(async \(\) => \{\s*const wasLocked[\s\S]{0,200}finally \{\s*if \(wasLocked\) await sperre\(/],
+  ["runOrphanCleanup", waisen, /inDerKette\(async \(\) => \{\s*const wasLocked[\s\S]{0,200}finally \{\s*if \(wasLocked\) await sperre(?:Nach)?\(/],
 ]
 const verfehlt = wege.filter(([, text, muster]) => text === null || !muster.test(text)).map(([n, text]) => text === null ? `${n} NICHT GESCHNITTEN` : n)
 pruefe("B15 Heilung, Entfernen und Waisenbereinigung schreiben in der Kette",
@@ -550,7 +796,7 @@ pruefe("B14 verify haelt den Stand beim Lesen fest",
 for (const [name, kuerzel] of [["importTokenToCompendium", "B10"], ["importItemToCompendium", "B11"], ["importSpellToCompendium", "B12"]]) {
   const m = methode(cloud, name)
   pruefe(`${kuerzel} ${name} entsperrt ueber den Riegel und sperrt im finally`,
-    m !== null && /await entsperre\(/.test(m) && /finally \{[\s\S]{0,300}await sperre\(/.test(m),
+    m !== null && /await entsperre\(/.test(m) && /finally \{[\s\S]{0,300}await sperre(?:Nach)?\(/.test(m),
     m === null ? "NICHT GESCHNITTEN" : "")
 }
 
@@ -558,6 +804,53 @@ const lul = methode(utility, "lockUnlockAllPacks")
 pruefe("B13 lockUnlockAllPacks zaehlt ueber den Riegel",
   lul !== null && /entsperre\(/.test(lul) && /sperre\(/.test(lul) && !/configure\(/.test(lul),
   lul === null ? "NICHT GESCHNITTEN" : "")
+
+// stre-T-485: der erste Fehler, der Wartehinweis und der Doppelklick.
+const ERSTER_FEHLER = /catch \(f\) \{\s*wurf = f\s*throw f\s*\} finally \{/
+const b16fehlt = [["importTokenToCompendium", "tokenGesperrt"], ["importItemToCompendium", "itemGesperrt"], ["importSpellToCompendium", "spellGesperrt"]]
+  .filter(([name, marke]) => {
+    const m = methode(cloud, name)
+    return m === null || !/let wurf = null/.test(m) || !ERSTER_FEHLER.test(m)
+      || !new RegExp(`if \\(!${marke}\\) await sperreNach\\(\\[[^\\]]+\\], wurf\\)`).test(m)
+  }).map(([name]) => name)
+pruefe("B16 die drei Importfunktionen bewahren den ersten Fehler",
+  b16fehlt.length === 0, b16fehlt.length === 0 ? "3 von 3" : `fehlt: ${b16fehlt.join(", ")}`)
+
+const b17waisen = waisen !== null && ERSTER_FEHLER.test(waisen) && /if \(wasLocked\) await sperreNach\(\[actorPack\], wurf\)/.test(waisen)
+const b17batch = batch !== null && ERSTER_FEHLER.test(batch)
+  && /lockUnlockAllPacks\(true\)\)\.catch\(\(f\) => \{\s*if \(!wurf\) throw f/.test(batch)
+pruefe("B17 Waisenbereinigung und Sammelinstallation bewahren den ersten Fehler",
+  b17waisen && b17batch, `runOrphanCleanup ${b17waisen ? "ja" : "NEIN"} · batchInstall ${b17batch ? "ja" : "NEIN"}`)
+
+const propagiere = methode(cloud, "_propagateTokenUpdateToWorld")
+const neuAufsetzen = methode(cloud, "_resetAndReinstall")
+const b18 = propagiere !== null && neuAufsetzen !== null
+  && /await wartetAufNutzer\(foundry\.applications\.api\.DialogV2\.wait\(\{\s*window: \{ title: game\.i18n\.localize\("BENEOS\.Cloud\.Update\.Title"\)/.test(propagiere)
+  && /await wartetAufNutzer\(foundry\.applications\.api\.DialogV2\.wait\(/.test(neuAufsetzen)
+pruefe("B18 die Dialoge im Installationsauftrag melden sich am Riegel",
+  b18, propagiere === null || neuAufsetzen === null ? "NICHT GESCHNITTEN" : "")
+
+// Familien-Nachzug und Entfernen reichen EINEN Hinweisgeber je Vorgang durch
+// (einmalHinweis), damit ein Vorgang ueber mehrere Packs nur einmal meldet.
+// Die Waisenbereinigung ist ein einzelner Auftrag.
+const nachzug = /async function _restlicheWurzelnNachziehen\([\s\S]*?\n\}/.exec(repair)?.[0] ?? null
+const entfernenRumpf = methode(fenster, "#removeAsset")
+const b19wege = [
+  ["_familieNachziehen", familie, /^async function _familieNachziehen\([^)]*\bbeimWarten\)[\s\S]*inDerKette\(schreibe, \{ beimWarten \}\)/],
+  ["_restlicheWurzelnNachziehen", nachzug, /const hinweis = einmalHinweis\(\);[\s\S]*_familieNachziehen\(fam, abbildung, bericht, hinweis\)/],
+  ["#deleteFromPack", ausPack, /^\s*static async #deleteFromPack\([^)]*\bbeimWarten = wartehinweis\)[\s\S]*\}, \{ beimWarten \}\)/],
+  ["#removeAsset", entfernenRumpf, /const hinweis = einmalHinweis\(\)[\s\S]*#deleteFromPack\([^)]*, hinweis\)[\s\S]*#deleteFromPack\([^)]*, hinweis\)/],
+  ["runOrphanCleanup", waisen, /\}, \{ beimWarten: wartehinweis \}\)/],
+]
+const b19fehlt = b19wege.filter(([, text, muster]) => text === null || !muster.test(text)).map(([n, text]) => text === null ? `${n} NICHT GESCHNITTEN` : n)
+pruefe("B19 Heilung, Entfernen und Waisenbereinigung geben den Wartehinweis mit",
+  b19fehlt.length === 0, b19fehlt.length === 0 ? `${b19wege.length} von ${b19wege.length}` : `fehlt: ${b19fehlt.join(", ")}`)
+
+const entfernen = methode(fenster, "_onRemoveAsset")
+pruefe("B20 Entfernen laeuft je Asset nur einmal",
+  entfernen !== null && /einmalJe\(`remove:\$\{key\}`/.test(entfernen)
+    && /BENEOS\.Cloud\.Card\.AlreadyRemoving/.test(entfernen),
+  entfernen === null ? "NICHT GESCHNITTEN" : "")
 
 console.log("")
 console.log("NICHT PRUEFBAR: ob Foundry pack.configure unter Last so antwortet wie")

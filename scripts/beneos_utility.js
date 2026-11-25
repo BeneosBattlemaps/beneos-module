@@ -7,7 +7,7 @@ import { BeneosCloud, BeneosCloudLogin, BeneosCloudSettings, BeneosCloudAccountM
 import { headCheck as beneosHeadCheck } from "./beneos-asset-watcher.js";
 import { ansichtGeprueft, ansichtGibtEs } from "./stream/stream-posen.mjs";
 import { zerlegeAdresse, schluesselfreiAdresse } from "./stream/stream-settings.mjs";
-import { entsperre, sperre, verwirfImRiegel } from "./kompendium-riegel.mjs";
+import { entsperre, sperre, verwirfImRiegel, wartetAufNutzer } from "./kompendium-riegel.mjs";
 
 /********************************************************************************* */
 globalThis.BENEOS_MODULE_NAME = "Beneos Module"
@@ -1466,7 +1466,9 @@ export class BeneosUtility {
     try {
       const DialogV2 = foundry.applications?.api?.DialogV2;
       if (DialogV2?.wait) {
-        result = await DialogV2.wait({
+        // Runs inside an install job of the compendium chain: whoever waits
+        // behind it is told that a dialog is open (stre-T-485).
+        result = await wartetAufNutzer(DialogV2.wait({
           window: { title },
           classes: ["beneos-pact-magic-dialog"],
           position: { width: 520 },
@@ -1483,7 +1485,7 @@ export class BeneosUtility {
           // The user explicitly only asked for Yes/No; we don't add a third
           // cancel path that would silently abort spell import.
           close: () => ({ choice: "normal", applyAll: false })
-        });
+        }));
       }
     } catch (e) {
       console.warn("[Beneos] Pact-Magic dialog failed, defaulting to normal slot:", e);
