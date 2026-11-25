@@ -1261,7 +1261,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' и все его варианты будут удалены из этого мира вместе с вашими изменениями. Существа, уже размещённые на сцене, останутся.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} удалён из этого мира.",
   "BENEOS.Cloud.Card.RemoveFailed": "Не удалось удалить. Подробности в консоли браузера.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} уже удаляется, пожалуйста, подождите.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "Удаление {name} уже открыто или выполняется.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Удалять содержимое из мира может только Мастер.",
   "BENEOS.Cloud.Card.NotAvailable": "Недоступно",
   "BENEOS.Cloud.Card.LevelShort": "Уровень",

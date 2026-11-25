@@ -1259,7 +1259,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "「{name}」及其所有變體將從此世界刪除，包括你做過的修改。已放置在場景上的生物會保留。",
   "BENEOS.Cloud.Card.RemoveDone": "已從此世界移除 {name}。",
   "BENEOS.Cloud.Card.RemoveFailed": "移除失敗。請查看瀏覽器主控台。",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} 正在移除中，請稍候。",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} 的移除已開啟或正在進行中。",
   "BENEOS.Cloud.Card.RemoveGmOnly": "只有 GM 可以從世界中移除內容。",
   "BENEOS.Cloud.Card.NotAvailable": "無法使用",
   "BENEOS.Cloud.Card.LevelShort": "Lv",

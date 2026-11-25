@@ -1259,7 +1259,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' i wszystkie jego warianty zostaną usunięte z tego świata, razem z twoimi zmianami. Stworzenia już umieszczone na scenie pozostaną.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} usunięto z tego świata.",
   "BENEOS.Cloud.Card.RemoveFailed": "Usuwanie nie powiodło się. Szczegóły w konsoli przeglądarki.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} jest już usuwany, proszę czekać.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "Usuwanie {name} jest już otwarte lub w toku.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Tylko Mistrz Gry może usuwać zawartość ze świata.",
   "BENEOS.Cloud.Card.NotAvailable": "Niedostępne",
   "BENEOS.Cloud.Card.LevelShort": "Lvl",

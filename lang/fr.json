@@ -1259,7 +1259,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' et toutes ses variantes seront supprimés de ce monde, y compris vos modifications. Les créatures déjà placées sur une scène sont conservées.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} a été retiré de ce monde.",
   "BENEOS.Cloud.Card.RemoveFailed": "La suppression a échoué. Voir la console du navigateur.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} est déjà en cours de suppression, veuillez patienter.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "Une suppression de {name} est déjà ouverte ou en cours.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Seul un MJ peut retirer du contenu du monde.",
   "BENEOS.Cloud.Card.NotAvailable": "Indisponible",
   "BENEOS.Cloud.Card.LevelShort": "Niv.",
