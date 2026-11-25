@@ -56,14 +56,15 @@ Laden Foundry-Globale.
 
 ## Der Schalter, und warum `A2` scharf ist
 
-`BILDFORM_ADRESSE_AN` steht auf `false`. Mit `false` verhält sich der
-Installer Zeichen für Zeichen wie vorher, denn ohne den Parameter schickt auch
-ein neuer Server base64.
+`BILDFORM_ADRESSE_AN` steht auf `true`, seit dem Betreiberentscheid zu
+stre-T-063: der Serverteil ist live (c33e458 und 9f0a9cf in 1fc2e34), und der
+Sichttest war grün, 80 von 80 Bildern bytegleich mit base64. Mit `false`
+verhält sich der Installer Zeichen für Zeichen wie vorher.
 
-Der Satz `A2` wird **rot**, sobald jemand ihn auf `true` stellt. Das ist
-gewollt: das Umstellen ist eine Betreiberentscheidung nach einem Deploy und
-einem gesehenen Lauf, nicht eine Zeile im Vorbeigehen. Wer sie stellt, ändert
-den Satz mit und schreibt den Grund dazu.
+Der Satz `A2` wird **rot**, sobald jemand ihn auf `false` zurücknimmt. Das ist
+gewollt: auch die Rücknahme ist eine Betreiberentscheidung, nicht eine Zeile
+im Vorbeigehen. Wer sie trifft, ändert den Satz mit und schreibt den Grund
+dazu.
 
 Verträglich ist die Form von sich aus, in beiden Richtungen. Der Schalter
 trägt etwas anderes: die **Rücknahme ohne Auslieferung**. Zwölf Schreibstellen

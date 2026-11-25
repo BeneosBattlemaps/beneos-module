@@ -92,11 +92,13 @@ const BENEOS_STUB_MAX_BYTES = 8
  * Stellt sich das Gegenteil heraus, ist eine Zeile hier die Antwort und nicht
  * eine neue Modulfassung.
  *
- * DIE VORGABE IST AUS, bis der Betreiber den Server deployed und einen Lauf
- * gesehen hat. Mit `false` verhaelt sich der Installer Zeichen fuer Zeichen
- * wie vorher, denn ohne den Parameter schickt auch ein neuer Server base64.
+ * DIE VORGABE IST AN, seit dem Betreiberentscheid zu stre-T-063: der
+ * Serverteil ist live (c33e458 und 9f0a9cf in 1fc2e34), und der Sichttest
+ * von work-stre-3 war gruen, 80 von 80 Bildern bytegleich mit base64. Die
+ * Ruecknahme ist weiter diese eine Zeile: mit `false` verhaelt sich der
+ * Installer Zeichen fuer Zeichen wie vorher.
  */
-const BILDFORM_ADRESSE_AN = false
+const BILDFORM_ADRESSE_AN = true
 
 /**
  * Der Anhang an die drei Installationsanfragen.
