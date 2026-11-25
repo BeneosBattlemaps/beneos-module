@@ -31,7 +31,8 @@ import { V2_FILTER_DEFS } from "./filter-defs.mjs"
 import { herkunftIconUrl, herkunftFarbe } from "./origin-schluessel.mjs"
 import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
-import { inDerKette, entsperre, sperre } from "../kompendium-riegel.mjs"
+import { inDerKette, entsperre, sperre, einmalJe } from "../kompendium-riegel.mjs"
+import { wartehinweis, einmalHinweis } from "../kompendium-wartehinweis.mjs"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { BeneosMagicShopGenerator } from "./magic-shop-generator.mjs"
@@ -5498,6 +5499,14 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     }
     const key  = String(target?.dataset?.assetKey || "")
     const name = String(target?.dataset?.assetName || key)
+    // A second click on the same asset while its removal still runs (or
+    // still waits behind an install) would queue a second removal that finds
+    // nothing left and reports RemoveFailed (stre-T-485).
+    const lauf = await einmalJe(`remove:${key}`, () => this.#removeAsset(key, name))
+    if (!lauf.lief) ui.notifications?.info?.(game.i18n.format("BENEOS.Cloud.Card.AlreadyRemoving", { name }))
+  }
+
+  async #removeAsset(key, name) {
     const plan = BeneosCloudWindowV2.removalPlan(key, BeneosUtility.beneosTokens)
     const placed = new Set(game.scenes.contents.flatMap(s => s.tokens.contents.map(t => t.actorId)))
     const worldIds = BeneosCloudWindowV2.worldCopiesToRemove(game.actors.contents, key, placed)
@@ -5514,9 +5523,11 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     })
     if (!ok) return
 
+    // One wait notice for the whole removal, not one per compendium.
+    const hinweis = einmalHinweis()
     const results = [
-      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_actors", plan.actors, Actor.implementation),
-      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_journal", plan.journals, JournalEntry.implementation),
+      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_actors", plan.actors, Actor.implementation, hinweis),
+      await BeneosCloudWindowV2.#deleteFromPack("world.beneos_module_journal", plan.journals, JournalEntry.implementation, hinweis),
     ]
     if (worldIds.length) {
       try {
@@ -5558,7 +5569,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
    * returned to the state it had. Ids missing from the index are skipped; a
    * missing pack, a failed delete or a failed relock each count as failed.
    */
-  static async #deleteFromPack(packName, ids, cls) {
+  static async #deleteFromPack(packName, ids, cls, beimWarten = wartehinweis) {
     if (!ids.length) return { deleted: 0, failed: 0 }
     const pack = game.packs.get(packName)
     if (!pack) {
@@ -5590,7 +5601,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       }
     }
     return { deleted, failed }
-    })
+    }, { beimWarten })
   }
 
   /**

@@ -29,16 +29,109 @@
  */
 
 let kette = Promise.resolve()
+// Eingereihte, noch nicht beendete Auftraege, und offene Dialoge in einem
+// Auftrag (stre-T-485). Beide nur fuer den Wartehinweis.
+let belegt = 0
+let nutzerDialoge = 0
+
+/**
+ * Die Huelle um jeden Auftrag. Ihr Name ist die Marke, an der `inDerKette`
+ * einen Wiedereintritt erkennt; deshalb ist sie eine benannte Funktion und
+ * wartet selbst auf den Auftrag.
+ */
+async function __beneosKettenauftrag(job) {
+  return await job()
+}
+
+/**
+ * Steht die Huelle im Stapel, ruft gerade ein laufender Auftrag.
+ *
+ * GRENZE, gemessen in V8 (node 22, dieselbe Engine wie Electron und
+ * Chromium): erkannt wird ein Aufruf ueber await-Ketten und aus
+ * `.then`-Rueckrufen, in jeder Tiefe, weil das Stapellimit fuer die Messung
+ * aufgehoben wird (bei den ueblichen 10 Rahmen fiel die Marke ab Tiefe 6
+ * heraus). NICHT erkannt wird ein Aufruf aus einem `setTimeout`- oder
+ * Ereignis-Rueckruf, weil dort kein asynchroner Stapel mehr zum Auftrag
+ * fuehrt. Browser, deren `Error.stack` keine asynchronen Rahmen fuehrt
+ * (Firefox und Safari je nach Einstellung), erkennen gar nichts. In beiden
+ * Faellen bleibt es beim Verhalten vor stre-T-485: der Aufruf reiht sich
+ * ein, und wartet der Auftrag darauf, haengt die Kette; der Wartehinweis
+ * macht das sichtbar. In V8 steht die Huelle nur im Stapel eines Auftrags,
+ * der gerade laeuft; ein Aufruf von aussen wird nie abgewiesen.
+ */
+function imAuftrag() {
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = Infinity
+  try {
+    return /__beneosKettenauftrag/.test(String(new Error().stack))
+  } finally {
+    Error.stackTraceLimit = limit
+  }
+}
 
 /**
  * Haengt einen Auftrag an die gemeinsame Kette und gibt sein Ergebnis zurueck.
  * Die Kette reisst nie ab: der Fehler eines Auftrags erreicht seinen Aufrufer,
  * der naechste Auftrag laeuft trotzdem.
+ *
+ * Ein Aufruf aus einem laufenden Auftrag heraus wird abgewiesen (CQ-R-06):
+ * abgewartet, wuerde er auf sich selbst warten und danach jeden Folgeauftrag
+ * anhalten. Die Abweisung ist eine abgelehnte Promise und kein synchroner
+ * Wurf, damit ein angehaengtes `.catch` oder `.finally` des Aufrufers greift
+ * und ein Aufruf ohne await den laufenden Auftrag nicht abbricht. Der Auftrag
+ * des abgewiesenen Aufrufs laeuft nicht; das steht im Protokoll, auch wenn
+ * niemand die Ablehnung abfaengt.
+ *
+ * `beimWarten({ dialogOffen })` wird einmal gerufen, wenn der Auftrag hinter
+ * einem anderen warten muss. Ein Wurf darin wird geschluckt, ein Hinweis darf
+ * den Auftrag nie kippen.
  */
-export function inDerKette(job) {
-  const glied = kette.then(job)
+export function inDerKette(job, { beimWarten } = {}) {
+  if (imAuftrag()) {
+    const fehler = new Error("kompendium-riegel: re-entry from a running chain job refused; awaited, it would wait on itself")
+    console.error("[Beneos]", fehler)
+    return Promise.reject(fehler)
+  }
+  if (belegt > 0 && beimWarten) {
+    try { beimWarten({ dialogOffen: nutzerDialoge > 0 }) } catch (fehler) {
+      console.warn("[Beneos] wait notice failed", fehler)
+    }
+  }
+  belegt++
+  const glied = kette.then(() => __beneosKettenauftrag(job)).finally(() => { belegt-- })
   kette = glied.catch(() => { })
   return glied
+}
+
+/**
+ * Ein Auftrag wartet auf eine Antwort des Kunden, etwa im Update-Dialog. Wer
+ * solange hinter ihm wartet, erfaehrt es ueber `dialogOffen`.
+ */
+export async function wartetAufNutzer(antwort) {
+  nutzerDialoge++
+  try {
+    return await antwort
+  } finally {
+    nutzerDialoge--
+  }
+}
+
+const laufendJe = new Set()
+
+/**
+ * Laesst je Schluessel nur einen Lauf zu. Ein zweiter Aufruf mit demselben
+ * Schluessel kehrt sofort mit `{ lief: false }` zurueck und ruft `job` nicht;
+ * ein anderer Schluessel laeuft. Nach dem Ende, auch nach einem Fehler, ist
+ * der Schluessel wieder frei.
+ */
+export async function einmalJe(schluessel, job) {
+  if (laufendJe.has(schluessel)) return { lief: false }
+  laufendJe.add(schluessel)
+  try {
+    return { lief: true, ergebnis: await job() }
+  } finally {
+    laufendJe.delete(schluessel)
+  }
 }
 
 const offen = new Map()
@@ -109,6 +202,21 @@ export async function sperre(packs) {
     }
   }
   if (ersterFehler) throw ersterFehler
+}
+
+/**
+ * Sperren im finally eines Auftrags, der vielleicht schon gescheitert ist.
+ * Gab es einen ersten Fehler, wird ein Fehler beim Sperren nur protokolliert:
+ * sonst ersetzte er den ersten beim Aufrufer, und die Ursache ginge verloren.
+ * Ohne ersten Fehler wirft er wie bei `sperre`.
+ */
+export async function sperreNach(packs, ersterFehler) {
+  try {
+    await sperre(packs)
+  } catch (fehler) {
+    if (!ersterFehler) throw fehler
+    console.error("[Beneos] relock failed after an earlier error; the earlier error is passed on", fehler)
+  }
 }
 
 /** Foundry meldet ein schon fehlendes Dokument mit diesem Wortlaut. */
