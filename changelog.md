@@ -22,6 +22,7 @@ All notable changes to this module will be documented in this file.
 - Fixed: Installing several creatures, items or spells in a row, or while the world is still checking its installed assets after loading, no longer fails with locked compendium errors, that check no longer stops halfway with a "does not exist" error, and the Beneos compendiums no longer stay unlocked afterwards. Removing a creature or cleaning up orphaned entries now tells you when it has to wait for an install or for an open dialog, and clicking Remove twice no longer reports a failure.
 - Fixed: When you sign in to Beneos Cloud with a correct code but the world cannot be connected to your account, the module now says so and asks you to request a new code. Before, it reported the code as invalid or expired, although that code was already used up.
 - Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic question once instead of twice.
+- Fixed: Czech and European Portuguese now address you in the same informal way throughout. Install messages, sign-in steps and setting hints that still used the formal form now match the tour and the rest of the module.
 
 **Changes**
 - Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`. Battlemaps install from the Beneos Cloud window as before.
