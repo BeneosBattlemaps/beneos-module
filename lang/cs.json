@@ -2346,7 +2346,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "Nepodařilo se zjistit, které vydání odebrat.",
   "BENEOS.Cloud.Uninstall.Failed": "Odebrání vydání se nezdařilo. Viz konzole prohlížeče.",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud už nezná přihlášení tohoto světa, proto byl uložený přístup z Patreonu odstraněn. Otevři okno Beneos Cloud a přihlas se znovu, aby se obnovil.",
-  "BENEOS.Cloud.AccountRebound": "Tento svět je nyní propojen s jiným účtem Beneos. Chceš-li přepnout zpět, přihlas se znovu.",
+  "BENEOS.Cloud.AccountRebound": "Tento svět je nyní propojen s jiným účtem Beneos. Chceš-li zde znovu používat svůj účet, odpoj se v nastavení Beneos Cloud a přihlas se.",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "Nové soubory za tvou podporu na Patreonu",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "Odemčeno pro tvůj účet od poslední návštěvy.",

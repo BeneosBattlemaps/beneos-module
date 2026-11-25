@@ -2346,7 +2346,7 @@
   "BENEOS.Cloud.Uninstall.NoTarget": "無法判斷要移除哪個發行版。",
   "BENEOS.Cloud.Uninstall.Failed": "移除發行版失敗。請查看瀏覽器主控台。",
   "BENEOS.Cloud.SessionExpired": "Beneos Cloud 已無法辨識這個世界的登入，因此已清除儲存的 Patreon 存取權限。請開啟 Beneos Cloud 視窗重新登入以恢復。",
-  "BENEOS.Cloud.AccountRebound": "此世界現已連結到另一個 Beneos 帳號。請重新登入以切換回來。",
+  "BENEOS.Cloud.AccountRebound": "此世界現已連結到另一個 Beneos 帳號。若要在這裡重新使用自己的帳號，請在 Beneos Cloud 設定中中斷連線，然後登入。",
   "BENEOS.Cloud.WhatsNew.Title": "Beneos Updates",
   "BENEOS.Cloud.WhatsNew.PatreonHeadline": "感謝你的 Patreon 支持，有新的下載",
   "BENEOS.Cloud.WhatsNew.PatreonSubline": "自你上次確認後已為你的帳號解鎖。",
