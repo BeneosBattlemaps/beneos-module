@@ -1241,7 +1241,7 @@
   "BENEOS.Cloud.Card.RemoveIntro": "'{name}' e tutte le sue varianti verranno eliminati da questo mondo, comprese le tue modifiche. Le creature già piazzate in una scena restano.",
   "BENEOS.Cloud.Card.RemoveDone": "{name} è stato rimosso da questo mondo.",
   "BENEOS.Cloud.Card.RemoveFailed": "Rimozione non riuscita. Vedi la console del browser.",
-  "BENEOS.Cloud.Card.AlreadyRemoving": "{name} è già in fase di rimozione, attendi.",
+  "BENEOS.Cloud.Card.AlreadyRemoving": "Una rimozione di {name} è già aperta o in corso.",
   "BENEOS.Cloud.Card.RemoveGmOnly": "Solo un GM può rimuovere contenuti dal mondo.",
   "BENEOS.Cloud.Card.NotAvailable": "Non disponibile",
   "BENEOS.Cloud.Card.LevelShort": "Liv.",
