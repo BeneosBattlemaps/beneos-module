@@ -116,6 +116,22 @@ test("verknuepftes Patreon ohne aktive Mitgliedschaft: SignInLost, Status geleer
   assert.equal(ablage.get(`${M}.beneos-cloud-patreon-status`), "no_patreon")
 })
 
+test("Grund des Servers steht einmal in der Konsole, mit und ohne vorherigen Zugang", async () => {
+  // Nachtrag MO-046 (Kalt-Review W1): vorher nur im Patron-Zweig geloggt, der Support sah beim
+  // Nicht-Patron nicht, warum die Welt abgemeldet war.
+  for (const vorher of [{}, { status: "not_active_patron" }, { status: "active_patron", token: true }]) {
+    frisch(vorher)
+    const warn = mock.method(console, "warn", () => {})
+    try {
+      await check(UNBEKANNT)
+      const mitGrund = warn.mock.calls.filter((c) => String(c.arguments[0]).includes(UNBEKANNT.information))
+      assert.equal(mitGrund.length, 1, JSON.stringify(vorher))
+    } finally {
+      warn.mock.restore()
+    }
+  }
+})
+
 test("Welt mit Zugang verliert die Bindung: weiter SessionExpired, Flags geleert", async () => {
   for (const vorher of [{ status: "active_patron", token: true, battlemap: true }, { status: "active_patron" }, { token: true }, { battlemap: true }]) {
     frisch(vorher)
