@@ -4,6 +4,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 // cloud-v2/beneos-install-state, and neither reaches back here.
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { anmeldenMitKennung, mitFaehig } from "./cloud-login-kennung.mjs"
+import { anmeldeAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 import {
@@ -1206,9 +1207,11 @@ export class BeneosCloudLogin extends FormApplication {
 
     // stre-T-135: the Cloud checks a revoked foundry id BEFORE it consumes the
     // code, so the one retry with a fresh id still has a valid code.
+    // stre-T-494 (after MO-054): every value travels in a POST form body, never
+    // in the address, so it stays out of web server, proxy and CDN logs.
     const sende = async (kennung) => {
-      const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&foundryId=${encodeURIComponent(kennung)}`)
-      const resp = await fetch(verURL, { credentials: 'same-origin' })
+      const verify = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-verify.php", mitFaehig({ email, code, foundryId: kennung }))
+      const resp = await fetch(verify.url, verify.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
@@ -1242,10 +1245,12 @@ export class BeneosCloudLogin extends FormApplication {
     // otpv=2 marks this client as understanding the new responses (new_account /
     // rate_limited / undeliverable). The server keeps legacy behavior for clients
     // that omit it, so the hardened endpoint is safe to deploy before this module ships.
-    let reqURL = `${BeneosUtility.cloudBase()}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(userId)}&otpv=2`
-    if (confirmCreate) reqURL += `&confirmCreate=1`
+    // stre-T-494 (after MO-054): POST form body; otpv and confirmCreate travel as text.
+    const anfrage = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-request.php", {
+      email, foundryId: userId, otpv: "2", confirmCreate: confirmCreate ? "1" : undefined,
+    })
     try {
-      const resp = await fetch(reqURL, { credentials: 'same-origin' })
+      const resp = await fetch(anfrage.url, anfrage.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
@@ -1285,8 +1290,8 @@ export class BeneosCloudLogin extends FormApplication {
   scheduleDeliveryCheck(email) {
     setTimeout(async () => {
       try {
-        const url = `${BeneosUtility.cloudBase()}/foundry-otp-status.php?email=${encodeURIComponent(email)}`
-        const resp = await fetch(url, { credentials: 'same-origin' })
+        const status = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-status.php", { email })
+        const resp = await fetch(status.url, status.init)
         if (!resp.ok) return
         const data = await resp.json()
         if (data.result === 'OK' && data.deliverable === false) {

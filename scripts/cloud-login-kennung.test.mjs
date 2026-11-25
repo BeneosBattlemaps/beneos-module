@@ -15,7 +15,7 @@ import { pruefstand } from "../tools/lib/foundry-attrappe.mjs"
 let modul = null
 try { modul = await import("./cloud-login-kennung.mjs") } catch (_e) { modul = null }
 const anmelden = modul?.anmeldenMitKennung ?? (async (sende, k) => ({ daten: await sende(k), kennung: k }))
-const mitFaehig = modul?.mitFaehig ?? ((url) => url)
+const mitFaehig = modul?.mitFaehig ?? ((felder) => felder)
 
 const t = pruefstand("stre-T-135: Anmeldung mit der Weltkennung")
 
@@ -89,9 +89,13 @@ t.abschnitt("foundry_id aus der Antwort")
 }
 
 t.abschnitt("faehig")
-t.gleich("die Adresse bekommt faehig=1 angehaengt",
-  mitFaehig("https://cloud.example/foundry-login.php?email=a&foundryId=b"),
-  "https://cloud.example/foundry-login.php?email=a&foundryId=b&faehig=1")
+// Seit stre-T-494 ein Feld im POST-Rumpf statt eines Anhangs an die Adresse.
+{
+  const felder = { email: "a", foundryId: "b" }
+  t.gleich("die Felder bekommen faehig=1",
+    JSON.stringify(mitFaehig(felder)), JSON.stringify({ email: "a", foundryId: "b", faehig: "1" }))
+  t.gleich("die uebergebenen Felder bleiben unveraendert", JSON.stringify(felder), JSON.stringify({ email: "a", foundryId: "b" }))
+}
 
 t.abschnitt("Einbindung in beneos_cloud.js")
 {
@@ -106,7 +110,7 @@ t.abschnitt("Einbindung in beneos_cloud.js")
   t.gleich("[Struktur] kein Weg pollt mit der alten Kennung", zahl("this.pollForAccess(userId)"), 0)
   t.gleich("[Struktur] es gibt keinen Passwortweg mehr", zahl("foundry-login.php"), 0)
   t.gleich("[Struktur] die Codeanmeldung traegt faehig=1",
-    zahl("mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"), 1)
+    zahl("\"foundry-otp-verify.php\", mitFaehig({ email, code, foundryId: kennung })"), 1)
 }
 
 t.ende()

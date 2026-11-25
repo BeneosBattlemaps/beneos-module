@@ -186,6 +186,11 @@
  * Manifest, Tag-ZIP und der module.json darin. Ohne Netz, mit einer Attrappe
  * fuer fetch. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-494 dazu `anmeldung` (`scripts/cloud-v2/anmelde-anfrage.test.mjs`):
+ * die Code-Anmeldung schickt E-Mail, Code, Weltkennung und `faehig` als
+ * POST-Rumpf und nichts davon in der Adresse, und es gibt keinen Passwortweg
+ * an foundry-login.php mehr. An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -236,6 +241,7 @@ const SATZ_AUSSERHALB = {
   bonustab: "scripts/loot/actor-set-bonus-tab.test.mjs",
   kaufknopf: "scripts/cloud-v2/cloud-kaufknopf.test.mjs",
   kennung: "scripts/cloud-login-kennung.test.mjs",
+  anmeldung: "scripts/cloud-v2/anmelde-anfrage.test.mjs",
   kodexreiter: "scripts/codex2/codex-sheet-wiring.test.mjs",
   doppelwache: "tools/haken/vorhaken.test.mjs",
   vorpush: "tools/haken/vorpush.test.mjs",
@@ -296,6 +302,7 @@ const EXPORT = "scripts/stream/stream-export.mjs";
 // stre-T-142 B2: maskiere und wandle zogen aus stream-export hierher um.
 const TORMASKE = "scripts/stream/stream-tormaske.mjs";
 const KENNUNG = "scripts/cloud-login-kennung.mjs";
+const ANMELDE = "scripts/cloud-v2/anmelde-anfrage.mjs";
 const KODEX = "scripts/codex2/codex-sheet-wiring.mjs";
 const TOUR = "scripts/beneos_tours.js";
 const HAKEN = "tools/haken/pre-commit";
@@ -1748,8 +1755,29 @@ const SABOTAGEN = [
   { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung pollt mit der Kennung aus der Anmeldung","[Struktur] kein Weg pollt mit der alten Kennung"], ersetze: [[CLOUD, "        this.pollForAccess(kennung)\n", "        this.pollForAccess(userId)\n"]] },
   // stre-T-494: der Passwortweg ist fort (MO-036); kehrt eine Adresse an foundry-login.php zurueck, wird es rot.
   { satz: "kennung", ziel: ["[Struktur] es gibt keinen Passwortweg mehr"], ersetze: [[CLOUD, "    if (loginData.mode === \"otp\") {\n", "    if (loginData.password) fetch(`${BeneosUtility.cloudBase()}/foundry-login.php`)\n    if (loginData.mode === \"otp\") {\n"]] },
-  { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "const verURL = mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php", "const verURL = (`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"]] },
-  { satz: "kennung", ziel: ["die Adresse bekommt faehig=1 angehaengt"], ersetze: [[KENNUNG, "  return `${url}&faehig=1`\n", "  return url\n"]] },
+  { satz: "kennung", ziel: ["[Struktur] die Codeanmeldung traegt faehig=1"], ersetze: [[CLOUD, "\"foundry-otp-verify.php\", mitFaehig({ email, code, foundryId: kennung })", "\"foundry-otp-verify.php\", ({ email, code, foundryId: kennung })"]] },
+  { satz: "kennung", ziel: ["die Felder bekommen faehig=1"], ersetze: [[KENNUNG, "  return { ...felder, faehig: \"1\" }\n", "  return { ...felder }\n"]] },
+  { satz: "kennung", ziel: ["die uebergebenen Felder bleiben unveraendert"], ersetze: [[KENNUNG, "  return { ...felder, faehig: \"1\" }\n", "  felder.faehig = \"1\"\n  return felder\n"]] },
+  // ---------------------------------------------------------------- anmeldung (stre-T-494)
+  // Code-Anmeldung per POST-Rumpf (nach MO-054) und kein Passwortweg (nach MO-036).
+  { satz: "anmeldung", ziel: ["Helfer: Methode POST","requestCode: POST an foundry-otp-request.php ohne Adresswerte","verify: POST an foundry-otp-verify.php ohne Adresswerte","gesperrt: auch der zweite Ruf ist ein POST ohne Adresswerte","status: POST an foundry-otp-status.php ohne Adresswerte"], ersetze: [[ANMELDE, "init: { method: \"POST\", body, credentials: \"same-origin\" },", "init: { method: \"GET\", body, credentials: \"same-origin\" },"]] },
+  { satz: "anmeldung", ziel: ["Helfer: die Adresse ist der nackte Endpunkt","Zwei Werte: die Adresse bleibt dieselbe","requestCode: POST an foundry-otp-request.php ohne Adresswerte","verify: POST an foundry-otp-verify.php ohne Adresswerte","gesperrt: auch der zweite Ruf ist ein POST ohne Adresswerte","status: POST an foundry-otp-status.php ohne Adresswerte"], ersetze: [[ANMELDE, "    url: `${basis}/${endpunkt}`,", "    url: `${basis}/${endpunkt}?${body}`,"]] },
+  { satz: "anmeldung", ziel: ["Helfer: credentials same-origin wie vorher"], ersetze: [[ANMELDE, "credentials: \"same-origin\" },", "credentials: \"include\" },"]] },
+  { satz: "anmeldung", ziel: ["Helfer: undefined, null und leer fallen weg"], ersetze: [[ANMELDE, "    if (wert === undefined || wert === null || wert === \"\") continue", "    if (wert === undefined) continue"]] },
+  { satz: "anmeldung", ziel: ["Zwei Werte: faehig=1 steht im Rumpf","verify: email, code, Kennung und faehig=1 im Rumpf","gesperrt: auch der zweite Ruf traegt faehig=1"], ersetze: [[ANMELDE, "    if (wert === undefined || wert === null || wert === \"\") continue", "    if (wert === undefined || wert === null || wert === \"\" || name === \"faehig\") continue"]] },
+  { satz: "anmeldung", ziel: ["Helfer: der Rumpf traegt alle Felder","Zwei Werte: eine andere Kennung aendert den Rumpf"], ersetze: [[ANMELDE, "    body.append(name, String(wert))", "    if (name !== \"foundryId\") body.append(name, String(wert))"]] },
+  { satz: "anmeldung", ziel: ["Helfer: Sonderzeichen werden einmal formularkodiert"], ersetze: [[ANMELDE, "    body.append(name, String(wert))", "    body.append(name, encodeURIComponent(String(wert)))"]] },
+  { satz: "anmeldung", ziel: ["verify: email, code, Kennung und faehig=1 im Rumpf","gesperrt: auch der zweite Ruf traegt faehig=1"], ersetze: [[CLOUD, "\"foundry-otp-verify.php\", mitFaehig({ email, code, foundryId: kennung })", "\"foundry-otp-verify.php\", ({ email, code, foundryId: kennung })"]] },
+  { satz: "anmeldung", ziel: ["gesperrt: der zweite Ruf traegt die neu gewuerfelte Kennung"], ersetze: [[CLOUD, "mitFaehig({ email, code, foundryId: kennung })", "mitFaehig({ email, code, foundryId: userId })"]] },
+  { satz: "anmeldung", ziel: ["verify: genau ein Abruf"], ersetze: [[CLOUD, "      const resp = await fetch(verify.url, verify.init)", "      await fetch(verify.url, verify.init)\n      const resp = await fetch(verify.url, verify.init)"]] },
+  { satz: "anmeldung", ziel: ["verify: gepollt wird mit der Kennung der Welt","gesperrt: gepollt wird mit der neuen Kennung"], ersetze: [[CLOUD, "        this.pollForAccess(kennung)\n", "        this.pollForAccess(kennung + \"x\")\n"]] },
+  { satz: "anmeldung", ziel: ["gesperrt: zwei verify-Rufe"], ersetze: [[KENNUNG, "  if (daten?.result === \"error\" && daten?.code === SPERRCODE) {\n", "  if (false) {\n"]] },
+  { satz: "anmeldung", ziel: ["gesperrt: der erste Ruf traegt die Kennung der Welt"], ersetze: [[KENNUNG, "  let daten = await sende(kennung)\n", "  let daten = await sende(wuerfle())\n"]] },
+  { satz: "anmeldung", ziel: ["requestCode: genau ein Abruf"], ersetze: [[CLOUD, "      const resp = await fetch(anfrage.url, anfrage.init)", "      await fetch(anfrage.url, anfrage.init)\n      const resp = await fetch(anfrage.url, anfrage.init)"]] },
+  { satz: "anmeldung", ziel: ["requestCode: email, foundryId und otpv=2 im Rumpf, kein confirmCreate"], ersetze: [[CLOUD, "email, foundryId: userId, otpv: \"2\", confirmCreate: confirmCreate ? \"1\" : undefined,", "email, foundryId: userId, otpv: \"1\", confirmCreate: confirmCreate ? \"1\" : \"0\","]] },
+  { satz: "anmeldung", ziel: ["requestCode mit Bestaetigung: confirmCreate ist der Text 1"], ersetze: [[CLOUD, "confirmCreate: confirmCreate ? \"1\" : undefined,", "confirmCreate: confirmCreate ? true : undefined,"]] },
+  { satz: "anmeldung", ziel: ["status: POST an foundry-otp-status.php ohne Adresswerte","status: nur email im Rumpf","[Struktur] kein Anmelde-Endpunkt mit Query-String","[Struktur] alle drei Anmelde-Endpunkte gehen ueber anmeldeAnfrage"], ersetze: [[CLOUD, "const status = anmeldeAnfrage(BeneosUtility.cloudBase(), \"foundry-otp-status.php\", { email })", "const status = { url: `${BeneosUtility.cloudBase()}/foundry-otp-status.php?email=${encodeURIComponent(email)}`, init: {} }"]] },
+  { satz: "anmeldung", ziel: ["Passwortdialog: kein Abruf traegt das Passwort","Passwortdialog: kein Abruf an foundry-login.php","[Struktur] kein password= im Modul","[Struktur] kein foundry-login im Modul"], ersetze: [[CLOUD, "    if (loginData.mode === \"otp\") {\n", "    if (loginData.password) fetch(`${BeneosUtility.cloudBase()}/foundry-login.php?password=${loginData.password}`)\n    if (loginData.mode === \"otp\") {\n"]] },
   // ---------------------------------------------------------------- kodexreiter (stre-T-156)
   { satz: "kodexreiter", ziel: ["[Struktur] ein V2-Bogen bekommt am renderActorSheet keinen Reiter"], ersetze: [[KODEX, "  if (sheet instanceof foundry.applications.api.ApplicationV2) return\n", ""]] },
   { satz: "kodexreiter", ziel: ["[Struktur] ein V1-Bogen einer Beneos-Kreatur bekommt genau einen Reiter"], ersetze: [[KODEX, "  haengeKodexReiter(sheet, html)\n})", "  void haengeKodexReiter\n})"]] },
@@ -3022,7 +3050,7 @@ if (process.argv.includes("--alle-saetze")) {
 // sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz betreffkennung.
 const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "anmeldung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {

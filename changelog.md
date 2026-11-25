@@ -14,6 +14,9 @@ All notable changes to this module will be documented in this file.
   removing failed; it tells you a removal is already open or in progress.
 - Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic
   question once instead of twice.
+- Fixed: Signing in to Beneos Cloud no longer puts your email address and
+  sign-in code into the web address of the request, so they no longer end
+  up in server logs. The unused password sign-in has been removed.
 
 ### 14.5.0-beta.12 # 2026-11-25
 
