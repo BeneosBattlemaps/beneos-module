@@ -10,6 +10,7 @@ import { insKompendiumImportieren } from "./cloud-v2/kompendium-import.mjs"
 import { kontoWechsel } from "./cloud-v2/konto-wechsel.mjs"
 import { anmeldungVerloren } from "./cloud-v2/anmeldung-verloren.mjs"
 import { otpFehlerSchluessel } from "./cloud-v2/otp-fehler.mjs"
+import { inDerKette, entsperre, sperre } from "./kompendium-riegel.mjs"
 
 // FilePicker.upload(..., { notify: false }) used to swallow failures
 // (disk full, permissions, server reject) — the await would resolve,
@@ -1161,14 +1162,11 @@ export class BeneosCloud {
   // waehrend Lauf B noch Folder.create im Pack macht -> "You may not create
   // documents in the locked compendium". Der inflight-Guard oben ist nur
   // pro Asset-Key und verhindert das nicht. Deshalb laufen alle Installs
-  // als FIFO-Kette strikt nacheinander.
-  installQueue = Promise.resolve()
-
+  // als FIFO-Kette strikt nacheinander. Die Kette liegt im gemeinsamen Riegel
+  // (scripts/kompendium-riegel.mjs), damit auch der Schreibteil von
+  // BeneosUtility.verifySettingsAgainstCompendium in ihr laeuft (stre-T-233).
   enqueueInstall(job) {
-    const link = this.installQueue.then(job)
-    // Kette darf nie abreissen; der Fehler erreicht den Aufrufer ueber `link`.
-    this.installQueue = link.catch(() => { })
-    return link
+    return inDerKette(job)
   }
 
   // Batch-install error log: each entry records an asset whose post-install
@@ -2304,8 +2302,13 @@ export class BeneosCloud {
     }
     let itemRecords = await itemPack.getIndex()
     if (!isBatch) {
-      await itemPack.configure({ locked: false })
+      await entsperre([itemPack])
     }
+    // stre-T-233: ein Wurf im Block darunter liess das Kompendium offen. Der
+    // Block bleibt bewusst uneingerueckt, damit der cherry-pick auf main klein
+    // bleibt; das finally steht am Ende der Methode.
+    let itemGesperrt = isBatch
+    try {
 
     for (let itemKey in itemArray) {
       let itemData = itemArray[itemKey]
@@ -2460,7 +2463,8 @@ export class BeneosCloud {
 
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Item", properName)
-      await itemPack.configure({ locked: true })
+      await sperre([itemPack])
+      itemGesperrt = true
       try { await _beneosRefreshOpenPackWindows(itemPack) } catch (e) { /* refresh failed */ }
       // Fix #C2: in-place refresh — keeps search engine open, scroll position,
       // and prevents the battlemap notice from re-appearing on every install.
@@ -2474,6 +2478,10 @@ export class BeneosCloud {
       if (installedItemKey) await this.drainPendingItemDrops(installedItemKey, "item")
     } else {
       this.updateInstalledAssets() // Update the installed assets count
+    }
+
+    } finally {
+      if (!itemGesperrt) await sperre([itemPack])
     }
   }
 
@@ -2501,8 +2509,11 @@ export class BeneosCloud {
     }
     let spellRecords = await spellPack.getIndex()
     if (!isBatch) { // Lock/Unlock only in single install mode
-      await spellPack.configure({ locked: false })
+      await entsperre([spellPack])
     }
+    // stre-T-233: siehe importItemToCompendium, das finally steht am Ende.
+    let spellGesperrt = isBatch
+    try {
 
     for (let spellKey in spellArray) {
       let spellData = spellArray[spellKey]
@@ -2641,7 +2652,8 @@ export class BeneosCloud {
 
     if (!isBatch) { // Lock/Unlock only in single install mode
       this.sendChatMessageResult(event, "Spell", properName)
-      await spellPack.configure({ locked: true })
+      await sperre([spellPack])
+      spellGesperrt = true
       try { await _beneosRefreshOpenPackWindows(spellPack) } catch (e) { /* refresh failed */ }
       // Fix #C2: see importItemToCompendium for rationale.
       // Fix #B-5c: spellKey is not in scope outside the for-loop above; pull
@@ -2653,6 +2665,10 @@ export class BeneosCloud {
       if (installedSpellKey) await this.drainPendingItemDrops(installedSpellKey, "spell")
     } else {
       this.updateInstalledAssets() // Update the installed assets count
+    }
+
+    } finally {
+      if (!spellGesperrt) await sperre([spellPack])
     }
   }
 
@@ -3454,7 +3470,18 @@ export class BeneosCloud {
     if (!selectedIndices.length) return
 
     const packName = actorPack.collection || actorPack.metadata?.id || "world.beneos_module_actors"
-    const wasLocked = actorPack.locked
+    // Beide Zweige schreiben in derselben Kette wie Installation und
+    // Startpruefung (stre-T-233), entsperren ueber den Zaehler und sperren im
+    // finally. Die Sperre wird erst in der Kette gelesen.
+    const imRiegel = (schreibe) => inDerKette(async () => {
+      const wasLocked = actorPack.locked
+      if (wasLocked) await entsperre([actorPack])
+      try {
+        await schreibe()
+      } finally {
+        if (wasLocked) await sperre([actorPack])
+      }
+    })
 
     // Relink branch: instead of deleting, we set folder=null on the
     // selected entries. The compendium view then shows them at the pack
@@ -3467,9 +3494,7 @@ export class BeneosCloud {
         .map(id => ({ _id: id, folder: null }))
       if (!updates.length) return
       try {
-        if (wasLocked) await actorPack.configure({ locked: false })
-        await Actor.implementation.updateDocuments(updates, { pack: packName })
-        if (wasLocked) await actorPack.configure({ locked: true })
+        await imRiegel(() => Actor.implementation.updateDocuments(updates, { pack: packName }))
         try { await _beneosRefreshOpenPackWindows(actorPack) } catch (e) { /* refresh failed */ }
       } catch (err) {
         console.error("[Beneos Cloud] OrphanCleanup relink failed", err)
@@ -3495,9 +3520,7 @@ export class BeneosCloud {
     const ids = selectedIndices.map(i => orphans[i]?.doc?.id).filter(Boolean)
     if (!ids.length) return
     try {
-      if (wasLocked) await actorPack.configure({ locked: false })
-      await Actor.implementation.deleteDocuments(ids, { pack: packName })
-      if (wasLocked) await actorPack.configure({ locked: true })
+      await imRiegel(() => Actor.implementation.deleteDocuments(ids, { pack: packName }))
       try { await _beneosRefreshOpenPackWindows(actorPack) } catch (e) { /* refresh failed */ }
     } catch (err) {
       console.error("[Beneos Cloud] OrphanCleanup delete failed", err)
@@ -3540,9 +3563,11 @@ export class BeneosCloud {
     let journalRecords = await journalPack.getIndex()
 
     if (!isBatch) { // Lock/Unlock only in single install mode
-      await actorPack.configure({ locked: false })
-      await journalPack.configure({ locked: false })
+      await entsperre([actorPack, journalPack])
     }
+    // stre-T-233: siehe importItemToCompendium, das finally steht am Ende.
+    let tokenGesperrt = isBatch
+    try {
 
     for (let tokenKey in tokenArray) {
       let tokenData = tokenArray[tokenKey]
@@ -3872,8 +3897,8 @@ export class BeneosCloud {
 
       if (!isBatch) { // Lock/Unlock only in single install mode
         this.sendChatMessageResult(event, "Token", properName)
-        await actorPack.configure({ locked: true })
-        await journalPack.configure({ locked: true })
+        await sperre([actorPack, journalPack])
+        tokenGesperrt = true
         // Refresh any open compendium windows so the freshly imported actors
         // become visible without a manual close+reopen. Failure is silent
         // because this is a UX polish step, not a correctness requirement.
@@ -3887,6 +3912,10 @@ export class BeneosCloud {
       } else {
         this.updateInstalledAssets() // Update the installed assets count
       }
+    }
+
+    } finally {
+      if (!tokenGesperrt) await sperre([actorPack, journalPack])
     }
   }
 
@@ -3947,7 +3976,6 @@ export class BeneosCloud {
       deferWorldImport = (choice === "download")
     }
 
-    await BeneosUtility.lockUnlockAllPacks(false)     // Unlock all packs before batch install
     // COunt the number of assets to install
     this.nbInstalled = 0
     this.toInstall = Object.keys(filteredAssets).length
@@ -3956,6 +3984,14 @@ export class BeneosCloud {
       ui.notifications.warn(game.i18n.localize("BENEOS.Cloud.Notification.BatchEmpty"))
       return;
     }
+    // stre-T-233: Entsperren und Sperren laufen als eigene Auftraege in der
+    // Kette, damit sie nie mit einem laufenden Auftrag ueberlappen. Gesperrt
+    // wird im finally unten, awaited, nachdem jeder Auftrag fertig ist; vorher
+    // sperrte updateInstalledAssets in einem Zeitgeber ohne await, und ein
+    // Lauf, dessen Zaehler nie voll wurde, sperrte nie. Ueber den Zaehler des
+    // Riegels kann ein Auftrag, der dazwischen faellt (Einzelinstallation,
+    // verify), die Kompendien der Sammlung nicht zusperren.
+    await inDerKette(() => BeneosUtility.lockUnlockAllPacks(false))     // Unlock all packs before batch install
     BeneosUtility.debugMessage("Batch installing assets", filteredAssets, this.toInstall)
     // Stage 14: temporarily flip noWorldImport for the lifetime of this batch
     // when the user picked "Download only". Imports below are fire-and-forget
@@ -3983,19 +4019,17 @@ export class BeneosCloud {
       await Promise.allSettled(pending)
     } finally {
       this.noWorldImport = prevNoWorldImport
+      await inDerKette(() => BeneosUtility.lockUnlockAllPacks(true)) // Lock all packs after batch install
     }
-    //await BeneosUtility.lockUnlockAllPacks(true) // Lock all packs after batch install
   }
 
   async updateInstalledAssets() {
     // V2 surfaces progress via the cloud-window footer band. Chat-message
-    // and toast generation removed; the counter and pack-lock/re-render
-    // sequence remains so the legacy V1 batchInstall path still completes
-    // cleanly.
+    // and toast generation removed; the counter and re-render sequence
+    // remains. The packs are locked by batchInstall itself (stre-T-233).
     this.nbInstalled++;
     if (this.nbInstalled >= this.toInstall) {
       setTimeout(() => {
-        BeneosUtility.lockUnlockAllPacks(true)
         this.noWorldImport = false
         // Batch summary: report any assets whose post-install health-check
         // found missing aspects. Without this the GM only sees a generic
@@ -4085,7 +4119,8 @@ export class BeneosCloud {
   // sequence pipelines and avoid the compendium-lock race.
   //
   // `isBatch` controls the compendium lock contract: when true, the caller
-  // (batchInstall) is responsible for the global lockUnlockAllPacks cycle.
+  // (batchInstall) is responsible for the global lockUnlockAllPacks cycle and
+  // locks again in its finally once every job has settled (stre-T-233).
   // `opts.gated` is the system-compat gate flag: when true, the caller has
   // already shown the prompt and we skip the per-import gate. The two are
   // intentionally orthogonal — single-asset paths like the V2 install
@@ -4102,10 +4137,10 @@ export class BeneosCloud {
    *   - a canvas drop waiting for this creature gets placed from the world
    *     actor that already exists (which is why the check demands one),
    *   - the cloud window is told the install ended, or its card spins forever,
-   *   - in a batch, updateInstalledAssets still has to see this asset. It is
-   *     the function that re-locks every compendium and clears noWorldImport at
-   *     the end of a run, and it fires on a counter. A skip that bypassed it
-   *     would leave the packs unlocked for the rest of the session.
+   *   - in a batch, updateInstalledAssets still has to see this asset. It
+   *     clears noWorldImport and reports the summary at the end of a run, and
+   *     it fires on a counter. The packs no longer hang on it: batchInstall
+   *     locks them itself once every job has settled (stre-T-233).
    */
   async _beneosSkipKreatur(tokenKey, isBatch) {
     const urteil = await _beneosKreaturBrauchtInstallation(tokenKey, {
