@@ -68,6 +68,8 @@ const TOUREN = "scripts/beneos_tours.js"
 const MIG = "scripts/cloud-v2/beneos-v14-scene-migration.mjs"
 const TD = "scripts/cloud-v2/token-delta.mjs"
 const V15 = "tools/v15-globale-bench/bench.mjs"
+const RIEGEL = "scripts/kompendium-riegel.mjs"
+const UTIL = "scripts/beneos_utility.js"
 // stream-sprachen liest auch `tools/` nach Aufrufern. Stuende der Aufruf hier
 // am Stueck, faende der Bench in dieser Tabelle einen zweiten Aufrufer, und
 // die Sabotage daran bliebe gruen (gemessen beim Bau, stre-T-015).
@@ -84,6 +86,7 @@ const FETCHING1 = 'game.i18n.format("BENEOS.Stream.Offline.Fetching1", '
 export const BENCHES = {
   "waisen-adressform": { art: "zeilen", kopie: "teile" },
   "bildform-adresse": { art: "zeilen", kopie: "teile" },
+  "kompendium-riegel": { art: "zeilen", kopie: "teile" },
   "filter-reihenfolge": { art: "zeilen", kopie: "teile", rot: ["  FAIL "] },
   "stream-sprachen": { art: "zeilen", kopie: "teile", rot: ["  FAIL "] },
   "paket-grenze": { art: "zeilen", kopie: "baum" },
@@ -331,6 +334,77 @@ export const SABOTAGEN = [
   // An der Bench: lehnt Foundry ab und die Bench sieht es nicht, faellt die Gegenprobe.
   { bench: "scene-merge-token", ziel: ["counter check"],
     ersetze: [[BENCHDATEI("scene-merge-token"), "    catch (_) { return null }\n", "    catch (_) { return welt }\n"]] },
+
+  // stre-T-233 kompendium-riegel. Am Riegel selbst: Kette, finally, das
+  // Schlucken von "does not exist", der Zaehler, der Standvergleich und die
+  // Reihenfolge der Registry.
+  { bench: "kompendium-riegel", ziel: ["A9 "],
+    ersetze: [[RIEGEL, "  const glied = kette.then(job)", "  const glied = Promise.resolve().then(job)"]] },
+  { bench: "kompendium-riegel", ziel: ["A7b "],
+    ersetze: [[RIEGEL, "      await sperre(packs).catch((fehler) => { abbruch ??= fehler })", "      if (!abbruch) await sperre(packs).catch((fehler) => { abbruch ??= fehler })"]] },
+  // Sperre bricht beim ersten Fehler ab, oder der Sperrfehler verdraengt die
+  // Bereinigung.
+  { bench: "kompendium-riegel", ziel: ["A15 "],
+    ersetze: [[RIEGEL, "    try {\n      await pack.configure({ locked: true })\n    } catch (fehler) {\n      ersterFehler ??= fehler\n    }", "    await pack.configure({ locked: true })"]] },
+  { bench: "kompendium-riegel", ziel: ["A15 "],
+    ersetze: [[RIEGEL, "      await sperre(packs).catch((fehler) => { abbruch ??= fehler })", "      await sperre(packs)"]] },
+  // Ein zweiter Aufrufer wartet nicht auf das laufende Oeffnen.
+  { bench: "kompendium-riegel", ziel: ["A16 "],
+    ersetze: [[RIEGEL, "        await oeffnend.get(k)\n", ""]] },
+  // Das finally entfernt und den Fehler wie frueher direkt geworfen: dann
+  // bleibt nach einem harten Fehler offen. Das finally allein ist seit dem
+  // Teilerfolg-Umbau Rueckfallnetz, weil die Schleife den Fehler selbst faengt.
+  { bench: "kompendium-riegel", ziel: ["A7b "],
+    ersetze: [[RIEGEL, "              abbruch = fehler\n              break", "              throw fehler"],
+      [RIEGEL, "      await sperre(packs).catch((fehler) => { abbruch ??= fehler })\n    }\n", "    }\n    await sperre(packs)\n"]] },
+  { bench: "kompendium-riegel", ziel: ["A6 "],
+    ersetze: [[RIEGEL, "            if (!istFehlend(fehler)) {", "            if (true) {"]] },
+  { bench: "kompendium-riegel", ziel: ["A13 "],
+    ersetze: [[RIEGEL, "      const jetzt = (offen.get(k) ?? 1) - 1\n      if (jetzt <= 0) offen.delete(k)\n      else offen.set(k, jetzt)\n", ""]] },
+  { bench: "kompendium-riegel", ziel: ["A13 "],
+    ersetze: [[RIEGEL, "      await sperre(geoeffnet).catch(() => { })\n", ""]] },
+  { bench: "kompendium-riegel", ziel: ["A14 "],
+    ersetze: [[RIEGEL, "    for (const e of erledigt) delete e.registry()[e.key]", "    if (!abbruch) for (const e of erledigt) delete e.registry()[e.key]"]] },
+  { bench: "kompendium-riegel", ziel: ["A5b ", "A11 "],
+    ersetze: [[RIEGEL, "    if (n > 1) {", "    if (false) {"]] },
+  { bench: "kompendium-riegel", ziel: ["A10 "],
+    ersetze: [[RIEGEL, "eintraege.filter((e) => JSON.stringify(e.registry()[e.key]) === e.stand)", "eintraege.filter(() => true)"]] },
+  { bench: "kompendium-riegel", ziel: ["A8 "],
+    ersetze: [[RIEGEL, "    await entsperre(packs)\n    try {", "    for (const e of gueltig) delete e.registry()[e.key]\n    await entsperre(packs)\n    try {"]] },
+  // Am Modulcode: jede Stelle, die den Riegel benutzen muss.
+  { bench: "kompendium-riegel", ziel: ["B1 ", "B11 "],
+    ersetze: [[CLOUD, "      await entsperre([itemPack])", "      await itemPack.configure({ locked: false })"]] },
+  { bench: "kompendium-riegel", ziel: ["B12 "],
+    ersetze: [[CLOUD, "    } finally {\n      if (!spellGesperrt) await sperre([spellPack])\n    }", "    } catch (f) { throw f }"]] },
+  { bench: "kompendium-riegel", ziel: ["B10 "],
+    ersetze: [[CLOUD, "    } finally {\n      if (!tokenGesperrt) await sperre([actorPack, journalPack])\n    }", "    } catch (f) { throw f }"]] },
+  { bench: "kompendium-riegel", ziel: ["B8 "],
+    ersetze: [[CLOUD, "      await inDerKette(() => BeneosUtility.lockUnlockAllPacks(true)) // Lock all packs after batch install\n", ""]] },
+  { bench: "kompendium-riegel", ziel: ["B3 "],
+    ersetze: [[CLOUD, "    return inDerKette(job)", "    return Promise.resolve().then(job)"]] },
+  { bench: "kompendium-riegel", ziel: ["B4 "],
+    ersetze: [[UTIL, "    await verwirfImRiegel({", "    await (async (o) => o)({"]] },
+  { bench: "kompendium-riegel", ziel: ["B5 "],
+    ersetze: [[UTIL, "    const eintrag = (registry, stand, fullKey, loesche) => ({", "    for (let fullKey of tokenDrop) delete this.beneosTokens[fullKey]\n    const eintrag = (registry, stand, fullKey, loesche) => ({"]] },
+  { bench: "kompendium-riegel", ziel: ["B14 "],
+    ersetze: [[UTIL, "      registry, key: fullKey, stand: stand.get(fullKey), loesche", "      registry, key: fullKey, stand: JSON.stringify(registry()[fullKey]), loesche"]] },
+  { bench: "kompendium-riegel", ziel: ["B7 "],
+    ersetze: [[CLOUD, "      setTimeout(() => {\n        this.noWorldImport = false\n", "      setTimeout(() => {\n        BeneosUtility.lockUnlockAllPacks(true)\n        this.noWorldImport = false\n"]] },
+  { bench: "kompendium-riegel", ziel: ["B9 "],
+    ersetze: [[CLOUD, "    await inDerKette(() => BeneosUtility.lockUnlockAllPacks(false))", "    await BeneosUtility.lockUnlockAllPacks(false)"]] },
+  // Die drei Wege ausserhalb der Installation.
+  { bench: "kompendium-riegel", ziel: ["B15 "],
+    ersetze: [["scripts/beneos-asset-path-repair.js", "  return fam.pack ? inDerKette(schreibe) : schreibe();", "  return schreibe();"]] },
+  { bench: "kompendium-riegel", ziel: ["B15 "],
+    ersetze: [["scripts/cloud-v2/cloud-window-v2.mjs", "    return inDerKette(async () => {\n    const present", "    return Promise.resolve().then(async () => {\n    const present"]] },
+  { bench: "kompendium-riegel", ziel: ["B15 "],
+    ersetze: [[CLOUD, "    const imRiegel = (schreibe) => inDerKette(async () => {", "    const imRiegel = (schreibe) => Promise.resolve().then(async () => {"]] },
+  { bench: "kompendium-riegel", ziel: ["B1 "],
+    ersetze: [["scripts/beneos-asset-path-repair.js", "    if (zu) await sperre([fam.pack]);\n    else await entsperre([fam.pack]);", "    await fam.pack.configure({ locked: zu });"]] },
+  { bench: "kompendium-riegel", ziel: ["B6 "],
+    ersetze: [[UTIL, "      this.createCompendiums()\n        .catch(err => console.warn(\"[Beneos] compendium setup or check rejected\", err))\n", "      this.createCompendiums()\n"]] },
+  { bench: "kompendium-riegel", ziel: ["B13 "],
+    ersetze: [[UTIL, "    if (flag) await sperre(packs)\n    else await entsperre(packs)", "    for (const p of packs) if (p) await p.configure({ locked: flag })"]] },
 ]
 
 /*
