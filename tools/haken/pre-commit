@@ -165,6 +165,15 @@ fahre() {
   else
     meld ""
     meld "pre-commit: ROT  $name"
+    # Die Bench des Kompendium-Riegels schreibt rund 70 Zeilen, ein roter
+    # Satz aus Lage B stand ausserhalb der letzten 25 (Kalt-Review MO-051).
+    # Rote Saetze im Format der Benches ("  ROT  <satz>") kommen deshalb
+    # zuerst, mit ihrer Auskunftszeile.
+    if grep -q '^  ROT  ' "$TMP/lauf"; then
+      meld "pre-commit: rote Saetze:"
+      grep -A1 '^  ROT  ' "$TMP/lauf" | head -n 20 >&2
+      meld "pre-commit: Ende des Laufs:"
+    fi
     tail -n 25 "$TMP/lauf" >&2
     ROT=$((ROT + 1))
   fi
@@ -255,6 +264,28 @@ if { [ "$ALLE_GEGENSTAND" -eq 1 ] || grep -qx -e "$BANK" \
     meld "pre-commit: ROT  scene-merge-token-bench findet keine Foundry, BENEOS_FOUNDRY_APPS setzen"
     ROT=$((ROT + 1))
   fi
+fi
+
+# DER KOMPENDIUM-RIEGEL (MO-050, stre-T-233). Pruefung beim Start und
+# Installation sperren dieselben vier Welt-Kompendien ueber einen gemeinsamen
+# Riegel. Die Bench faehrt scripts/kompendium-riegel.mjs gegen Attrappen und
+# misst am Quelltext, dass jeder Weg ihn benutzt. Kein Netz, kein Foundry,
+# unter einer Sekunde. betroffen.mjs sieht ihre Ziele nicht, weil sie ueber
+# join() und readFileSync liest; der Gegenstand steht deshalb hier.
+# Ausgeloest von jedem Skript unter scripts/, auch in Unterordnern, weil B1
+# jede Sperrstelle im ganzen Modul sucht: eine neue in einer anderen Datei
+# kaeme sonst durch. Derselbe Ausloeser wie in stre (Zweig stream-beta,
+# tools/haken/wachen/stre.sh, auf main nicht vorhanden), mit zwei
+# Abweichungen, beide wie ueberall in diesem Haken: eine geloeschte Datei
+# zaehlt (D), und eine Umbenennung zaehlt als D plus A (--no-renames); stre
+# filtert ACM ohne --no-renames und sieht ein umbenanntes Skript nicht
+# (Kalt-Review MO-051). Gemessen MO-050: die Sabotage n > 1 zu n > 0
+# in kompendium-riegel.mjs ging vorher gruen durch alle 11 gewaehlten
+# Pruefungen.
+if [ "$ALLE_GEGENSTAND" -eq 1 ] \
+   || grep -qE -e '^scripts/.*\.(js|mjs)$' -e '^tools/kompendium-riegel-bench/' \
+        "$TMP/gegenstand"; then
+  fahre "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench, Gegenstand vorgemerkt"
 fi
 
 # ----------------------------------------------------------------- Ausgang ---
