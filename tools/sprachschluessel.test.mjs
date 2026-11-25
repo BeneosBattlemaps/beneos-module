@@ -18,18 +18,25 @@
  * ueberzaehliger auch. Der ueberzaehlige ist meist ein Tippfehler im Namen,
  * und dann fehlt derselbe Text unter dem richtigen Namen.
  *
- * Platzhalter werden als Multimenge verglichen, ohne Reihenfolge: ja, ko und
- * zh-TW stellen sie grammatisch um, gemessen 59 Schluessel mit anderer
- * Reihenfolge, die alle richtig sind. Ein fehlendes {packages} dagegen liesse
- * dem Kunden einen leeren Satzteil.
+ * Platzhalter werden als Multimenge verglichen, ohne Reihenfolge: die
+ * Uebersetzungen stellen sie grammatisch um, gemessen 59 Faelle in 20
+ * Schluesseln (45 davon in ja, ko und zh-TW), die alle richtig sind. Ein
+ * fehlendes {packages} dagegen liesse dem Kunden einen leeren Satzteil.
  *
  * AUSGABE
  *
- * Je Abweichung eine Zeile "  ROT  <datei>: <art> <schluessel>" auf stdout,
- * vor dem TAP von node:test. Der pre-commit-Haken zeigt bei rotem Lauf nur
- * das Ende der Ausgabe, zieht aber Zeilen dieser Form zuerst heraus. Ohne sie
- * nannte ein abgebrochener Commit weder Datei noch Schluessel (Kalt-Review
- * des Plans, Beleg B8).
+ * Zeilen der Form "  ROT  <datei>: ..." auf stdout, vor dem TAP von
+ * node:test. Der pre-commit-Haken zeigt bei rotem Lauf nur das Ende der
+ * Ausgabe, zieht aber Zeilen dieser Form zuerst heraus, hoechstens 20. Ohne
+ * sie nannte ein abgebrochener Commit weder Datei noch Schluessel
+ * (Kalt-Review des Plans, Beleg B8).
+ *
+ * Deshalb zuerst je roter Datei EINE Uebersichtszeile mit Anzahl und erster
+ * Abweichung, danach die Einzelzeilen. So nennt der Haken jede rote Datei,
+ * auch wenn eine neue Sprache ohne Uebersetzung hunderte Zeilen bringt
+ * (Kalt-Review des Diffs: mit Einzelzeilen zuerst verdeckte ar.json eine
+ * fehlende Zeile in fr.json ganz). Eine Datei, die kein gueltiges JSON ist,
+ * bekommt ebenfalls eine Zeile mit ihrem Namen; die anderen laufen weiter.
  *
  * Der Pfad zu lang/ steht woertlich im new URL(), damit
  * tools/haken/betroffen.mjs diese Pruefung bei jeder Aenderung unter lang/
@@ -70,16 +77,35 @@ export function vergleiche(en, andere) {
   return aus
 }
 
-const lies = (datei) => flach(JSON.parse(fs.readFileSync(path.join(LANG, datei), "utf8")))
+/** Liest eine Sprachdatei; ein Syntaxfehler kommt als { fehler } zurueck. */
+function lies(datei) {
+  try {
+    return { werte: flach(JSON.parse(fs.readFileSync(path.join(LANG, datei), "utf8"))) }
+  } catch (e) {
+    return { fehler: `kein gueltiges JSON (${e.message})` }
+  }
+}
 
 const en = lies("en.json")
+if (en.fehler) {
+  console.log(`  ROT  en.json: ${en.fehler}`)
+  throw new Error(`lang/en.json: ${en.fehler}`)
+}
 const sprachen = fs.readdirSync(LANG).filter((f) => f.endsWith(".json") && f !== "en.json").sort()
 
-const befunde = new Map(sprachen.map((datei) => [datei, vergleiche(en, lies(datei))]))
+const befunde = new Map(sprachen.map((datei) => {
+  const d = lies(datei)
+  return [datei, d.fehler ? [{ art: "json", schluessel: d.fehler }] : vergleiche(en.werte, d.werte)]
+}))
 
-// Bankformat zuerst, damit der Haken den Ort zeigt. Hoechstens MAX_ZEILEN
-// je Datei, sonst verdeckt eine neue Sprache ohne Uebersetzung alle anderen.
-for (const [datei, liste] of befunde) {
+// Bankformat vor dem TAP, damit der Haken den Ort zeigt: erst je rote Datei
+// eine Uebersichtszeile, dann hoechstens MAX_ZEILEN Einzelzeilen je Datei.
+const rot = [...befunde].filter(([, liste]) => liste.length > 0)
+for (const [datei, liste] of rot) {
+  const erste = liste[0]
+  console.log(`  ROT  ${datei}: ${liste.length} Abweichung(en), erste: ${erste.art} ${erste.schluessel}`)
+}
+for (const [datei, liste] of rot) {
   for (const b of liste.slice(0, MAX_ZEILEN)) console.log(`  ROT  ${datei}: ${b.art} ${b.schluessel}`)
   if (liste.length > MAX_ZEILEN) console.log(`  ROT  ${datei}: und ${liste.length - MAX_ZEILEN} weitere`)
 }
