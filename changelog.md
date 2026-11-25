@@ -21,6 +21,9 @@ All notable changes to this module will be documented in this file.
   off the result cards. Below about 420 px the library switches to one
   column, and the filters fold behind a "Filters" button above the results
   that also shows how many filters are active.
+- Fixed: In the Beneos Cloud library the loot mechanics buttons now have a
+  clearly visible edge, and the search field and the source checkboxes show
+  a gold focus ring, so you can always see where keyboard input goes.
 
 ### 14.5.0-beta.13 # 2026-11-25
 

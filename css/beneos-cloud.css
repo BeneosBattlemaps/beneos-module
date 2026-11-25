@@ -241,6 +241,17 @@
   outline: none;
   border-color: var(--bc-accent);
 }
+/* MO-041, COL-10: the gold edge alone equals the hover state. With the
+   pointer resting on the search field or its label, keyboard focus changed
+   nothing (measured). The text field gets the accent ring of the other
+   controls; Chromium also shows it after a click into the field, which is
+   where the typing goes. Selects are left out: Chromium shows :focus-visible
+   on a select after a click as well, and a pointer focus gets no ring
+   (beneos-ui.css, QLT-07). */
+.beneos-cloud-app .bc-input:focus-visible {
+  outline: 2px solid var(--bc-accent);
+  outline-offset: 2px;
+}
 
 /* color-scheme tells Chromium to render the native <option> popup dark;
    the explicit option rules cover Firefox, which ignores color-scheme there. */
@@ -613,6 +624,12 @@
   accent-color: var(--bc-accent);
   cursor: pointer;
   margin: 0;
+}
+/* MO-041, COL-10: Foundry draws the checkbox as a glyph in ::before and puts
+   its focus ring there, in a violet that measured 2.36:1 on the panel. The
+   ring keeps its place on the glyph and takes the accent. */
+.beneos-cloud-app .bc-checkbox {
+  --input-focus-outline-color: var(--bc-accent);
 }
 .beneos-cloud-app .bc-checkbox-label {
   flex: 1 1 auto;
@@ -4251,7 +4268,10 @@ button.beneos-icon-logo {
   padding: 6px 10px;
   background: var(--bc-card);
   color: var(--bc-text);
-  border: 1px solid var(--bc-border);
+  /* MO-041, COL-10: a control edge needs 3:1 against its surroundings. The
+     hairline --bc-border measured 1.25:1 on the sidebar panel, the control
+     edge measures 4.08:1. */
+  border: 1px solid var(--bc-border-control);
   border-radius: var(--bc-edge);
   font-size: 13px;
   font-family: var(--bc-font-control);
@@ -4263,24 +4283,22 @@ button.beneos-icon-logo {
   background: var(--bc-card-hover);
   border-color: var(--bc-accent);
 }
-
-/* MO-040: "Filters (n)" button of a narrow window. Hidden in a wide window;
-   the container query below shows it. Two classes, so it beats the
-   display: flex of .bc-sidebar-button above. */
-.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle {
-  display: none;
-  gap: var(--bc-space-1);
-  /* COL-10: a control edge needs 3:1 against its surroundings. The hairline
-     of .bc-sidebar-button measured 1.06:1 on the sidebar panel. */
-  border-color: var(--bc-border-control);
-}
-.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle:hover {
-  border-color: var(--bc-accent);
-}
-.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle:focus-visible {
+/* Keyboard focus of every sidebar button (loot mechanics and the MO-040
+   filter button) gets the 2px accent ring with offset of the other sidebar
+   controls. A pointer focus is already ring-free through beneos-ui.css. */
+.beneos-cloud-app .bc-sidebar-button:focus-visible {
   outline: 2px solid var(--bc-accent);
   outline-offset: 2px;
   box-shadow: none;
+}
+
+/* MO-040: "Filters (n)" button of a narrow window. Hidden in a wide window;
+   the container query below shows it. Two classes, so it beats the
+   display: flex of .bc-sidebar-button above. Edge, hover and focus come
+   from .bc-sidebar-button. */
+.beneos-cloud-app .bc-sidebar-button.bc-filter-toggle {
+  display: none;
+  gap: var(--bc-space-1);
 }
 
 /* MO-040: narrow window, container bc-window. Below 420 px of window content
