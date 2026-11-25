@@ -95,15 +95,16 @@ t.gleich("die Adresse bekommt faehig=1 angehaengt",
 
 t.abschnitt("Einbindung in beneos_cloud.js")
 {
-  // Der Baustein ist oben bewacht; hier die zwei Anmeldewege, die ihn nutzen.
+  // Der Baustein ist oben bewacht; hier der Anmeldeweg, der ihn nutzt. Seit
+  // stre-T-494 ist es nur noch die Codeanmeldung: der Passwortweg ist mit
+  // MO-036 (42b31f9) entfernt.
   const { readFileSync } = await import("node:fs")
   const quelle = readFileSync(new URL("./beneos_cloud.js", import.meta.url), "utf8")
   const zahl = (s) => quelle.split(s).length - 1
-  t.gleich("[Struktur] beide Wege melden sich ueber anmeldenMitKennung an", zahl("anmeldenMitKennung(sende, userId"), 2)
-  t.gleich("[Struktur] beide Wege pollen mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 2)
+  t.gleich("[Struktur] die Codeanmeldung meldet sich ueber anmeldenMitKennung an", zahl("anmeldenMitKennung(sende, userId"), 1)
+  t.gleich("[Struktur] die Codeanmeldung pollt mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 1)
   t.gleich("[Struktur] kein Weg pollt mit der alten Kennung", zahl("this.pollForAccess(userId)"), 0)
-  t.gleich("[Struktur] die Passwortanmeldung traegt faehig=1",
-    zahl("mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php"), 1)
+  t.gleich("[Struktur] es gibt keinen Passwortweg mehr", zahl("foundry-login.php"), 0)
   t.gleich("[Struktur] die Codeanmeldung traegt faehig=1",
     zahl("mitFaehig(`${BeneosUtility.cloudBase()}/foundry-otp-verify.php"), 1)
 }
