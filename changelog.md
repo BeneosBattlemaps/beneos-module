@@ -41,6 +41,10 @@ All notable changes to this module will be documented in this file.
   linked Patreon account. Before, such worlds were signed out without any
   explanation, and worlds with a linked Patreon account but no active
   membership were told about Patreon access they never had.
+- Fixed: When a world's Foundry ID gets linked to a different Beneos
+  account, for example in a copied world, the GM now gets a one-time notice.
+  The world then uses that other account. To switch back, use Disconnect and
+  sign in again.
 
 ### 14.5.0-beta.13 # 2026-11-25
 
