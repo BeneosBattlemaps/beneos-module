@@ -34,6 +34,10 @@ All notable changes to this module will be documented in this file.
   folder. Choosing Arcane no longer also shows Technoarcane items, and the
   item details now show the origin icon for Technoarcane, Giantforged,
   Dwarvenforged and Crystalline items too.
+- Fixed: In the Beneos Cloud library the item details now show the same
+  coloured origin emblem as the Item Codex for every origin, including
+  Beastforged, Infernal and Mutation items, which showed no icon before. The
+  emblem now comes with the module, so it also appears offline.
 
 ### 14.5.0-beta.13 # 2026-11-25
 

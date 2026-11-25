@@ -2536,8 +2536,8 @@
 /* Wave B-9-fix-14: drawer origin info section. Sits at the bottom of
    the drawer body for items that have an origin assigned. Above the
    section a thin gold divider visually separates it from the asset's
-   own description. The recoloured icon picks up the same white-mask
-   filter as the inline tag icon. */
+   own description. The icon is the shared codex emblem
+   (.lgc-origin-emblem.md in beneos-lgc.css, MO-044), unfiltered. */
 .beneos-cloud-app .bc-drawer-origin {
   margin-top: var(--bc-space-3);
 }
@@ -2561,16 +2561,6 @@
   align-items: center;
   gap: var(--bc-space-2);
   margin-bottom: var(--bc-space-2);
-}
-.beneos-cloud-app .bc-drawer-origin-icon {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex: 0 0 36px;
-  /* Wave B-9-fix-17: recolours the white origin icon. It used to tint it
-     gold; gold is reserved for the main action (COL-05), so the chain now
-     lands on the primary text tone. */
-  filter: brightness(0) invert(91%);
 }
 .beneos-cloud-app .bc-drawer-origin-name {
   margin: 0;

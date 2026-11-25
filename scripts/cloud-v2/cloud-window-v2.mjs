@@ -27,9 +27,8 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
-import { OriginsRegistry } from "../loot/origins-registry.mjs"
 import { V2_FILTER_DEFS } from "./filter-defs.mjs"
-import { herkunftIconUrl } from "./origin-schluessel.mjs"
+import { herkunftIconUrl, herkunftFarbe } from "./origin-schluessel.mjs"
 import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
 import { inDerKette, entsperre, sperre, einmalJe } from "../kompendium-riegel.mjs"
@@ -1882,13 +1881,13 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     // Wave B-9-fix-9: item-specific tags. Result cards for loot show
     // rarity + origin + type + tier + price as tags so the row reads
     // naturally ("Very Rare · Vampiric · Melee Weapon · T3 · 52800 gp").
-    // Origin gets a small icon next to the label when the matching file
-    // exists on the CDN (https://www.beneos-database.com/icons/<card name>.webp).
-    // The CDN names its icons after the card files ("techno_arcane"), so the
-    // name comes from the origin registry, see herkunftIconUrl (MO-043).
-    // loadError on <img> degrades to text-only without a broken icon.
+    // Origin gets the codex emblem next to the label: the disc bundled with
+    // the module (herkunftIconUrl, via the origin registry), tinted in the
+    // origin's glow colour (herkunftFarbe), MO-044. Origins without an entry
+    // (srd) get no emblem.
     let itemOrigin = null
     let itemOriginIcon = null
+    let itemOriginColor = null
     let itemOriginLabel = null
     let itemOriginDescription = null
     let itemTypeLabel = null
@@ -1899,7 +1898,8 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
     if (assetType === "item") {
       if (props.origin) {
         itemOrigin = String(props.origin).toLowerCase()
-        itemOriginIcon = herkunftIconUrl(itemOrigin, OriginsRegistry.get(itemOrigin))
+        itemOriginIcon = herkunftIconUrl(itemOrigin)
+        itemOriginColor = herkunftFarbe(itemOrigin)
         const tOrigin = game.beneos?.databaseHolder?.localizeTag?.("item.origin", itemOrigin)
         itemOriginLabel = (tOrigin && tOrigin !== itemOrigin) ? tOrigin : this.#capitalize(itemOrigin)
         // Wave B-9-fix-14: pull the origin description out of the
@@ -2106,6 +2106,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       school: props.school || null,
       itemOrigin,
       itemOriginIcon,
+      itemOriginColor,
       itemOriginLabel,
       itemOriginDescription,
       itemTypeLabel,
