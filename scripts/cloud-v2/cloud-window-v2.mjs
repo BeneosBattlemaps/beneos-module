@@ -29,6 +29,7 @@
 import { BeneosUtility } from "../beneos_utility.js"
 import { BeneosAnalytics } from "../beneos_analytics.js"
 import { BeneosCloudLogin } from "../beneos_cloud.js"
+import { inDerKette, entsperre, sperre } from "../kompendium-riegel.mjs"
 import { BeneosStartSetupTour } from "../beneos_tours.js"
 import { BeneosLootGenerator } from "./loot-generator.mjs"
 import { kaufKnopf } from "./cloud-kaufknopf.mjs"
@@ -5976,26 +5977,32 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       console.error(`BeneosCloudWindowV2 | pack ${packName} not found`)
       return { deleted: 0, failed: 1 }
     }
+    // In derselben Kette wie Installation und Startpruefung (stre-T-233): der
+    // Index und die Sperre werden erst dort gelesen, und entsperrt wird ueber
+    // den Zaehler, damit eine laufende Sammelinstallation offen bleibt.
+    return inDerKette(async () => {
     const present = ids.filter(id => pack.index.has(id))
     if (!present.length) return { deleted: 0, failed: 0 }
     const wasLocked = pack.locked
     let deleted = 0
     let failed = 0
+    let opened = false
     try {
-      if (wasLocked) await pack.configure({ locked: false })
+      if (wasLocked) { await entsperre([pack]); opened = true }
       await cls.deleteDocuments(present, { pack: packName })
       deleted = present.length
     } catch (err) {
       failed++
       console.error(`BeneosCloudWindowV2 | deleting from ${packName} failed`, err)
     }
-    if (wasLocked) {
-      try { await pack.configure({ locked: true }) } catch (err) {
+    if (opened) {
+      try { await sperre([pack]) } catch (err) {
         failed++
         console.error(`BeneosCloudWindowV2 | ${packName} could not be locked again`, err)
       }
     }
     return { deleted, failed }
+    })
   }
 
   /**

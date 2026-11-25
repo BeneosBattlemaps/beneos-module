@@ -318,6 +318,20 @@ then
   fahre "tools/bildform-adresse-bench/bench.mjs" "bildform-adresse-bench, 32 Saetze"
 fi
 
+# DER KOMPENDIUM-RIEGEL (stre-T-233). Pruefung beim Start und Installation
+# sperrten dieselben vier Welt-Kompendien ohne gemeinsamen Riegel. Der Stand
+# faehrt scripts/kompendium-riegel.mjs gegen Attrappen und misst am Quelltext,
+# dass jeder Weg ihn benutzt. Kein Netz, kein Foundry, unter einer Sekunde.
+# Ausgeloest von jedem Skript unter scripts/, weil B1 jede Sperrstelle im
+# ganzen Modul sucht: eine neue in einer anderen Datei kaeme sonst durch.
+# Gegen den Index (fahre_weich), aus demselben Grund: eine fremde
+# unverfolgte Datei auf der Platte darf keinen sauberen Commit sperren.
+if git diff --cached --name-only --diff-filter=ACM      -- 'scripts/*.js' 'scripts/*.mjs' tools/kompendium-riegel-bench    | grep -q .
+then
+  meld "pre-commit: Kompendium-Riegel vorgemerkt, der Stand laeuft mit"
+  fahre_weich "tools/kompendium-riegel-bench/bench.mjs" "kompendium-riegel-bench"
+fi
+
 # DER HAKEN SELBST (stre-T-157). Wird er angefasst, faehrt sein eigener Satz
 # mit: er baut einen eigenen Index und haelt fest, dass die zwei Waechter
 # in wachen/modul.sh (Doppelnamen und Globale) den Index lesen und nicht die

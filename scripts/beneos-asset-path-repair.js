@@ -12,6 +12,7 @@
  */
 import { schluesselfreiAdresse, leinwandAdresse, streamKey, schluesselStellen } from "./stream/stream-settings.mjs";
 import { htmlSchluesselfrei, formAAdresse, nurBildadressenGetauscht } from "./stream/stream-html.mjs";
+import { inDerKette, entsperre, sperre } from "./kompendium-riegel.mjs";
 
 const MODULE_ID = "beneos-module";
 const ASSET_MARKER = "beneos_assets/";
@@ -2031,6 +2032,7 @@ async function _familieNachziehen(fam, abbildung, bericht) {
   }
   if (!plaene.length) return;
 
+  const schreibe = async () => {
   const warGesperrt = fam.pack?.locked === true;
   if (warGesperrt && !await _sperreSetzen(fam, wer, false, bericht)) return;
 
@@ -2041,6 +2043,13 @@ async function _familieNachziehen(fam, abbildung, bericht) {
   } finally {
     if (warGesperrt) await _sperreSetzen(fam, wer, true, bericht);
   }
+  };
+  // Ein Kompendium schreibt in derselben Kette wie Installation und
+  // Startpruefung (stre-T-233), und die Sperre wird erst dort gelesen:
+  // daneben gelesen, sperrte dieser Lauf einer laufenden Installation die
+  // Kompendien unter den Fuessen zu. Eine Weltfamilie hat kein Kompendium und
+  // wartet nicht hinter Installationen.
+  return fam.pack ? inDerKette(schreibe) : schreibe();
 }
 
 /**
@@ -2050,7 +2059,8 @@ async function _familieNachziehen(fam, abbildung, bericht) {
  */
 async function _sperreSetzen(fam, wer, zu, bericht) {
   try {
-    await fam.pack.configure({ locked: zu });
+    if (zu) await sperre([fam.pack]);
+    else await entsperre([fam.pack]);
     return true;
   } catch (e) {
     const was = zu ? "nicht wiederhergestellt" : "nicht loesbar";
