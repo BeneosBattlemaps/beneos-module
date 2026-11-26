@@ -525,7 +525,7 @@
 .beneos-card-flipper {
   position: relative;
   width: 100%;
-  aspect-ratio: 7 / 10; /* matches the rendered Beneos card WebP (about 0.7) */
+  aspect-ratio: 1484 / 2070; /* matches the Card Creator WebP export (1484x2070) */
   cursor: pointer;
   transform-style: preserve-3d;
   border-radius: var(--bc-edge);
