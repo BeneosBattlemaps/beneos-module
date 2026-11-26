@@ -212,6 +212,14 @@ export const SABOTAGEN = [
     ersetze: [[CLOUD, "if (!blob || blob.size === 0) return null", "if (!blob) return null"]] },
   { bench: "bildform-adresse", ziel: ["B1 alle drei Installationsanfragen tragen den Anhang"],
     ersetze: [[CLOUD, "{ get_item: 1, itemKey, ..._beneosBildformFelder(), ", "{ get_item: 1, itemKey, "]] },
+  // MO-066: seit der Feldform kann der Spread auf derselben Zeile in den Rumpf
+  // wandern, und ein zweites Feld kann in anderer Schreibweise dazukommen.
+  { bench: "bildform-adresse", ziel: ["B1 alle drei Installationsanfragen tragen den Anhang"],
+    ersetze: [[CLOUD, "{ get_item: 1, itemKey, ..._beneosBildformFelder(), ...this._erwerbsFelder(opts) }, userId, { init:",
+      "{ get_item: 1, itemKey, ...this._erwerbsFelder(opts) }, userId, { rumpf: { ..._beneosBildformFelder() }, init:"]] },
+  { bench: "bildform-adresse", ziel: ["A4 der Parameter steht genau einmal im Quelltext"],
+    ersetze: [[CLOUD, "{ get_token: 1, tokenKey, ..._beneosBildformFelder(), ",
+      "{ get_token: 1, tokenKey, ..._beneosBildformFelder(), bildform: 'adresse', "]] },
 
   // TC-305 paket-grenze, alle Wiki-Sabotagen: jede der sieben Sperrzeilen
   // einzeln entfernt, sieben zu weite Sperren dazu, `* export-ignore`.

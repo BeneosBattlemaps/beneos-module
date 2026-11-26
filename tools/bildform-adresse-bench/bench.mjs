@@ -181,8 +181,11 @@ pruefe("A3 der Anhang steht an EINER Stelle",
 // der Anhang selbst. Stuende er an den drei Rufstellen, waere ein Umschalten
 // an zwei Stellen moeglich, und genau so ist die harte Variantennummer Eins
 // auf der Serverseite entstanden. Gezaehlt werden beide Formen, damit eine
-// zurueckgekehrte Textform nicht unsichtbar neben der Feldform steht.
-const wortwoertlich = (code.match(/&bildform=adresse|bildform: "adresse"/g) || []).length
+// zurueckgekehrte Textform nicht unsichtbar neben der Feldform steht, und die
+// Feldform in jeder Schreibweise (Schluessel mit oder ohne Anfuehrungszeichen,
+// beide Arten von Anfuehrungszeichen, Leerraum um den Doppelpunkt).
+const wortwoertlich = (code.match(
+  /&bildform=adresse|["'`]?\bbildform["'`]?\s*:\s*["'`]adresse["'`]/g) || []).length
 pruefe("A4 der Parameter steht genau einmal im Quelltext",
   wortwoertlich === 1,
   `${wortwoertlich} Vorkommen. Mehr als eines heisst zwei Stellen fuer eine `
@@ -200,8 +203,11 @@ const RUFE = [
 
 const ohneAnhang = []
 for (const [ruf, schluessel] of RUFE) {
+  // Nur das Adressobjekt bis zu seiner schliessenden Klammer: ein Spread, der
+  // auf derselben Zeile in `rumpf` steht, zaehlt nicht, denn der Server liest
+  // bildform nur aus der Adresse.
   const m = new RegExp(
-    `\\{ ${ruf}: 1, ${schluessel}[,} ][^\\n]*`).exec(code)
+    `\\{ ${ruf}: 1, ${schluessel}[,} ][^{}\\n]*`).exec(code)
   if (m === null) { ohneAnhang.push(`${ruf} (Zeile nicht gefunden)`); continue }
   if (!m[0].includes("..._beneosBildformFelder()")) ohneAnhang.push(ruf)
 }

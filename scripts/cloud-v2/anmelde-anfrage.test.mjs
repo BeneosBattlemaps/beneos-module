@@ -16,10 +16,10 @@
  * Bestaetigungsruf traegt confirmCreate=1).
  *
  * GRENZE. Der Satz deckt die drei Anmelde-Endpunkte. Nach einer gelungenen
- * Anmeldung fragt pollForAccess foundry-manager.php weiter per GET mit der
- * Weltkennung in der Adresse (`?check=1&foundryId=`); der Server liest sie
- * dort nur aus $_GET. Das ist Bestand und eigener Folgepunkt, die Proben
- * ersetzen pollForAccess deshalb durch eine Attrappe.
+ * Anmeldung fragt pollForAccess foundry-manager.php per POST mit der
+ * Weltkennung im Rumpf (MO-064, auf stream-beta MO-066); das prueft
+ * kennung-anfrage.test.mjs. Die Proben hier ersetzen pollForAccess durch eine
+ * Attrappe, weil sie nur die drei Anmelde-Endpunkte betreffen.
  *
  * Serververtrag (beneos-cloud-server, lib/anfrage-quelle.php): Steht das
  * Traegerfeld des Endpunkts im Rumpf, liest der Server NUR den Rumpf. Darum
