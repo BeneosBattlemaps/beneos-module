@@ -234,6 +234,45 @@ then
   fahre "tools/stream-sprachen-bench/bench.mjs" "stream-sprachen-bench, 55 Saetze"
 fi
 
+# Die Schluesselpruefung der Sprachdateien (stre-T-496), wenn eine Sprachdatei
+# oder die Pruefung selbst angefasst wird.
+#
+# WARUM SIE DAZUKOMMEN MUSSTE. Die Sprachwache darueber fragt nach Schreibweise
+# und Platzhaltern, nach VOLLSTAENDIGKEIT aber nur fuer BENEOS.Stream.* und
+# BENEOS.Cloud.Bmap.Quota*. Gemessen am 26.11.2026 auf ba7a377 fehlten den
+# Sprachdateien gegenueber en.json 53 bis 61 Schluessel (de 53, ru 59, sonst
+# 61), darunter 42 des Streamings ausserhalb dieser zwei Gruppen, und die
+# Sprachwache war gruen. Foundry faellt dann still auf Englisch zurueck.
+# `tools/sprachschluessel.test.mjs` kommt von main (MO-055, MO-056) und prueft
+# jede Datei in beiden Richtungen gegen en.json, dazu Platzhalter und Tags.
+#
+# HIER UND NICHT IM KERN. Auf main waehlt `tools/haken/betroffen.mjs` die
+# Pruefung; das gibt es auf stream-beta nicht, und der Kern gehoert nicht zu
+# dieser Domaene. Die Sammlung der Streamsaetze oben liest nur `scripts/`.
+#
+# GEGEN DEN INDEX, nicht gegen den Arbeitsbaum: `fahre_weich` legt die
+# vorgemerkte Fassung von `tools` und `lang` in eine Kopie und faehrt die
+# Pruefung dort. Eine halb vorgemerkte Sprachdatei wird also so geprueft, wie
+# sie committet wird.
+#
+# DIE ROT-ZEILEN ZUERST. `werte_aus` zeigt bei Rot das Ende der Ausgabe, und
+# das ist das TAP von node:test ohne einen Dateinamen. Die Pruefung schreibt
+# vorher je Abweichung eine Zeile "  ROT  <datei>: ...", zuerst eine
+# Uebersicht je roter Datei; die ersten 20 davon kommen hier dazu.
+#
+# Sie kostet gemessen rund eine Sekunde, kein Netz, kein Foundry.
+if git diff --cached --name-only --diff-filter=ACMRD \
+     -- lang tools/sprachschluessel.test.mjs \
+   | grep -q .
+then
+  meld "pre-commit: Sprachdateien vorgemerkt, die Schluesselpruefung laeuft mit"
+  ROT_VORHER=$ROT
+  fahre_weich "tools/sprachschluessel.test.mjs" "sprachschluessel.test.mjs" lang
+  if [ "$ROT" -gt "$ROT_VORHER" ] && [ -f "$TMP/lauf" ]; then
+    grep '^  ROT  ' "$TMP/lauf" | head -n 20 >&2
+  fi
+fi
+
 # Der Satzprozess des Sabotagelaeufers (stre-T-126), wenn er oder der Laeufer
 # angefasst wird. Er faehrt den Laeufer selbst viermal und kostet gemessen
 # 10,5 s; das ist zu viel fuer jeden Commit an tools/lib, deshalb nicht in der

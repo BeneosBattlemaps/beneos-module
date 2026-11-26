@@ -65,6 +65,8 @@
  * Der Pfad zu lang/ steht woertlich im new URL(), damit
  * tools/haken/betroffen.mjs diese Pruefung bei jeder Aenderung unter lang/
  * waehlt. Ein zusammengesetzter Pfad waere dort unsichtbar (MO-049).
+ * Auf stream-beta gibt es betroffen.mjs nicht; dort faehrt ein eigener Block
+ * in tools/haken/wachen/stre.sh die Pruefung gegen den Index (stre-T-496).
  */
 import { test } from "node:test"
 import assert from "node:assert/strict"
