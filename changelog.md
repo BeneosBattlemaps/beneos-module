@@ -7,27 +7,45 @@ All notable changes to this module will be documented in this file.
 ### 14.4.13 # unreleased
 
 **Fixes**
-- Fixed: The journal pin setting, the catalog status and Refresh button at the bottom of the Beneos Cloud window, the black canvas notice and four install messages now appear in your language instead of English. German was missing the canvas notice and the install messages, eleven more languages were missing all of them. Outdated texts in the tour, the Beneos Cloud window and the shop are now up to date in all languages, so they no longer describe Moulinette or controls that have since changed.
-- Fixed: Signing in to Beneos Cloud no longer puts your email address and sign-in code into the web address of the request, so they no longer end up in server logs.
-- Fixed: When Beneos Cloud no longer recognises a world's sign-in, the GM now gets a one-time notice to sign in again, also in worlds without a linked Patreon account. Before, such worlds were signed out without any explanation, and worlds with a linked Patreon account but no active membership were told about Patreon access they never had.
-- Fixed: When a world's Foundry ID gets linked to a different Beneos account, for example in a copied world, the GM now gets a one-time notice. The world then uses that other account. To switch back, use Disconnect and sign in again.
-- Fixed: In the Beneos Cloud library the Origin filter no longer lists Technoarcane and Giantforged twice, each option now finds all of its items, and newly installed loot of one origin lands in one compendium folder. Choosing Arcane no longer also shows Technoarcane items, and the item details now show the origin emblem from the Item Codex in its origin colour for every origin, including Beastforged, Infernal and Mutation items, which showed no icon before. The emblem comes with the module, so it also appears offline.
-- Fixed: In a narrow Beneos Cloud window the "Filters" button now stays in place while you scroll through the open filters.
-- Fixed: In the Beneos Cloud library the filter dropdowns now show a gold focus ring when you reach them with the keyboard.
-- Fixed: In the Beneos Cloud library the loot mechanics buttons now have a clearly visible edge, and the search field and the source checkboxes show a gold focus ring, so you can always see where keyboard input goes.
-- Fixed: In a narrow Beneos Cloud window the filter column no longer cuts off the result cards. Below about 420 px the library switches to one column, and the filters fold behind a "Filters" button above the results that also shows how many filters are active.
-- Fixed: When the Foundry app or your browser can no longer read a battlemap it has already downloaded, usually because your disk is nearly full, the install report now says so and tells you to free up space instead of showing "unknown" and only suggesting a retry.
-- Fixed: The install report on The Forge no longer claims that every HD file fits your plan's per-file limit, because a few HD bonus videos are larger than 50 MB.
-- Fixed: In worlds that installed a battlemap release before it was renumbered, uninstalling another battlemap now frees its downloaded files again instead of leaving them on disk with a warning, and updates of that release now also reach scenes you renamed yourself.
-- Fixed: Installing several creatures, items or spells in a row, or while the world is still checking its installed assets after loading, no longer fails with locked compendium errors, that check no longer stops halfway with a "does not exist" error, and the Beneos compendiums no longer stay unlocked afterwards. Removing a creature or cleaning up orphaned entries now tells you when it has to wait for an install or for an open dialog, and clicking Remove twice no longer reports a failure.
-- Fixed: When you sign in to Beneos Cloud with a correct code but the world cannot be connected to your account, the module now says so and asks you to request a new code. Before, it reported the code as invalid or expired, although that code was already used up.
-- Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic question once instead of twice.
-- Fixed: Czech and European Portuguese now address you in the same informal way throughout. Install messages, sign-in steps and setting hints that still used the formal form now match the tour and the rest of the module.
-- Fixed: Japanese texts now use Japanese punctuation instead of stray English commas, two tour pages now explain the documentation and the Beneos Cloud with the same sentence structure in every language, several messages in German, French, Spanish, Italian, Polish, Portuguese and Catalan now show their accented letters, the German journal pin setting now addresses you informally like the rest of the module, and the Awoken origin rules no longer misspell "becomes".
-- Fixed: French now addresses you in the same informal way throughout. Beneos Cloud messages, sign-in steps, the asset repair tool, setting hints, the creature drawer and the loading quotes that still used the formal form now match the tour, the Item Codex and the wiki.
+- Fixed: Large battlemap installs no longer lose files when the server is busy or the download runs for a long time, so every map arrives complete.
+- Fixed: If an earlier install left files missing, the next install of the same map now fetches them, also on The Forge.
+- Fixed: While Beneos Cloud is busy, the install status line now shows that the install is waiting, so you know it has not stalled.
+- Fixed: After a successful retry from the install report, the release card now shows the map as installed.
+- Fixed: When Foundry does not let the module write the map files, the map is no longer counted as installed and the Getting Started tour no longer starts.
+- Fixed: When a teleporter installs the map it leads to while the Beneos Cloud window is open, that open window now shows the new install right away.
+- Fixed: When your disk is too full to read a downloaded battlemap, the install report now says so and tells you to free up space.
+- Fixed: The install report on The Forge no longer promises that every HD file fits your plan's per-file limit.
+- Fixed: In worlds that installed a battlemap before it was renumbered, uninstalling other battlemaps frees their files again.
+- Fixed: Updates of a renumbered battlemap now also reach scenes you renamed yourself.
+- Fixed: Installing several creatures, items or spells in a row, or right after the world loads, now works without locked compendium errors.
+- Fixed: The check of your installed assets after loading a world now runs to the end.
+- Fixed: The Beneos compendiums are locked again after every install.
+- Fixed: Removing a creature or cleaning up orphaned entries now tells you when it has to wait for an install or an open dialog.
+- Fixed: Clicking Remove twice no longer reports a failure.
+- Fixed: Signing in to Beneos Cloud now keeps your email address and sign-in code out of server logs.
+- Fixed: When a correct sign-in code cannot connect the world to your account, the module now says so and asks you to request a new code.
+- Fixed: When Beneos Cloud no longer recognises a world's sign-in, the GM now gets one clear notice to sign in again, with or without a linked Patreon account.
+- Fixed: When a world gets linked to a different Beneos account, for example in a copied world, the GM now gets a one-time notice and can switch back with Disconnect and a new sign-in.
+- Fixed: The Origin filter in the Beneos Cloud library now lists every origin once and shows exactly its items.
+- Fixed: Newly installed loot of one origin now lands in a single compendium folder.
+- Fixed: The item details now show the origin emblem in its origin colour for every origin, also offline.
+- Fixed: In a narrow Beneos Cloud window the library now shows one column of complete result cards, with the filters folded behind a "Filters" button that counts the active filters.
+- Fixed: In a narrow Beneos Cloud window the "Filters" button now stays in place while you scroll through the filters.
+- Fixed: In the Beneos Cloud library the filter dropdowns, the search field and the source checkboxes now show a gold focus ring, so you always see where keyboard input goes.
+- Fixed: The loot mechanics buttons in the Beneos Cloud library now have a clearly visible edge.
+- Fixed: Dropping a Beneos Cloud spell onto a Warlock now asks the Pact Magic question only once.
+- Fixed: Several settings, the Beneos Cloud status bar, the black canvas notice and the install messages now appear in your language instead of English.
+- Fixed: The tour, the Beneos Cloud window and the shop no longer describe Moulinette or controls that have since changed, in every language.
+- Fixed: French now addresses you informally throughout, like the tour, the Item Codex and the wiki.
+- Fixed: Czech and European Portuguese now address you informally throughout, like the tour and the rest of the module.
+- Fixed: The German journal pin setting now addresses you informally like the rest of the module.
+- Fixed: Japanese texts now use Japanese punctuation throughout.
+- Fixed: Messages in German, French, Spanish, Italian, Polish, Portuguese and Catalan now show their accented letters.
+- Fixed: Two tour pages about the documentation and the Beneos Cloud now read the same in every language.
+- Fixed: The Awoken origin rules no longer misspell "becomes".
 
 **Changes**
-- Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`. Battlemaps install from the Beneos Cloud window as before.
+- Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`, battlemaps still install from the Beneos Cloud window.
 
 ### 14.4.12 # 2026-11-08
 
