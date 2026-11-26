@@ -814,6 +814,18 @@ export async function ensureStreamKey() {
       credentials: "omit",
     })
     const daten = await antwort.json()
+    // stre-T-230: 409 heisst seit RG-326, der Server haelt den Schluessel
+    // zurueck, weil diese Foundry-Kennung nicht mehr an das Beneos-Konto
+    // gebunden ist. Nur die Konsole zu beschreiben liess den Kunden ohne
+    // Grund vor schwarzen Karten stehen. clearStaleEntitlement (MO-046) zeigt
+    // den Hinweis zum neuen Anmelden einmal je verlorener Bindung. Schluessel
+    // und Kennung bleiben stehen, und es gibt bewusst keinen zweiten Abruf:
+    // erst eine neue Anmeldung bindet die Kennung wieder.
+    if (antwort.status === 409) {
+      console.warn("Beneos Stream | Schluessel zurueckgehalten:", daten?.message || 409)
+      await game.beneos?.cloud?.clearStaleEntitlement?.(daten?.message)
+      return vorhanden
+    }
     if (daten?.status !== "ok" || !daten?.stream_key) {
       console.warn("Beneos Stream | Schluessel nicht erhalten:", daten?.message || antwort.status)
       return vorhanden
