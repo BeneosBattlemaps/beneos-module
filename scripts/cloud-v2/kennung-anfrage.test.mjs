@@ -198,6 +198,10 @@ test("importTokenFromCloud: get_token per POST, tokenKey und surface in der Adre
   const adresse = new URL(aufrufe[0].url).searchParams
   assert.equal(adresse.get("tokenKey"), "001-ork")
   assert.equal(adresse.get("surface"), "drawer")
+  // stream-beta (MO-066): das Bildformfeld (OP-PRJ-146) liest der Server aus
+  // der Adresse, es darf nicht in den Rumpf wandern.
+  assert.equal(adresse.get("bildform"), "adresse")
+  assert.ok(!new URLSearchParams(aufrufe[0].init.body).has("bildform"))
 })
 
 test("What's New: get_whats_new und whats_new_ack per POST, Kennung im Rumpf", async () => {
@@ -218,8 +222,47 @@ test("Codex: get_asset_pdf per POST, assetKey in der Adresse, credentials omit b
   assert.equal(aufrufe[0].init.credentials, "omit")
 })
 
-test("country-prompt baut seine Anfrage ueber den Helfer", () => {
-  assert.match(QUELLEN["country-prompt.mjs"], /foundryManagerAnfrage\(/)
+test("importItemFromCloud und importSpellsFromCloud: per POST, Schluessel in der Adresse", async () => {
+  for (const [weg, aktion, feld] of [["importItemFromCloud", "get_item", "itemKey"], ["importSpellsFromCloud", "get_spell", "spellKey"]]) {
+    frisch(); antwort({ result: "error" })
+    await wolke()[weg]("001_ring", undefined, true, { force: true }).catch(() => {})
+    pruefeFoundryManager(aufrufe[0], aktion)
+    assert.equal(new URL(aufrufe[0].url).searchParams.get(feld), "001_ring", weg)
+    assert.equal(new URL(aufrufe[0].url).searchParams.get("bildform"), "adresse", weg)
+  }
+})
+
+test("importBattlemapFromCloud: download_uploaded_file per POST, filename in der Adresse", async () => {
+  frisch(); antwort({ result: "error" })
+  await wolke().importBattlemapFromCloud("a+b c.webp").catch(() => {})
+  pruefeFoundryManager(aufrufe[0], "download_uploaded_file")
+  assert.equal(new URL(aufrufe[0].url).searchParams.get("filename"), "a+b c.webp")
+})
+
+test("country-prompt: Zustand per POST ohne action, Antwort per POST mit action und country im Rumpf", async () => {
+  const { presentCountryPrompt } = await import("./country-prompt.mjs")
+  const api = foundry.applications.api
+  const vorher = api.DialogV2
+  api.DialogV2 = { wait: async () => ({ action: "set", country: "DE" }) }
+  frisch(); aufrufe = []
+  const antworten = [{ result: "OK", data: { ask: true, suggested: "AT" } }, { result: "OK" }]
+  globalThis.fetch = async (url, init) => {
+    aufrufe.push({ url: String(url), init })
+    const daten = antworten.shift()
+    return { ok: true, status: 200, json: async () => daten }
+  }
+  const c = wolke()
+  c.isLoggedIn = () => true
+  try {
+    assert.equal(await presentCountryPrompt(), true)
+  } finally { api.DialogV2 = vorher }
+  assert.equal(aufrufe.length, 2)
+  for (const a of aufrufe) {
+    pruefeFoundryManager(a, "country_prompt")
+    assert.equal(a.init.credentials, "omit")
+  }
+  assert.deepEqual(Object.fromEntries(new URLSearchParams(aufrufe[0].init.body)), { foundryId: WELT })
+  assert.deepEqual(Object.fromEntries(new URLSearchParams(aufrufe[1].init.body)), { foundryId: WELT, action: "set", country: "DE" })
 })
 
 test("Analytics-Ingest: Adresse nur ?ingest=1, Kennung im JSON-Rumpf, auf beiden Wegen", async () => {
