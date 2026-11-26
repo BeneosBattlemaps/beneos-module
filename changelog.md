@@ -15,6 +15,9 @@ All notable changes to this module will be documented in this file.
   with a Change email button, so a typo is easy to spot.
 
 **Fixed**
+- Fixed: Signing in to Beneos Cloud no longer puts your email address and
+  sign-in code into the web address of the request, so they no longer end
+  up in server logs. The unused password sign-in has been removed.
 - Fixed: When the code could not be sent, the message now says so and asks
   you to try again, instead of asking you to check your credentials.
 - Fixed: In a narrow Beneos Cloud window the filter column no longer cuts
@@ -57,7 +60,9 @@ All notable changes to this module will be documented in this file.
   when it has to wait for another change to the Beneos compendiums, or for
   an open dialog that needs your answer.
 - Fixed: Clicking Remove twice on the same creature no longer reports that
-  removing failed.
+  removing failed; it tells you a removal is already open or in progress.
+- Fixed: Dropping a Beneos Cloud spell onto a Warlock asks the Pact Magic
+  question once instead of twice.
 
 ### 14.5.0-beta.12 # 2026-11-25
 

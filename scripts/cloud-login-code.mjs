@@ -20,22 +20,30 @@
  */
 
 import { anmeldenMitKennung, mitFaehig } from "./cloud-login-kennung.mjs"
+import { anmeldeAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
 
 /** Die Stufe, die dieses Modul der Cloud meldet. */
 export const OTP_STUFE = 3
 
-/** Adresse zum Anfordern eines Codes. */
-export function anfrageAdresse(basis, email, kennung, bestaetigt) {
-  let url = `${basis}/foundry-otp-request.php?email=${encodeURIComponent(email)}&foundryId=${encodeURIComponent(kennung)}&otpv=${OTP_STUFE}`
-  if (bestaetigt) url += "&confirmCreate=1"
-  return url
+/*
+ * stre-T-494 (nach MO-054): beide Abrufe tragen ALLE Felder im POST-Rumpf und
+ * keines in der Adresse. Der Server waehlt die Quelle als Ganzes (Rumpf oder
+ * Adresse, lib/anfrage-quelle.php); ein einzelnes Feld in der Adresse ginge
+ * verloren. Rueckgabe { url, init } fuer fetch(url, init).
+ */
+
+/** Abruf zum Anfordern eines Codes. */
+export function anfrageAbruf(basis, email, kennung, bestaetigt) {
+  return anmeldeAnfrage(basis, "foundry-otp-request.php", {
+    email, foundryId: kennung, otpv: OTP_STUFE, confirmCreate: bestaetigt ? "1" : undefined,
+  })
 }
 
-/** Adresse zum Pruefen eines Codes, mit `faehig=1` fuer die Weltkennung. */
-export function pruefAdresse(basis, email, code, kennung, bestaetigt) {
-  let url = `${basis}/foundry-otp-verify.php?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&foundryId=${encodeURIComponent(kennung)}&otpv=${OTP_STUFE}`
-  if (bestaetigt) url += "&confirmCreate=1"
-  return mitFaehig(url)
+/** Abruf zum Pruefen eines Codes, mit `faehig=1` fuer die Weltkennung. */
+export function pruefAbruf(basis, email, code, kennung, bestaetigt) {
+  return anmeldeAnfrage(basis, "foundry-otp-verify.php", mitFaehig({
+    email, code, foundryId: kennung, otpv: OTP_STUFE, confirmCreate: bestaetigt ? "1" : undefined,
+  }))
 }
 
 /**

@@ -15,7 +15,7 @@ import { pruefstand } from "../tools/lib/foundry-attrappe.mjs"
 let modul = null
 try { modul = await import("./cloud-login-kennung.mjs") } catch (_e) { modul = null }
 const anmelden = modul?.anmeldenMitKennung ?? (async (sende, k) => ({ daten: await sende(k), kennung: k }))
-const mitFaehig = modul?.mitFaehig ?? ((url) => url)
+const mitFaehig = modul?.mitFaehig ?? ((felder) => felder)
 
 const t = pruefstand("stre-T-135: Anmeldung mit der Weltkennung")
 
@@ -89,27 +89,35 @@ t.abschnitt("foundry_id aus der Antwort")
 }
 
 t.abschnitt("faehig")
-t.gleich("die Adresse bekommt faehig=1 angehaengt",
-  mitFaehig("https://cloud.example/foundry-login.php?email=a&foundryId=b"),
-  "https://cloud.example/foundry-login.php?email=a&foundryId=b&faehig=1")
+// Seit stre-T-494 ein Feld im POST-Rumpf statt eines Anhangs an die Adresse.
+{
+  const felder = { email: "a", foundryId: "b" }
+  t.gleich("die Felder bekommen faehig=1",
+    JSON.stringify(mitFaehig(felder)), JSON.stringify({ email: "a", foundryId: "b", faehig: "1" }))
+  t.gleich("die uebergebenen Felder bleiben unveraendert", JSON.stringify(felder), JSON.stringify({ email: "a", foundryId: "b" }))
+}
 
 t.abschnitt("Einbindung in beneos_cloud.js")
 {
-  // Der Baustein ist oben bewacht; hier die zwei Anmeldewege, die ihn nutzen.
+  // Der Baustein ist oben bewacht; hier der Anmeldeweg, der ihn nutzt. Seit
+  // stre-T-494 ist es nur noch die Codeanmeldung: der Passwortweg ist mit
+  // MO-036 (42b31f9) entfernt.
   const { readFileSync } = await import("node:fs")
   const quelle = readFileSync(new URL("./beneos_cloud.js", import.meta.url), "utf8")
   const zahl = (s) => quelle.split(s).length - 1
   // tick-T-050: die Codeanmeldung ruft anmeldenMitKennung ueber pruefenMitRueckfrage
-  // (cloud-login-code.mjs, dort bewacht im Satz `anmeldecode`).
-  t.gleich("[Struktur] beide Wege melden sich ueber anmeldenMitKennung an",
-    zahl("anmeldenMitKennung(sende, userId") + zahl("pruefenMitRueckfrage(sende, userId"), 2)
-  t.gleich("[Struktur] beide Wege pollen mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 2)
+  // (cloud-login-code.mjs, dort bewacht im Satz `anmeldecode`). Der Passwortweg ist seit
+  // stre-T-494 weg, es bleibt genau ein Anmeldeweg.
+  t.gleich("[Struktur] die Codeanmeldung meldet sich ueber pruefenMitRueckfrage an", zahl("pruefenMitRueckfrage(sende, userId"), 1)
+  t.gleich("[Struktur] die Codeanmeldung pollt mit der Kennung aus der Anmeldung", zahl("this.pollForAccess(kennung)"), 1)
   t.gleich("[Struktur] kein Weg pollt mit der alten Kennung", zahl("this.pollForAccess(userId)"), 0)
-  t.gleich("[Struktur] die Passwortanmeldung traegt faehig=1",
-    zahl("mitFaehig(`${BeneosUtility.cloudBase()}/foundry-login.php"), 1)
-  // tick-T-050: faehig=1 haengt pruefAdresse an (cloud-login-code.mjs).
+  t.gleich("[Struktur] es gibt keinen Passwortweg mehr", zahl("foundry-login.php"), 0)
+  // tick-T-050 mit stre-T-494: faehig=1 setzt pruefAbruf in den Rumpf (cloud-login-code.mjs).
   t.gleich("[Struktur] die Codeanmeldung traegt faehig=1",
-    zahl("const verURL = pruefAdresse(BeneosUtility.cloudBase()"), 1)
+    zahl("const verify = pruefAbruf(BeneosUtility.cloudBase()"), 1)
+  const code = readFileSync(new URL("./cloud-login-code.mjs", import.meta.url), "utf8")
+  t.gleich("[Struktur] pruefAbruf setzt faehig ueber mitFaehig",
+    code.split("anmeldeAnfrage(basis, \"foundry-otp-verify.php\", mitFaehig({").length - 1, 1)
 }
 
 t.ende()

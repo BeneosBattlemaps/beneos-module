@@ -830,6 +830,64 @@ const b18 = propagiere !== null && neuAufsetzen !== null
 pruefe("B18 die Dialoge im Installationsauftrag melden sich am Riegel",
   b18, propagiere === null || neuAufsetzen === null ? "NICHT GESCHNITTEN" : "")
 
+// Der Pact-Magic-Dialog (stre-T-486). askPactMagicChoice laeuft aus der Kette
+// (drainPendingItemDrops im Installationsauftrag) UND aus dem Hook
+// preCreateItem ausserhalb jeder Kette. Nur der Aufruf aus der Kette darf
+// "Dialog offen" melden, also sitzt die Huelle am Aufrufer, nicht in der
+// Funktion. Jeder Aufrufer ist hier einzeln bewertet; ein neuer macht rot.
+const PACT_AUFRUF = /\bBeneosUtility\.askPactMagicChoice\(/g
+const pactAufrufer = alleSkripte(join(WURZEL, "scripts")).flatMap((datei) => {
+  const text = nurCode(readFileSync(datei, "utf8"))
+  return [...text.matchAll(PACT_AUFRUF)].map((t) => ({
+    datei: relative(WURZEL, datei).replace(/\\/g, "/"),
+    davor: text.slice(Math.max(0, t.index - 40), t.index),
+  }))
+})
+const PACT_BEWERTET = { "scripts/beneos_cloud.js": "kette", "scripts/beneos_module.js": "hook" }
+const pactUnbewertet = pactAufrufer.filter((a) => !PACT_BEWERTET[a.datei])
+const umhuellt = (a) => /wartetAufNutzer\(\s*$/.test(a.davor)
+const pactKette = pactAufrufer.filter((a) => PACT_BEWERTET[a.datei] === "kette")
+const pactHook = pactAufrufer.filter((a) => PACT_BEWERTET[a.datei] === "hook")
+const pactFunktion = methode(utility, "askPactMagicChoice")
+// "kette" ist kein Etikett, sondern am Aufrufweg gemessen: der umhuellte
+// Aufruf steht in drainPendingItemDrops, das nur aus den beiden
+// Importfunktionen kommt, und die nur aus einem enqueueInstall-Auftrag.
+// Ein neuer Weg zur umhuellten Stelle macht rot, denn dort setzte die
+// Antwort auf den Dialog nichts fort.
+const drain = methode(cloud, "drainPendingItemDrops")
+const aufrufeIn = (muster) => alleSkripte(join(WURZEL, "scripts")).reduce(
+  (n, datei) => n + [...nurCode(readFileSync(datei, "utf8")).matchAll(muster)].length, 0)
+const PACT_WEG = [
+  ["drainPendingItemDrops", /\.drainPendingItemDrops\(/g, ["importItemToCompendium", "importSpellToCompendium"], null],
+  ["importItemToCompendium", /\.importItemToCompendium\(/g, ["importItemFromCloud"], /this\.enqueueInstall\(\(\) =>[\s\S]*\.importItemToCompendium\(/],
+  ["importSpellToCompendium", /\.importSpellToCompendium\(/g, ["importSpellsFromCloud"], /this\.enqueueInstall\(\(\) =>[\s\S]*\.importSpellToCompendium\(/],
+]
+const wegFehlt = PACT_WEG.flatMap(([name, muster, in_, kette]) => {
+  const gesamt = aufrufeIn(muster)
+  const gefunden = in_.reduce((n, m) => n + [...(methode(cloud, m) ?? "").matchAll(muster)].length, 0)
+  const ohneKette = kette && in_.some((m) => !kette.test(methode(cloud, m) ?? ""))
+  return gesamt !== in_.length || gefunden !== in_.length || ohneKette
+    ? [`${name}: ${gesamt} Aufrufe, ${gefunden} in ${in_.join("/")}${ohneKette ? ", ohne enqueueInstall" : ""}`] : []
+})
+const drainUmhuellt = drain !== null && /wartetAufNutzer\(BeneosUtility\.askPactMagicChoice\(/.test(drain)
+pruefe("B18a der Pact-Dialog aus der Kette meldet sich am Riegel",
+  pactKette.length === 1 && pactKette.every(umhuellt) && drainUmhuellt && pactUnbewertet.length === 0 && wegFehlt.length === 0,
+  `${pactAufrufer.length} Aufrufer · Kette ${pactKette.length}, umhuellt ${pactKette.filter(umhuellt).length}, in drainPendingItemDrops ${drainUmhuellt ? "ja" : "NEIN"}`
+    + (pactUnbewertet.length ? ` · unbewertet: ${pactUnbewertet.map((a) => a.datei).join(", ")}` : "")
+    + (wegFehlt.length ? ` · Weg: ${wegFehlt.join(" | ")}` : ""))
+// Das Anlegen in drainPendingItemDrops traegt das Schutzflag des Hooks.
+// Ohne es faengt preCreateItem den Cloud-Drop auf einen Warlock ab und
+// fragt ein zweites Mal, unabgewartet und ausserhalb des Kettenauftrags.
+pruefe("B18c der Cloud-Drop fragt den Pact-Dialog nur einmal",
+  drain !== null && /createEmbeddedDocuments\("Item", \[itemData\], \{ beneosPactMagicHandled: true \}\)/.test(drain)
+    && !/createEmbeddedDocuments\("Item", \[itemData\]\)/.test(drain),
+  drain === null ? "drainPendingItemDrops NICHT GESCHNITTEN" : "")
+pruefe("B18b der Pact-Dialog aus dem Hook meldet keinen offenen Dialog",
+  pactFunktion !== null && !/wartetAufNutzer/.test(pactFunktion)
+    && pactHook.length === 1 && !pactHook.some(umhuellt),
+  pactFunktion === null ? "askPactMagicChoice NICHT GESCHNITTEN"
+    : `Funktion umhuellt: ${/wartetAufNutzer/.test(pactFunktion) ? "JA" : "nein"} · Hook ${pactHook.length}, umhuellt ${pactHook.filter(umhuellt).length}`)
+
 // Familien-Nachzug und Entfernen reichen EINEN Hinweisgeber je Vorgang durch
 // (einmalHinweis), damit ein Vorgang ueber mehrere Packs nur einmal meldet.
 // Die Waisenbereinigung ist ein einzelner Auftrag.
@@ -851,6 +909,46 @@ pruefe("B20 Entfernen laeuft je Asset nur einmal",
   entfernen !== null && /einmalJe\(`remove:\$\{key\}`/.test(entfernen)
     && /BENEOS\.Cloud\.Card\.AlreadyRemoving/.test(entfernen),
   entfernen === null ? "NICHT GESCHNITTEN" : "")
+
+// Der Hinweis zum zweiten Klick (stre-T-486). Die Sperre greift schon,
+// solange der Bestaetigungsdialog offen ist; der Text darf also nicht
+// behaupten, es werde bereits entfernt. Englisch ist die Quelle, jede
+// Sprachdatei traegt den Schluessel mit dem Platzhalter {name}.
+const LANG = join(WURZEL, "lang")
+const sprachen = readdirSync(LANG).filter((d) => d.endsWith(".json"))
+const removing = sprachen.map((d) => [d, JSON.parse(readFileSync(join(LANG, d), "utf8"))["BENEOS.Cloud.Card.AlreadyRemoving"]])
+const removingOhne = removing.filter(([, v]) => typeof v !== "string" || !v.includes("{name}")).map(([d]) => d)
+const removingEn = removing.find(([d]) => d === "en.json")?.[1] ?? ""
+// Den Sinn kann der Bench nur an der Quellsprache lesen. Fuer jede Sprache
+// misst er, dass der alte Wortlaut aus stre-T-485 ("wird bereits entfernt")
+// nicht zurueck ist und kein Gedankenstrich darin steht.
+const ALT_REMOVING = {
+  "ca.json": "{name} ja s'està eliminant, espera.",
+  "cs.json": "{name} se již odebírá, počkej prosím.",
+  "de.json": "{name} wird bereits entfernt, bitte warten.",
+  "en.json": "{name} is already being removed, please wait.",
+  "es.json": "{name} ya se está eliminando, espera por favor.",
+  "fr.json": "{name} est déjà en cours de suppression, veuillez patienter.",
+  "it.json": "{name} è già in fase di rimozione, attendi.",
+  "ja.json": "{name} は既に削除中です。お待ちください。",
+  "ko.json": "{name}을(를) 이미 제거하는 중입니다. 잠시 기다려 주세요.",
+  "pl.json": "{name} jest już usuwany, proszę czekać.",
+  "pt-BR.json": "{name} já está sendo removido, aguarde.",
+  "pt-PT.json": "{name} já está a ser removido, aguarda.",
+  "ru.json": "{name} уже удаляется, пожалуйста, подождите.",
+  "zh-TW.json": "{name} 正在移除中，請稍候。",
+}
+const removingAlt = removing.filter(([d, v]) => v === ALT_REMOVING[d]).map(([d]) => d)
+// Halbgeviert- und Geviertstrich als Codepunkt, damit die Quelle selbst keinen traegt.
+const STRICH = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`)
+const removingStrich = removing.filter(([, v]) => STRICH.test(v ?? "")).map(([d]) => d)
+pruefe("B20a der Doppelklick-Hinweis trifft offenen Dialog und laufendes Entfernen",
+  /\bopen or in progress\b/.test(removingEn) && !/\bis already being removed\b/.test(removingEn)
+    && removingOhne.length === 0 && removingAlt.length === 0 && removingStrich.length === 0,
+  `en: ${JSON.stringify(removingEn)} · ${sprachen.length - removingOhne.length} von ${sprachen.length} mit {name}`
+    + (removingOhne.length ? ` · ohne: ${removingOhne.join(", ")}` : "")
+    + (removingAlt.length ? ` · alter Wortlaut: ${removingAlt.join(", ")}` : "")
+    + (removingStrich.length ? ` · Strich: ${removingStrich.join(", ")}` : ""))
 
 console.log("")
 console.log("NICHT PRUEFBAR: ob Foundry pack.configure unter Last so antwortet wie")
