@@ -7858,14 +7858,20 @@ function _hideTourStepOfY() {
  * Resolve localised title & content for every step from the language file.
  * Keys follow: BENEOS.Tour.{tourKey}.{PascalStepId}.Title / .Content
  * e.g. step id "bm-welcome" in tour key "Page2" → BENEOS.Tour.Page2.BmWelcome.Title
+ * An optional plain-text .Note (today only the machine-translation hint of
+ * StartExplainer) is appended in small print. English, German and Russian
+ * carry it empty, so nothing is appended there. See scripts/tour-schritte.test.mjs.
  */
 function _localizeSteps(tourKey, steps) {
   return steps.map(step => {
     const pascal = step.id.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase());
+    const noteKey = `BENEOS.Tour.${tourKey}.${pascal}.Note`;
+    const note = game.i18n.has(noteKey) ? game.i18n.localize(noteKey) : "";
     return {
       ...step,
       title: game.i18n.localize(`BENEOS.Tour.${tourKey}.${pascal}.Title`),
       content: game.i18n.localize(`BENEOS.Tour.${tourKey}.${pascal}.Content`)
+        + (note ? `<p><small>${note}</small></p>` : "")
     };
   });
 }
