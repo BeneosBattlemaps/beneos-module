@@ -241,8 +241,9 @@ fi
 # und Platzhaltern, nach VOLLSTAENDIGKEIT aber nur fuer BENEOS.Stream.* und
 # BENEOS.Cloud.Bmap.Quota*. Gemessen am 26.11.2026 auf ba7a377 fehlten den
 # Sprachdateien gegenueber en.json 53 bis 61 Schluessel (de 53, ru 59, sonst
-# 61), darunter 42 des Streamings ausserhalb dieser zwei Gruppen, und die
-# Sprachwache war gruen. Foundry faellt dann still auf Englisch zurueck.
+# 61), alle ausserhalb dieser zwei Gruppen; nach den Picks aus main blieben
+# davon je Sprache 42 Texte der Stream-Funktionen (ru 59). Die Sprachwache war
+# gruen. Foundry faellt dann still auf Englisch zurueck.
 # `tools/sprachschluessel.test.mjs` kommt von main (MO-055, MO-056) und prueft
 # jede Datei in beiden Richtungen gegen en.json, dazu Platzhalter und Tags.
 #
@@ -258,7 +259,10 @@ fi
 # DIE ROT-ZEILEN ZUERST. `werte_aus` zeigt bei Rot das Ende der Ausgabe, und
 # das ist das TAP von node:test ohne einen Dateinamen. Die Pruefung schreibt
 # vorher je Abweichung eine Zeile "  ROT  <datei>: ...", zuerst eine
-# Uebersicht je roter Datei; die ersten 20 davon kommen hier dazu.
+# Uebersicht je roter Datei; die ersten 20 davon kommen hier dazu. `$TMP/lauf`
+# teilen sich alle Saetze, und `fahre_weich` kann rot werden, ohne die Datei
+# zu schreiben (Pruefung fehlt im Index, Indexkopie unvollstaendig). Deshalb
+# wird sie vorher geleert, sonst stuenden hier die Zeilen des vorigen Satzes.
 #
 # Sie kostet gemessen rund eine Sekunde, kein Netz, kein Foundry.
 if git diff --cached --name-only --diff-filter=ACMRD \
@@ -267,6 +271,7 @@ if git diff --cached --name-only --diff-filter=ACMRD \
 then
   meld "pre-commit: Sprachdateien vorgemerkt, die Schluesselpruefung laeuft mit"
   ROT_VORHER=$ROT
+  rm -f "$TMP/lauf"
   fahre_weich "tools/sprachschluessel.test.mjs" "sprachschluessel.test.mjs" lang
   if [ "$ROT" -gt "$ROT_VORHER" ] && [ -f "$TMP/lauf" ]; then
     grep '^  ROT  ' "$TMP/lauf" | head -n 20 >&2
