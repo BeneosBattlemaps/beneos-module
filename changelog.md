@@ -4,7 +4,7 @@ All notable changes to this module will be documented in this file.
 
 ## Updates
 
-### 14.4.13 # unreleased
+### 14.4.13 # 2026-11-26
 
 **Fixes**
 - Fixed: Large battlemap installs no longer lose files when the server is busy or the download runs for a long time, so every map arrives complete.
@@ -46,8 +46,6 @@ All notable changes to this module will be documented in this file.
 - Fixed: Pathfinder 2e spells now keep their range in the spell sheet and in chat cards while Beneos is active (thanks to Smeepo, #339).
 - Fixed: The Close button of the update notice is now readable in every game system, not only on hover.
 
-**Changes**
-- Removed the hidden console commands `BeneosScenePacker.showPackageSelector()` and `BeneosScenePacker.importPackage()`, battlemaps still install from the Beneos Cloud window.
 
 ### 14.4.12 # 2026-11-08
 
