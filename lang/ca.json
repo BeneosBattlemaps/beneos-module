@@ -1166,7 +1166,7 @@
   "BENEOS.Cloud.Card.UpdatedSinceInstall": "Actualitzat des de la instal·lació",
   "BENEOS.Cloud.Card.UpdatedSinceInstallOn": "Actualitzat des de la instal·lació ({date})",
   "BENEOS.Cloud.Card.LoyaltyLockedBadge": "FIDELITAT",
-  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Recompensa mensual per a mecenes actius aquell mes. El teu compte no te aquests mesos de fidelitat.",
+  "BENEOS.Cloud.Card.LoyaltyLockedTooltip": "Recompensa mensual per a mecenes actius aquell mes. El teu compte no té aquests mesos de fidelitat.",
   "BENEOS.Cloud.Card.Update": "Actualitza",
   "BENEOS.Cloud.Card.MoreTags": "+{count} més",
   "BENEOS.Cloud.Card.MoreTagsTooltip": "Hi ha més etiquetes amagades, obre el calaix per veure-les totes.",
