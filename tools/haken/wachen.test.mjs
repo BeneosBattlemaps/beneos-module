@@ -94,8 +94,13 @@ const DOMAENE = {
     "tools/v14-import-bench/bench.mjs", "tools/scene-merge-token-bench/unit.mjs", "tools/doppelnamen-bench/bench.mjs"],
 }
 const domaeneVon = (satz) => Object.keys(DOMAENE).find((d) => DOMAENE[d].includes(satz)) ?? "stre"
-// stre: die 11 alten Saetze und dieser Satz selbst, den stre.sh seit stre-T-070 faehrt.
-const MINDEST = { basis: 3, modul: 6, stre: 12 }
+// stre: die 11 alten Saetze und dieser Satz selbst, den stre.sh seit stre-T-070 faehrt,
+// dazu kompendium-riegel-bench und seit stre-T-496 die Schluesselpruefung der
+// Sprachdateien, also 14. DIE ZAHL IST DER STAND, NICHT EIN ABSTAND DARUNTER: sie
+// stand auf 12, waehrend stre.sh 13 Saetze fuhr, und dann blieb der Verlust eines
+// Satzes gruen (Sabotage W3 in tools/stream-sabotagen.mjs, gemessen am 26.11.2026
+// auf 883acf3). Wer in stre.sh einen Satz dazunimmt, zieht sie hier nach.
+const MINDEST = { basis: 3, modul: 6, stre: 14 }
 
 const istCode = (z) => z.trim() !== "" && !z.trim().startsWith("#")
 
