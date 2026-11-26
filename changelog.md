@@ -23,6 +23,8 @@ All notable changes to this module will be documented in this file.
 - Fixed: Signing in to Beneos Cloud no longer puts your email address and
   sign-in code into the web address of the request, so they no longer end
   up in server logs. The unused password sign-in has been removed.
+- Fixed: Beneos Cloud requests now carry your world ID inside the request
+  instead of the web address, which keeps it out of server logs.
 - Fixed: When the code could not be sent, the message now says so and asks
   you to try again, instead of asking you to check your credentials.
 - Fixed: In a narrow Beneos Cloud window the filter column no longer cuts

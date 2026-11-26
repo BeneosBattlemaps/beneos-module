@@ -16,6 +16,7 @@
  */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { foundryManagerAnfrage } from "./anmelde-anfrage.mjs"
 
 const FETCH_TIMEOUT_MS = 8000
 const LATER_KEY = "beneos-country-prompt-later-until"
@@ -79,21 +80,18 @@ async function waitForCloudLogin(timeoutMs = 15000, stepMs = 500) {
   return false
 }
 
-function endpoint(id) {
-  return `${BeneosUtility.cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&country_prompt=1`
-}
-
+// MO-064: always a POST with the world ID in the body, never in the address.
+// Without `body` the server reads the state (a POST without action), with
+// body {action, country} it writes it.
 async function request(id, body = null) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const init = { cache: "no-cache", signal: controller.signal, credentials: "omit" }
-    if (body) {
-      init.method = "POST"
-      init.headers = { "Content-Type": "application/x-www-form-urlencoded" }
-      init.body = new URLSearchParams(body)
-    }
-    const response = await fetch(endpoint(id), init)
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(), { country_prompt: 1 }, id, {
+      rumpf: body ?? {},
+      init: { cache: "no-cache", signal: controller.signal, credentials: "omit" },
+    })
+    const response = await fetch(url, init)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const data = await response.json()
     if (String(data?.result).toUpperCase() !== "OK") throw new Error(data?.information || "not OK")

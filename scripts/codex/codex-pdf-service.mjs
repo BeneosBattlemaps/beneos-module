@@ -1,7 +1,8 @@
 /* =============================================================
-   Beneos Creature Codex — PDF download service.
+   Beneos Creature Codex, PDF download service.
    Two-step signed-URL flow per `api-pdf.md`:
-     1. GET /foundry-manager.php?foundryId=…&get_asset_pdf=1&assetKey=…
+     1. POST /foundry-manager.php?get_asset_pdf=1&assetKey=… with the world ID
+        in the form body (MO-064, never in the address)
         → { result, data: { download_url, filename, expires_at } }
      2. fetch the signed URL (streams the PDF binary) and install it into
         the creature's local cloud token folder, alongside its other assets.
@@ -9,6 +10,7 @@
    ============================================================= */
 
 import { BeneosUtility } from "../beneos_utility.js"
+import { foundryManagerAnfrage } from "../cloud-v2/anmelde-anfrage.mjs"
 
 /** Cloud host, following the world's dev-server override like every other call. */
 function apiBase() {
@@ -60,11 +62,9 @@ function resolveFoundryId() {
 }
 
 export async function requestPdfUrl({ foundryId, assetKey }) {
-  const url = new URL(`${apiBase()}/foundry-manager.php`)
-  url.searchParams.set("foundryId", foundryId)
-  url.searchParams.set("get_asset_pdf", "1")
-  url.searchParams.set("assetKey", assetKey)
-  const res = await fetch(url, { credentials: "omit", mode: "cors" })
+  const { url, init } = foundryManagerAnfrage(apiBase(), { get_asset_pdf: 1, assetKey }, foundryId,
+    { init: { credentials: "omit", mode: "cors" } })
+  const res = await fetch(url, init)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
   if (data?.result !== "OK") {

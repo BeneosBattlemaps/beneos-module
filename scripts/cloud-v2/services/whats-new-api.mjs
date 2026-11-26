@@ -19,6 +19,8 @@
    one exception to the no-cache rule above, and a safe one: it stores a
    timestamp, never the content. */
 
+import { foundryManagerAnfrage } from "../anmelde-anfrage.mjs"
+
 const FETCH_TIMEOUT_MS = 6000
 // Marker for worlds with no cloud account. The signed-in cursor stays on the
 // server (users.last_whatsnew_seen_at) so a purchase is celebrated once across
@@ -55,11 +57,13 @@ async function setAnonCursor(ts) {
   catch (err) { console.warn("[Beneos What's New] Could not store local marker:", err) }
 }
 
-async function fetchJson(url) {
+// `anfrage` is a plain address (GET) or { url, init } from foundryManagerAnfrage.
+async function fetchJson(anfrage) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const { url, init = {} } = typeof anfrage === "string" ? { url: anfrage } : anfrage
   try {
-    const response = await fetch(url, { cache: "no-cache", signal: controller.signal })
+    const response = await fetch(url, { ...init, cache: "no-cache", signal: controller.signal })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     return await response.json()
   } finally {
@@ -108,10 +112,11 @@ export async function fetchWhatsNew({ loggedIn = true } = {}) {
   if (isOffline) return null
 
   try {
-    const url = signedIn
-      ? `${cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&get_whats_new=1`
+    // MO-064: the world ID travels in the body; without an account there is none to send.
+    const anfrage = signedIn
+      ? foundryManagerAnfrage(cloudBase(), { get_whats_new: 1 }, id)
       : `${cloudBase()}/foundry-manager.php?get_whats_new=1&since=${anonCursor()}`
-    const data = await fetchJson(url)
+    const data = await fetchJson(anfrage)
     if (String(data?.result).toUpperCase() !== "OK" || !data?.data) {
       throw new Error(`Unexpected payload: ${JSON.stringify(data).slice(0, 120)}`)
     }
@@ -156,8 +161,7 @@ export async function ackWhatsNew(serverTime, { loggedIn = true } = {}) {
     return true
   }
   try {
-    const url = `${cloudBase()}/foundry-manager.php?foundryId=${encodeURIComponent(id)}&whats_new_ack=1&ts=${ts}`
-    const data = await fetchJson(url)
+    const data = await fetchJson(foundryManagerAnfrage(cloudBase(), { whats_new_ack: 1, ts }, id))
     return String(data?.result).toUpperCase() === "OK"
   } catch (err) {
     // Losing the connection while the window is open is not a fault worth a

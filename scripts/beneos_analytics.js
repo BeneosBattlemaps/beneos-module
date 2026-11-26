@@ -8,8 +8,8 @@
 // A localStorage backup guards against hard world-closes. Every call path is
 // wrapped so a telemetry failure can never break the world.
 //
-// Identity: each event carries the world-scoped `beneos-cloud-foundry-id`
-// (a random pseudonym). The server resolves the cloud user_id when the GM is
+// Identity: each batch carries the world-scoped `beneos-cloud-foundry-id`
+// (a random pseudonym) in the JSON body, never in the address (MO-064). The server resolves the cloud user_id when the GM is
 // logged in, so several worlds of one person can be correlated without PII.
 /********************************************************************************* */
 
@@ -355,13 +355,15 @@ export class BeneosAnalytics {
     // and the running interval flush would then take 50 more on its own "ok".
     if (this._flushing) return
 
-    const url = `${ANALYTICS_ENDPOINT}?ingest=1&foundryId=${encodeURIComponent(foundryId)}`
+    // MO-064: the ID goes in the JSON body (clou-T-279), so it never lands in
+    // an access log on the way.
+    const url = `${ANALYTICS_ENDPOINT}?ingest=1`
     const batch = this.queue.slice(0, MAX_BATCH)
 
-    if (useBeacon) return this._flushKeepalive(url, batch, final)
+    if (useBeacon) return this._flushKeepalive(url, batch, final, foundryId)
 
     this._flushing = true
-    const body = JSON.stringify({ events: batch })
+    const body = JSON.stringify({ foundryId, events: batch })
     let ok = false
     try {
       const resp = await fetch(url, {
@@ -413,13 +415,16 @@ export class BeneosAnalytics {
    *
    * fetch rejects a keepalive body over 64 KB. MAX_BATCH events at
    * PAYLOAD_MAX each stay under that, but only just.
+   *
+   * `foundryId` is measured with the events because it travels in the same
+   * body (MO-064). The bench in tools/keepalive-fit-bench omits it.
    */
-  static _fitKeepalive(batch, maxBytes = KEEPALIVE_MAX_BYTES) {
+  static _fitKeepalive(batch, maxBytes = KEEPALIVE_MAX_BYTES, foundryId = undefined) {
     let sendCount = batch.length
-    let sendBody = JSON.stringify({ events: batch })
+    let sendBody = JSON.stringify({ foundryId, events: batch })
     while (sendCount > 1 && new Blob([sendBody]).size > maxBytes) {
       sendCount = Math.floor(sendCount / 2)
-      sendBody = JSON.stringify({ events: batch.slice(0, sendCount) })
+      sendBody = JSON.stringify({ foundryId, events: batch.slice(0, sendCount) })
     }
     return { sendCount, sendBody }
   }
@@ -441,14 +446,14 @@ export class BeneosAnalytics {
    * outlives the page, and unlike sendBeacon it takes credentials: "omit",
    * which is what makes the wildcard acceptable.
    */
-  static _flushKeepalive(url, batch, final) {
+  static _flushKeepalive(url, batch, final, foundryId) {
     // Tab-hide fires on every alt-tab and is bound to no interval. Without a
     // minimum gap this is one call to a foreign system per tab switch.
     const now = Date.now()
     if (!final && this._lastKeepaliveAt && (now - this._lastKeepaliveAt) < KEEPALIVE_MIN_GAP_MS) return
     this._lastKeepaliveAt = now
 
-    const { sendCount, sendBody } = this._fitKeepalive(batch)
+    const { sendCount, sendBody } = this._fitKeepalive(batch, KEEPALIVE_MAX_BYTES, foundryId)
     // The catch belongs on the request itself. Without it a rejected call
     // becomes an unhandledrejection whose stack points at beneos-module,
     // _installErrorCapture() turns that into a beneos_error event, and the
