@@ -13,6 +13,8 @@ All notable changes to this module will be documented in this file.
   code, and the same code is used.
 - Changed: The code dialog shows the address the code was sent to right away,
   with a Change email button, so a typo is easy to spot.
+- Changed: Item card frames now match the new card format, so new item cards
+  fill them exactly.
 
 **Fixed**
 - Fixed: When Beneos Cloud withholds the stream key because this world's
