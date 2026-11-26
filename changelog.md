@@ -15,6 +15,7 @@ All notable changes to this module will be documented in this file.
   with a Change email button, so a typo is easy to spot.
 
 **Fixed**
+- Fixed: New item cards now fill their card frame exactly and are never stretched.
 - Fixed: Signing in to Beneos Cloud no longer puts your email address and
   sign-in code into the web address of the request, so they no longer end
   up in server logs. The unused password sign-in has been removed.
