@@ -15,6 +15,9 @@ All notable changes to this module will be documented in this file.
   with a Change email button, so a typo is easy to spot.
 
 **Fixed**
+- Fixed: When Beneos Cloud withholds the stream key because this world's
+  Foundry ID is no longer linked to your account, the module now asks you
+  to sign in again.
 - Fixed: Signing in to Beneos Cloud no longer puts your email address and
   sign-in code into the web address of the request, so they no longer end
   up in server logs. The unused password sign-in has been removed.

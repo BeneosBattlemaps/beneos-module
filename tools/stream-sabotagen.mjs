@@ -196,6 +196,15 @@
  * und `faehig` als POST-Rumpf und nichts davon in der Adresse, und es gibt
  * keinen Passwortweg an foundry-login.php mehr. An der Basis gibt es ihn nicht.
  *
+ * Seit stre-T-230 dazu `schluesselsperre`
+ * (`scripts/stream/stream-schluesselsperre.test.mjs`): antwortet
+ * get_stream_key mit 409, reicht ensureStreamKey den Servertext genau einmal
+ * an clearStaleEntitlement weiter, behaelt Schluessel und Kennung und fragt
+ * nicht ein zweites Mal; 200 und andere Status bleiben wie bisher. Traegt die
+ * 409 reason "busy" (clou-T-531), bleibt es bei einer Konsolenzeile mit dem
+ * Servertext; "withheld", kein reason und ein unbekannter Wert fuehren wie
+ * bisher zum neuen Anmelden. An der Basis gibt es ihn nicht.
+ *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
  * Aufruf:   node tools/stream-sabotagen.mjs [--satz <name>] [--alt] [--zeig] [--zeitgrenze <ms>]
@@ -1604,6 +1613,27 @@ const SABOTAGEN = [
   { satz: "fremdflaggen", ziel: ["W5: das Ende der Frist wird gemeldet"], ersetze: [[SETTINGS, "    console.warn(\"Beneos Stream | Adressnachzug: der Ruecklauf der fremden Flags gab den Riegel nicht frei\")\n", ""]] },
   { satz: "fremdflaggen", ziel: ["W7: der Nachzug wartet den Ruecklauf ab und nimmt danach den Riegel"], ersetze: [[SETTINGS, "  const marke = await nachzugRiegelNehmenNachRuecklauf()\n", "  const marke = await nachzugRiegelNehmen()\n"]] },
   { satz: "fremdflaggen", ziel: ["W7: der Schluesselwechsel startet den Nachzug"], ersetze: [[SETTINGS, "await game.settings.set(MODULE_ID, SETTING.key, String(daten.stream_key))", "void 0"]] },
+  // stre-T-230: 409 aus get_stream_key wird dem Kunden gezeigt (Satz schluesselsperre).
+  { satz: "schluesselsperre", ziel: ["409: genau eine Meldung", "409: die Meldung traegt den Servertext", "409: die Konsole nennt den Grund"], ersetze: [[SETTINGS, "    if (antwort.status === 409) {\n", "    if (antwort.status === 400) {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: genau eine Meldung", "409: die Meldung traegt den Servertext"], ersetze: [[SETTINGS, "      await game.beneos?.cloud?.clearStaleEntitlement?.(daten?.message)\n", ""]] },
+  { satz: "schluesselsperre", ziel: ["409: die Meldung traegt den Servertext"], ersetze: [[SETTINGS, "clearStaleEntitlement?.(daten?.message)", "clearStaleEntitlement?.()"]] },
+  { satz: "schluesselsperre", ziel: ["409: die Konsole nennt den Grund"], ersetze: [[SETTINGS, "Schluessel zurueckgehalten:\", daten?.message || 409)", "Schluessel zurueckgehalten:\", 409)"]] },
+  { satz: "schluesselsperre", ziel: ["409: der vorhandene Schluessel kommt zurueck", "409 ohne Cloud: der vorhandene Schluessel kommt zurueck"], ersetze: [[SETTINGS, "clearStaleEntitlement?.(daten?.message)\n      return vorhanden\n", "clearStaleEntitlement?.(daten?.message)\n      return \"\"\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: der Schluessel bleibt stehen", "409: keine Einstellung wird geschrieben"], ersetze: [[SETTINGS, "clearStaleEntitlement?.(daten?.message)\n      return vorhanden\n", "clearStaleEntitlement?.(daten?.message)\n      await game.settings.set(MODULE_ID, SETTING.key, \"\")\n      return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: die Kennung bleibt stehen", "409: keine Einstellung wird geschrieben"], ersetze: [[SETTINGS, "clearStaleEntitlement?.(daten?.message)\n      return vorhanden\n", "clearStaleEntitlement?.(daten?.message)\n      await game.settings.set(MODULE_ID, \"beneos-cloud-foundry-id\", \"\")\n      return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: kein zweiter Abruf"], ersetze: [[SETTINGS, "clearStaleEntitlement?.(daten?.message)\n      return vorhanden\n", "clearStaleEntitlement?.(daten?.message)\n      await fetch(`${basis}/api-scenepacker.php`, { method: \"POST\", body, credentials: \"omit\" })\n      return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["500: keine Meldung", "500: die Konsole meldet wie bisher", "403: keine Meldung", "403: die Konsole meldet wie bisher"], ersetze: [[SETTINGS, "    if (antwort.status === 409) {\n", "    if (antwort.status !== 200) {\n"]] },
+  { satz: "schluesselsperre", ziel: ["200: keine Meldung"], ersetze: [[SETTINGS, "    if (antwort.status === 409) {\n", "    if (antwort.status < 600) {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 ohne Cloud: kein Fehlerweg"], ersetze: [[SETTINGS, "game.beneos?.cloud?.clearStaleEntitlement?.(", "game.beneos.cloud.clearStaleEntitlement("]] },
+  // stre-T-230 Nachbau: reason "busy" fuehrt nicht zum neuen Anmelden, alles andere schon.
+  { satz: "schluesselsperre", ziel: ["409 busy: keine Meldung", "409 busy: die Konsole nennt den Servertext"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason === \"nie\") {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: genau eine Meldung", "409 unbekannter Grund: genau eine Meldung"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason !== \"withheld\") {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 withheld: genau eine Meldung", "409 withheld: die Meldung traegt den Servertext"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason !== undefined) {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: die Konsole nennt den Servertext"], ersetze: [[SETTINGS, "vorlaeufig nicht verfuegbar:\", daten?.message || 409)", "vorlaeufig nicht verfuegbar:\", 409)"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: der vorhandene Schluessel kommt zurueck"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        return \"\"\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: Schluessel und Kennung bleiben stehen", "409 busy: keine Einstellung wird geschrieben"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await game.settings.set(MODULE_ID, SETTING.key, \"\")\n        return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: kein zweiter Abruf"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await fetch(`${basis}/api-scenepacker.php`, { method: \"POST\", body, credentials: \"omit\" })\n        return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: keine Meldung"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await game.beneos?.cloud?.clearStaleEntitlement?.(daten?.message)\n        return vorhanden\n"]] },
   // stre-T-122 A bis E: eigene Flags schluesselfrei (Satz flaggen).
   { satz: "flaggen", ziel: ["FLAGGEN_FELDER ist exportiert"], ersetze: [[LEINWAND, "export const FLAGGEN_FELDER = ", "export const FLAGGEN_FELDER_ALT = "], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerte, FLAGGEN_FELDER_ALT as FLAGGEN_FELDER } from"]] },
   { satz: "flaggen", ziel: ["falteWerte ist exportiert"], ersetze: [[LEINWAND, "export function falteWerte(", "export function falteWerteAlt("], [LEINWAND, "...falteWerte(art, quelle)", "...falteWerteAlt(art, quelle)"], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerteAlt as falteWerte, FLAGGEN_FELDER } from"]] },
@@ -2804,6 +2834,10 @@ const EIGENPROBEN = {
     "alle Sprachdateien gelesen (mindestens 13)":
       "Vorbedingung des Abschnitts Sprachen (tick-T-050): ohne gelesene Dateien waere \"jede Sprache traegt CodeSendFailed\" leer und gruen. Der Laeufer kann keine Datei entfernen; bewacht sind die beiden Proben daneben.",
   },
+  "schluesselsperre": {
+    "409 ohne Cloud: kein Wurf":
+      "Vorbedingung (stre-T-230): ensureStreamKey faengt jeden Wurf im eigenen catch ab, ein fehlender Griff kann also nie nach aussen werfen. Bewacht ist \"409 ohne Cloud: kein Fehlerweg\", das den catch an seiner Konsolenzeile erkennt.",
+  },
   "einbau": {
     "Modus an: init laeuft in der Attrappe durch":
       "Vorbedingung der Einbauprobe (stre-T-208): ohne sie koennte ein Wurf im init mit Modus an die Meldestelle verfehlen und den Befund verdecken. Bewacht ist \"Modus an: die Meldestelle ist eingebaut und haelt die Meldung im Szenenaufbau zurueck\".",
@@ -3123,7 +3157,7 @@ if (process.argv.includes("--alle-saetze")) {
 // sobald der Kennungsriegel oder module.json vorgemerkt ist; seine Sabotagen auf
 // Zuruf mit --satz betreffkennung.
 const NUR_AUF_ZURUF = ["doppelwache", "vorpush", "vertrag-manifest", "vertrag-adresse", "betreffkennung"];
-const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "anmeldecode", "anmeldung", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
+const SAETZE = ["maske", "geteilt", "bilder", "ersatzbild", "posen", "beute", "weiche", "blatt", "bonustab", "heilung", "leinwand", "basis", "umschalter", "einbau", "klang", "html", "hakenfehler", "rueckfall", "fremdflaggen", "flaggen", "export", "kaufknopf", "zusage", "kennung", "anmeldecode", "anmeldung", "schluesselsperre", "riegel", "sperre", "platzhalter", "kodexreiter", "unterpfad", "hinweis", "ersatz-speicher", "klangwache", "vorrat", "traeger", "traeger-ersatz", "pruefsumme", "offline-geteilt", "betazip", "betreffkennung", "vorpush", "doppelwache", "vertrag-manifest", "vertrag-adresse", "wachen"]
   .filter((s) => (nurSatz ? s === nurSatz : !NUR_AUF_ZURUF.includes(s)));
 if (!nurSatz) console.log(`nur auf Zuruf, nicht in diesem Lauf: ${NUR_AUF_ZURUF.join(", ")}`);
 if (SAETZE.length === 0) {
