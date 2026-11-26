@@ -200,8 +200,10 @@
  * (`scripts/stream/stream-schluesselsperre.test.mjs`): antwortet
  * get_stream_key mit 409, reicht ensureStreamKey den Servertext genau einmal
  * an clearStaleEntitlement weiter, behaelt Schluessel und Kennung und fragt
- * nicht ein zweites Mal; 200 und andere Status bleiben wie bisher. An der
- * Basis gibt es ihn nicht.
+ * nicht ein zweites Mal; 200 und andere Status bleiben wie bisher. Traegt die
+ * 409 reason "busy" (clou-T-531), bleibt es bei einer Konsolenzeile mit dem
+ * Servertext; "withheld", kein reason und ein unbekannter Wert fuehren wie
+ * bisher zum neuen Anmelden. An der Basis gibt es ihn nicht.
  *
  * Alles laeuft in Wegwerfkopien unter dem Temp-Verzeichnis. Kein Netz.
  *
@@ -1623,6 +1625,15 @@ const SABOTAGEN = [
   { satz: "schluesselsperre", ziel: ["500: keine Meldung", "500: die Konsole meldet wie bisher", "403: keine Meldung", "403: die Konsole meldet wie bisher"], ersetze: [[SETTINGS, "    if (antwort.status === 409) {\n", "    if (antwort.status !== 200) {\n"]] },
   { satz: "schluesselsperre", ziel: ["200: keine Meldung"], ersetze: [[SETTINGS, "    if (antwort.status === 409) {\n", "    if (antwort.status < 600) {\n"]] },
   { satz: "schluesselsperre", ziel: ["409 ohne Cloud: kein Fehlerweg"], ersetze: [[SETTINGS, "game.beneos?.cloud?.clearStaleEntitlement?.(", "game.beneos.cloud.clearStaleEntitlement("]] },
+  // stre-T-230 Nachbau: reason "busy" fuehrt nicht zum neuen Anmelden, alles andere schon.
+  { satz: "schluesselsperre", ziel: ["409 busy: keine Meldung", "409 busy: die Konsole nennt den Servertext"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason === \"nie\") {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409: genau eine Meldung", "409 unbekannter Grund: genau eine Meldung"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason !== \"withheld\") {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 withheld: genau eine Meldung", "409 withheld: die Meldung traegt den Servertext"], ersetze: [[SETTINGS, "      if (daten?.reason === \"busy\") {\n", "      if (daten?.reason !== undefined) {\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: die Konsole nennt den Servertext"], ersetze: [[SETTINGS, "vorlaeufig nicht verfuegbar:\", daten?.message || 409)", "vorlaeufig nicht verfuegbar:\", 409)"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: der vorhandene Schluessel kommt zurueck"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        return \"\"\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: Schluessel und Kennung bleiben stehen", "409 busy: keine Einstellung wird geschrieben"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await game.settings.set(MODULE_ID, SETTING.key, \"\")\n        return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: kein zweiter Abruf"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await fetch(`${basis}/api-scenepacker.php`, { method: \"POST\", body, credentials: \"omit\" })\n        return vorhanden\n"]] },
+  { satz: "schluesselsperre", ziel: ["409 busy: keine Meldung"], ersetze: [[SETTINGS, "daten?.message || 409)\n        return vorhanden\n", "daten?.message || 409)\n        await game.beneos?.cloud?.clearStaleEntitlement?.(daten?.message)\n        return vorhanden\n"]] },
   // stre-T-122 A bis E: eigene Flags schluesselfrei (Satz flaggen).
   { satz: "flaggen", ziel: ["FLAGGEN_FELDER ist exportiert"], ersetze: [[LEINWAND, "export const FLAGGEN_FELDER = ", "export const FLAGGEN_FELDER_ALT = "], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerte, FLAGGEN_FELDER_ALT as FLAGGEN_FELDER } from"]] },
   { satz: "flaggen", ziel: ["falteWerte ist exportiert"], ersetze: [[LEINWAND, "export function falteWerte(", "export function falteWerteAlt("], [LEINWAND, "...falteWerte(art, quelle)", "...falteWerteAlt(art, quelle)"], [FLAGG, "import { falteWerte, FLAGGEN_FELDER } from", "import { falteWerteAlt as falteWerte, FLAGGEN_FELDER } from"]] },

@@ -821,7 +821,17 @@ export async function ensureStreamKey() {
     // den Hinweis zum neuen Anmelden einmal je verlorener Bindung. Schluessel
     // und Kennung bleiben stehen, und es gibt bewusst keinen zweiten Abruf:
     // erst eine neue Anmeldung bindet die Kennung wieder.
+    //
+    // Seit clou-T-531 traegt dieselbe 409 auch "das Konto ist gerade
+    // beschaeftigt", unterschieden im Feld reason. Nur reason "busy" ist
+    // harmlos: dann bleibt alles stehen, und der naechste Weltstart fragt
+    // erneut. "withheld", ein fehlendes reason (Altserver) und jeder
+    // unbekannte Wert fuehren zum neuen Anmelden, das Modul raet nicht.
     if (antwort.status === 409) {
+      if (daten?.reason === "busy") {
+        console.warn("Beneos Stream | Schluessel vorlaeufig nicht verfuegbar:", daten?.message || 409)
+        return vorhanden
+      }
       console.warn("Beneos Stream | Schluessel zurueckgehalten:", daten?.message || 409)
       await game.beneos?.cloud?.clearStaleEntitlement?.(daten?.message)
       return vorhanden

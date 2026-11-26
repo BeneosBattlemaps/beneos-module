@@ -91,6 +91,33 @@ async function lauf(status, rumpf, { mitCloud = true } = {}) {
   t.gleich("409: die Konsole nennt den Grund", r.warnungen.some((z) => z.includes("zurueckgehalten") && z.includes(TEXT)), true)
 }
 
+// Seit clou-T-531 traegt die 409 ein Feld `reason`. Der Block oben ist die
+// Antwort eines Altservers ohne dieses Feld; sie muss weiter zum neuen
+// Anmelden fuehren. Nur `busy` ist als harmlos bekannt, jeder andere Wert
+// wird behandelt wie kein Wert, das Modul raet nicht.
+const BESCHAEFTIGT = "Stream key temporarily unavailable, the account is busy. Please try again."
+
+{
+  const r = await lauf(409, { status: "error", message: TEXT, reason: "withheld" })
+  t.gleich("409 withheld: genau eine Meldung", r.rufe.length, 1)
+  t.gleich("409 withheld: die Meldung traegt den Servertext", r.rufe[0], TEXT)
+}
+
+{
+  const r = await lauf(409, { status: "error", message: TEXT, reason: "spaeter" })
+  t.gleich("409 unbekannter Grund: genau eine Meldung", r.rufe.length, 1)
+}
+
+{
+  const r = await lauf(409, { status: "error", message: BESCHAEFTIGT, reason: "busy" })
+  t.gleich("409 busy: keine Meldung", r.rufe.length, 0)
+  t.gleich("409 busy: die Konsole nennt den Servertext", r.warnungen.some((z) => z.includes("vorlaeufig") && z.includes(BESCHAEFTIGT)), true)
+  t.gleich("409 busy: der vorhandene Schluessel kommt zurueck", r.wert, ALT)
+  t.gleich("409 busy: Schluessel und Kennung bleiben stehen", [einstellungen[SETTING.key], einstellungen["beneos-cloud-foundry-id"]].join("|"), `${ALT}|${KENNUNG}`)
+  t.gleich("409 busy: keine Einstellung wird geschrieben", r.schreiben.length, 0)
+  t.gleich("409 busy: kein zweiter Abruf", r.abrufe, 1)
+}
+
 {
   const r = await lauf(200, { status: "ok", stream_key: ALT })
   t.gleich("200: keine Meldung", r.rufe.length, 0)
