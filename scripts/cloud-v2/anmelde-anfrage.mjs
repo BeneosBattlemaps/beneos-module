@@ -76,8 +76,12 @@ export function anmeldeAnfrage(basis, endpunkt, felder) {
 export function foundryManagerAnfrage(basis, adresse, foundryId, { rumpf = {}, init = {} } = {}) {
   const body = formRumpf(rumpf)
   body.set("foundryId", String(foundryId ?? ""))
+  // Ein Feld foundryId in `adresse` braechte die Kennung zurueck ins
+  // Zugriffsprotokoll, ohne dass der Server es merkt (er liest dann den Rumpf).
+  const felder = formRumpf(adresse)
+  felder.delete("foundryId")
   return {
-    url: `${basis}/foundry-manager.php?${formRumpf(adresse)}`,
+    url: `${basis}/foundry-manager.php?${felder}`,
     init: { ...init, method: "POST", body },
   }
 }

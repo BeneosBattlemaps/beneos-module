@@ -69,11 +69,25 @@ const QUELLEN = {
   "codex-pdf-service.mjs": readFileSync(new URL("../codex/codex-pdf-service.mjs", import.meta.url), "utf8"),
 }
 
-test("Quellscan: kein foundryId= und kein searchParams.set(\"foundryId\") in den fuenf Moduldateien", () => {
+// Die Formen, in denen die Kennung in eine Adresse kommt: als Text oder ueber
+// searchParams.set/append.
+const KENNUNG_IN_ADRESSE = [/foundryId=/, /searchParams\.(set|append)\(\s*["']foundryId["']/]
+const traegtKennung = (zeile) => KENNUNG_IN_ADRESSE.some((muster) => muster.test(zeile))
+
+test("Quellscan erkennt jede Form, in der die Kennung in eine Adresse kommt", () => {
+  for (const zeile of [
+    "const url = `${b}/foundry-manager.php?check=1&foundryId=${id}`",
+    "url.searchParams.set(\"foundryId\", id)",
+    "url.searchParams.append('foundryId', id)",
+  ]) assert.ok(traegtKennung(zeile), zeile)
+  assert.ok(!traegtKennung("body.set(\"foundryId\", id)"), "Rumpf ist keine Adresse")
+})
+
+test("Quellscan: keine Kennung in einer Adresse der fuenf Moduldateien", () => {
   const treffer = []
   for (const [datei, text] of Object.entries(QUELLEN)) {
     text.split(/\r?\n/).forEach((zeile, i) => {
-      if (/foundryId=/.test(zeile) || /searchParams\.set\(\s*["']foundryId["']/.test(zeile)) {
+      if (traegtKennung(zeile)) {
         treffer.push(`${datei}:${i + 1}: ${zeile.trim().slice(0, 100)}`)
       }
     })
@@ -89,6 +103,12 @@ test("Helfer: POST, Aktion in der Adresse, Kennung nur im Rumpf", () => {
   assert.ok(!url.includes(WELT))
   assert.equal(init.method, "POST")
   assert.ok(init.body instanceof URLSearchParams)
+  assert.deepEqual(Object.fromEntries(init.body), { foundryId: WELT })
+})
+
+test("Helfer: ein Feld foundryId in der Adresse wird nie gesendet, die Kennung reist nur im Rumpf", () => {
+  const { url, init } = foundryManagerAnfrage(BASIS, { check: 1, foundryId: "fremd" }, WELT, { rumpf: { foundryId: "auch-fremd" } })
+  assert.equal(url, `${BASIS}/foundry-manager.php?check=1`)
   assert.deepEqual(Object.fromEntries(init.body), { foundryId: WELT })
 })
 
