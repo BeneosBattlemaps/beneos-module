@@ -181,7 +181,7 @@ export const SABOTAGEN = [
   { bench: "bildform-adresse", ziel: ["A2 die Vorgabe ist AN"],
     ersetze: [[CLOUD, "const BILDFORM_ADRESSE_AN = true", "const BILDFORM_ADRESSE_AN = false"]] },
   { bench: "bildform-adresse", ziel: ["A3 der Anhang steht an EINER Stelle"],
-    ersetze: [[CLOUD, 'return BILDFORM_ADRESSE_AN ? "&bildform=adresse" : ""', 'return "&bildform=adresse"']] },
+    ersetze: [[CLOUD, 'return BILDFORM_ADRESSE_AN ? { bildform: "adresse" } : {}', 'return { bildform: "adresse" }']] },
   { bench: "bildform-adresse", ziel: ["C2 keine Stelle ausser dem Helfer fragt nach image64", "C5 drei Vorpruefungen "],
     ersetze: [[CLOUD, "if (!_beneosBildDa(part)) continue", "if (!part.image64) continue"]] },
   // Der base64-Rueckfall faellt weg. Den Adresszweig immer zu nehmen
@@ -211,7 +211,15 @@ export const SABOTAGEN = [
   { bench: "bildform-adresse", ziel: ["E9 ein leerer Blob wird nicht zur Datei"],
     ersetze: [[CLOUD, "if (!blob || blob.size === 0) return null", "if (!blob) return null"]] },
   { bench: "bildform-adresse", ziel: ["B1 alle drei Installationsanfragen tragen den Anhang"],
-    ersetze: [[CLOUD, "&itemKey=${encodeURIComponent(itemKey)}` + _beneosBildformAnhang()", "&itemKey=${encodeURIComponent(itemKey)}`"]] },
+    ersetze: [[CLOUD, "{ get_item: 1, itemKey, ..._beneosBildformFelder(), ", "{ get_item: 1, itemKey, "]] },
+  // MO-066: seit der Feldform kann der Spread auf derselben Zeile in den Rumpf
+  // wandern, und ein zweites Feld kann in anderer Schreibweise dazukommen.
+  { bench: "bildform-adresse", ziel: ["B1 alle drei Installationsanfragen tragen den Anhang"],
+    ersetze: [[CLOUD, "{ get_item: 1, itemKey, ..._beneosBildformFelder(), ...this._erwerbsFelder(opts) }, userId, { init:",
+      "{ get_item: 1, itemKey, ...this._erwerbsFelder(opts) }, userId, { rumpf: { ..._beneosBildformFelder() }, init:"]] },
+  { bench: "bildform-adresse", ziel: ["A4 der Parameter steht genau einmal im Quelltext"],
+    ersetze: [[CLOUD, "{ get_token: 1, tokenKey, ..._beneosBildformFelder(), ",
+      "{ get_token: 1, tokenKey, ..._beneosBildformFelder(), bildform: 'adresse', "]] },
 
   // TC-305 paket-grenze, alle Wiki-Sabotagen: jede der sieben Sperrzeilen
   // einzeln entfernt, sieben zu weite Sperren dazu, `* export-ignore`.

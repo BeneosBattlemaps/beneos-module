@@ -5,7 +5,7 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { anmeldenMitKennung, mitFaehig } from "./cloud-login-kennung.mjs"
 import { anfrageAbruf, anfrageStufe, ausgangNachPruefung, htmlSicher, pruefAbruf, pruefenMitRueckfrage } from "./cloud-login-code.mjs"
-import { anmeldeAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
+import { anmeldeAnfrage, foundryManagerAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 import {
@@ -107,14 +107,16 @@ const BENEOS_STUB_MAX_BYTES = 8
 const BILDFORM_ADRESSE_AN = true
 
 /**
- * Der Anhang an die drei Installationsanfragen.
+ * Das Adressfeld der drei Installationsanfragen, als Feld fuer
+ * foundryManagerAnfrage (MO-066; vorher ein fertiger `&bildform=...`-Anhang).
+ * Der Server liest `bildform` weiter aus der Adresse, nicht aus dem Rumpf.
  *
  * EINE STELLE, DREI RUFER. Stuende der Parameter dreimal im Quelltext, waere
  * ein Umschalten an zwei Stellen moeglich, und genau so ist die harte
  * Variantennummer Eins auf der Serverseite entstanden.
  */
-function _beneosBildformAnhang() {
-  return BILDFORM_ADRESSE_AN ? "&bildform=adresse" : ""
+function _beneosBildformFelder() {
+  return BILDFORM_ADRESSE_AN ? { bildform: "adresse" } : {}
 }
 
 /**
@@ -1092,11 +1094,12 @@ export class BeneosCloudLogin extends FormApplication {
     let requestOrigin = this.requestOrigin
 
     let pollInterval = setInterval(function () {
-      let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+      // MO-064: die Kennung reist im Rumpf, nicht in der Adresse.
+      const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(), { check: 1 }, userId, { init: { credentials: 'same-origin' } })
       // Fix #A4 / Wave B-5d-Hotfix: HTTP-status check + .catch() so server
       // errors and network failures during polling don't loop silently for
       // 30 seconds. Polling stops on the first hard error.
-      fetch(url, { credentials: 'same-origin' })
+      fetch(url, init)
         .then(response => {
           if (!response.ok) {
             clearInterval(pollInterval)
@@ -1619,8 +1622,8 @@ export class BeneosCloud {
           return
         }
         const userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id") || ""
-        const url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}&_t=${Date.now()}`
-        fetch(url, { credentials: 'same-origin' })
+        const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(), { check: 1, _t: Date.now() }, userId, { init: { credentials: 'same-origin' } })
+        fetch(url, init)
           .then(r => this.markServerStatus(r, null))
           .catch(err => this.markServerStatus(null, err))
           .finally(() => {
@@ -1697,13 +1700,13 @@ export class BeneosCloud {
     }
 
     // Check login validity
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?check=1&foundryId=${encodeURIComponent(userId)}`
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(), { check: 1 }, userId, { init: { credentials: 'same-origin' } })
     // Wave B-5d-Hotfix: silent init-time check; on network failure we don't
     // bother the user with a notification (they haven't asked for anything
-    // yet) — just log so devs can see why the cloud chip is not green.
+    // yet), we just log so devs can see why the cloud chip is not green.
     // Stage 9: feed every response/error through markServerStatus so the
     // serverOffline flag stays accurate at init time too.
-    fetch(url, { credentials: 'same-origin' })
+    fetch(url, init)
       .then(response => {
         game.beneos.cloud.markServerStatus(response, null)
         if (!response.ok) {
@@ -2666,10 +2669,10 @@ export class BeneosCloud {
         if (typeof v === "number" && v > 0) sinceTs = v
       } catch (e) { /* setting not registered yet */ }
     }
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_content=1&foundryId=${encodeURIComponent(userId)}`
-    if (sinceTs > 0) url += `&since=${encodeURIComponent(sinceTs)}`
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(),
+      { get_content: 1, since: sinceTs > 0 ? sinceTs : undefined }, userId, { init: { credentials: 'same-origin' } })
     try {
-      const response = await fetch(url, { credentials: 'same-origin' })
+      const response = await fetch(url, init)
       // Stage 9: classify reachability before parsing the body.
       game.beneos?.cloud?.markServerStatus?.(response, null)
       const data = await response.json()
@@ -4926,7 +4929,8 @@ export class BeneosCloud {
   }
 
   /**
-   * Haengt Oberflaeche und Vorgang an eine Installationsadresse.
+   * Oberflaeche und Vorgang fuer die Adresse einer Installation, als Felder
+   * fuer foundryManagerAnfrage (MO-064; vorher ein fertiger `&...`-Anhang).
    *
    * WARUM DAS NOETIG IST
    *
@@ -4943,15 +4947,13 @@ export class BeneosCloud {
    * Fehlt beides, bleibt die Adresse unveraendert und der Server traegt
    * `unknown` ein. Das ist Absicht: geraten wird nicht.
    */
-  _erwerbsAnhang(opts = {}) {
-    let anhang = ""
+  _erwerbsFelder(opts = {}) {
+    const felder = {}
     const flaeche = String(opts?.surface || "")
-    if (["drawer", "search", "scene_install", "codex"].includes(flaeche)) {
-      anhang += `&surface=${encodeURIComponent(flaeche)}`
-    }
+    if (["drawer", "search", "scene_install", "codex"].includes(flaeche)) felder.surface = flaeche
     const vorgang = String(opts?.interaction || "").replace(/[^a-f0-9]/gi, "").slice(0, 32)
-    if (vorgang) anhang += `&interaction=${encodeURIComponent(vorgang)}`
-    return anhang
+    if (vorgang) felder.interaction = vorgang
+    return felder
   }
 
   /**
@@ -5041,10 +5043,11 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_token=1&foundryId=${encodeURIComponent(userId)}&tokenKey=${encodeURIComponent(tokenKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(),
+      { get_token: 1, tokenKey, ..._beneosBildformFelder(), ...this._erwerbsFelder(opts) }, userId, { init: { credentials: 'same-origin' } })
     // Ueber die globale FIFO (enqueueInstall), damit parallele Einzel-Klicks
     // auf verschiedene Assets sich nicht im Compendium-Lock ueberholen.
-    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
+    return this.enqueueInstall(() => fetch(url, init)
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -5109,9 +5112,10 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_item=1&foundryId=${encodeURIComponent(userId)}&itemKey=${encodeURIComponent(itemKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(),
+      { get_item: 1, itemKey, ..._beneosBildformFelder(), ...this._erwerbsFelder(opts) }, userId, { init: { credentials: 'same-origin' } })
     // Globale FIFO, siehe importTokenFromCloud.
-    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
+    return this.enqueueInstall(() => fetch(url, init)
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -5153,9 +5157,10 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?get_spell=1&foundryId=${encodeURIComponent(userId)}&spellKey=${encodeURIComponent(spellKey)}` + _beneosBildformAnhang() + this._erwerbsAnhang(opts)
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(),
+      { get_spell: 1, spellKey, ..._beneosBildformFelder(), ...this._erwerbsFelder(opts) }, userId, { init: { credentials: 'same-origin' } })
     // Globale FIFO, siehe importTokenFromCloud.
-    return this.enqueueInstall(() => fetch(url, { credentials: 'same-origin' })
+    return this.enqueueInstall(() => fetch(url, init)
       .then(response => response.json())
       .then(async function (data) {
         if (data.result == 'OK') {
@@ -5194,10 +5199,11 @@ export class BeneosCloud {
     this.inflightImports.add(lockKey)
 
     let userId = game.settings.get(BeneosUtility.moduleID(), "beneos-cloud-foundry-id")
-    let url = `${BeneosUtility.cloudBase()}/foundry-manager.php?download_uploaded_file=1&foundryId=${encodeURIComponent(userId)}&filename=${encodeURIComponent(filename)}`
+    const { url, init } = foundryManagerAnfrage(BeneosUtility.cloudBase(),
+      { download_uploaded_file: 1, filename }, userId, { init: { credentials: 'same-origin' } })
 
     try {
-      let response = await fetch(url, { credentials: 'same-origin' })
+      let response = await fetch(url, init)
       let data = await response.json()
 
       if (data.result == 'OK') {

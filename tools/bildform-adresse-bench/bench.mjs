@@ -167,17 +167,25 @@ pruefe("A2 die Vorgabe ist AN, seit dem Betreiberentscheid",
       : "AUS. Wenn die Ruecknahme gewollt ist, gehoert dieser Satz mitgeaendert "
         + "und der Grund in die Zeile daneben")
 
-const anhang = schneide("_beneosBildformAnhang")
+// Seit MO-066 (foundryId per POST-Rumpf, Helfer foundryManagerAnfrage) ist der
+// Anhang ein Adressfeld `{ bildform: "adresse" }` statt eines Textes
+// `&bildform=adresse`. Die Saetze A3, A4, B1 und B2 pruefen dieselbe Regel in
+// der Feldform: ein Schalter, eine Stelle, drei Rufer.
+const anhang = schneide("_beneosBildformFelder")
 pruefe("A3 der Anhang steht an EINER Stelle",
-  anhang !== null && /BILDFORM_ADRESSE_AN \? "&bildform=adresse"/.test(anhang),
+  anhang !== null && /BILDFORM_ADRESSE_AN \? \{ bildform: "adresse" \} : \{\}/.test(anhang),
   anhang === null ? "NICHT GESCHNITTEN"
-    : "_beneosBildformAnhang() liest den Schalter und gibt den Parameter")
+    : "_beneosBildformFelder() liest den Schalter und gibt das Feld")
 
 // Die Zahl der Stellen, die den Parameter wortwoertlich nennen. Genau eine:
 // der Anhang selbst. Stuende er an den drei Rufstellen, waere ein Umschalten
 // an zwei Stellen moeglich, und genau so ist die harte Variantennummer Eins
-// auf der Serverseite entstanden.
-const wortwoertlich = (code.match(/&bildform=adresse/g) || []).length
+// auf der Serverseite entstanden. Gezaehlt werden beide Formen, damit eine
+// zurueckgekehrte Textform nicht unsichtbar neben der Feldform steht, und die
+// Feldform in jeder Schreibweise (Schluessel mit oder ohne Anfuehrungszeichen,
+// beide Arten von Anfuehrungszeichen, Leerraum um den Doppelpunkt).
+const wortwoertlich = (code.match(
+  /&bildform=adresse|["'`]?\bbildform["'`]?\s*:\s*["'`]adresse["'`]/g) || []).length
 pruefe("A4 der Parameter steht genau einmal im Quelltext",
   wortwoertlich === 1,
   `${wortwoertlich} Vorkommen. Mehr als eines heisst zwei Stellen fuer eine `
@@ -195,10 +203,13 @@ const RUFE = [
 
 const ohneAnhang = []
 for (const [ruf, schluessel] of RUFE) {
+  // Nur das Adressobjekt bis zu seiner schliessenden Klammer: ein Spread, der
+  // auf derselben Zeile in `rumpf` steht, zaehlt nicht, denn der Server liest
+  // bildform nur aus der Adresse.
   const m = new RegExp(
-    `\\?${ruf}=1[^\\n]*${schluessel}[^\\n]*`).exec(code)
+    `\\{ ${ruf}: 1, ${schluessel}[,} ][^{}\\n]*`).exec(code)
   if (m === null) { ohneAnhang.push(`${ruf} (Zeile nicht gefunden)`); continue }
-  if (!m[0].includes("_beneosBildformAnhang()")) ohneAnhang.push(ruf)
+  if (!m[0].includes("..._beneosBildformFelder()")) ohneAnhang.push(ruf)
 }
 
 pruefe("B1 alle drei Installationsanfragen tragen den Anhang",
@@ -210,7 +221,7 @@ pruefe("B1 alle drei Installationsanfragen tragen den Anhang",
 // GEGENPROBE: findet die Suche die drei Zeilen ueberhaupt? Null Treffer sehen
 // von aussen aus wie drei richtige.
 const gefundeneRufe = RUFE.filter(([r, k]) =>
-  new RegExp(`\\?${r}=1[^\\n]*${k}`).test(code)).length
+  new RegExp(`\\{ ${r}: 1, ${k}[,} ]`).test(code)).length
 pruefe("B2 die Suche findet alle drei Anfragezeilen",
   gefundeneRufe === 3,
   `${gefundeneRufe} von 3 Zeilen gefunden`)
