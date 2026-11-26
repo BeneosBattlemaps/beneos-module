@@ -4,7 +4,8 @@ import { BeneosInfoBox } from "./beneos_info_box.js"
 // cloud-v2/beneos-install-state, and neither reaches back here.
 import { BeneosAnalytics } from "./beneos_analytics.js"
 import { anmeldenMitKennung, mitFaehig } from "./cloud-login-kennung.mjs"
-import { anfrageAdresse, anfrageStufe, ausgangNachPruefung, htmlSicher, pruefAdresse, pruefenMitRueckfrage } from "./cloud-login-code.mjs"
+import { anfrageAbruf, anfrageStufe, ausgangNachPruefung, htmlSicher, pruefAbruf, pruefenMitRueckfrage } from "./cloud-login-code.mjs"
+import { anmeldeAnfrage } from "./cloud-v2/anmelde-anfrage.mjs"
 import { normalizeEmbeddedItems } from "./cloud-v2/beneos-ability-icons.mjs"
 import { packNeedsV14Migration, migrateActorForV14 } from "./cloud-v2/beneos-v14-scene-migration.mjs"
 import {
@@ -1221,8 +1222,8 @@ export class BeneosCloudLogin extends FormApplication {
     // tick-T-050: an unknown address answers new_account and keeps the code; after
     // "create" the same code goes again with confirmCreate=1.
     const sende = async (kennung, mitBestaetigung) => {
-      const verURL = pruefAdresse(BeneosUtility.cloudBase(), email, code, kennung, mitBestaetigung)
-      const resp = await fetch(verURL, { credentials: 'same-origin' })
+      const verify = pruefAbruf(BeneosUtility.cloudBase(), email, code, kennung, mitBestaetigung)
+      const resp = await fetch(verify.url, verify.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         ui.notifications.error(game.i18n.format("BENEOS.Cloud.Notification.LoginHttpError", { status: resp.status }))
@@ -1262,9 +1263,10 @@ export class BeneosCloudLogin extends FormApplication {
     // otpv marks which responses this client understands (cloud-login-code.mjs).
     // The server keeps legacy behavior for clients that omit it, so the hardened
     // endpoint is safe to deploy before this module ships.
-    const reqURL = anfrageAdresse(BeneosUtility.cloudBase(), email, userId, confirmCreate)
+    // stre-T-494: every field goes in the POST body, none in the address (cloud-login-code.mjs).
+    const anfrage = anfrageAbruf(BeneosUtility.cloudBase(), email, userId, confirmCreate)
     try {
-      const resp = await fetch(reqURL, { credentials: 'same-origin' })
+      const resp = await fetch(anfrage.url, anfrage.init)
       game.beneos?.cloud?.markServerStatus?.(resp, null)
       if (!resp.ok) {
         if (resp.status >= 500) ui.notifications.error(game.i18n.localize("BENEOS.Cloud.Notification.LoginServerOffline"))
@@ -1291,8 +1293,8 @@ export class BeneosCloudLogin extends FormApplication {
   scheduleDeliveryCheck(email) {
     setTimeout(async () => {
       try {
-        const url = `${BeneosUtility.cloudBase()}/foundry-otp-status.php?email=${encodeURIComponent(email)}`
-        const resp = await fetch(url, { credentials: 'same-origin' })
+        const status = anmeldeAnfrage(BeneosUtility.cloudBase(), "foundry-otp-status.php", { email })
+        const resp = await fetch(status.url, status.init)
         if (!resp.ok) return
         const data = await resp.json()
         if (data.result === 'OK' && data.deliverable === false) {

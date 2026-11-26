@@ -13,8 +13,8 @@ import { pruefstand } from "../tools/lib/foundry-attrappe.mjs"
 
 let modul = null
 try { modul = await import("./cloud-login-code.mjs") } catch (_e) { modul = null }
-const anfrageAdresse = modul?.anfrageAdresse ?? (() => "")
-const pruefAdresse = modul?.pruefAdresse ?? (() => "")
+const anfrageAbruf = modul?.anfrageAbruf ?? (() => ({}))
+const pruefAbruf = modul?.pruefAbruf ?? (() => ({}))
 const anfrageStufe = modul?.anfrageStufe ?? (() => ({}))
 const pruefen = modul?.pruefenMitRueckfrage ?? (async () => ({ daten: {}, kennung: "", wahl: null }))
 const ausgang = modul?.ausgangNachPruefung ?? (() => "")
@@ -44,18 +44,27 @@ const wuerfle = () => NEU
 t.abschnitt("Vorbedingung")
 t.gleich("das Modul laesst sich laden", modul !== null, true)
 
-t.abschnitt("Adressen")
+t.abschnitt("Abrufe")
+// stre-T-494 (nach MO-054): alle Felder im POST-Rumpf, keines in der Adresse.
+// Der Server liest entweder nur den Rumpf oder nur die Adresse; ein Feld in der
+// Adresse ginge verloren (lib/anfrage-quelle.php).
 {
-  const a = anfrageAdresse(BASIS, "a+b@x.example", "k1", false)
-  t.gleich("Anfrage meldet otpv=3", a.includes("&otpv=3"), true)
-  t.gleich("Anfrage ohne Bestaetigung traegt kein confirmCreate", a.includes("confirmCreate"), false)
-  t.gleich("Anfrage kodiert die Adresse", a.includes("email=a%2Bb%40x.example"), true)
-  t.gleich("Anfrage mit Bestaetigung traegt confirmCreate=1", anfrageAdresse(BASIS, "a@x", "k1", true).endsWith("&confirmCreate=1"), true)
-  const p = pruefAdresse(BASIS, "a@x", "123456", "k1", false)
-  t.gleich("Pruefung meldet otpv=3", p.includes("&otpv=3"), true)
-  t.gleich("Pruefung traegt faehig=1", p.endsWith("&faehig=1"), true)
-  t.gleich("Pruefung ohne Bestaetigung traegt kein confirmCreate", p.includes("confirmCreate"), false)
-  t.gleich("Pruefung mit Bestaetigung traegt confirmCreate=1", pruefAdresse(BASIS, "a@x", "123456", "k1", true).includes("&confirmCreate=1"), true)
+  const felder = (x) => (x?.init?.body instanceof URLSearchParams ? Object.fromEntries(x.init.body) : {})
+  const a = anfrageAbruf(BASIS, "a+b@x.example", "k1", false)
+  t.gleich("Anfrage geht per POST, kein Feld in der Adresse", `${a.init?.method} ${a.url}`, `POST ${BASIS}/foundry-otp-request.php`)
+  t.gleich("Anfrage traegt Adresse, Kennung und otpv=3 im Rumpf", JSON.stringify(felder(a)), JSON.stringify({ email: "a+b@x.example", foundryId: "k1", otpv: "3" }))
+  t.gleich("Anfrage ohne Bestaetigung traegt kein confirmCreate", "confirmCreate" in felder(a), false)
+  const ab = anfrageAbruf(BASIS, "a@x", "k1", true)
+  t.gleich("Anfrage mit Bestaetigung traegt confirmCreate=1", felder(ab).confirmCreate, "1")
+  t.gleich("Anfrage mit Bestaetigung: kein Feld in der Adresse", ab.url, `${BASIS}/foundry-otp-request.php`)
+  const p = pruefAbruf(BASIS, "a@x", "123456", "k1", false)
+  t.gleich("Pruefung geht per POST, kein Feld in der Adresse", `${p.init?.method} ${p.url}`, `POST ${BASIS}/foundry-otp-verify.php`)
+  t.gleich("Pruefung traegt Adresse, Code, Kennung und otpv=3 im Rumpf", JSON.stringify([felder(p).email, felder(p).code, felder(p).foundryId, felder(p).otpv]), JSON.stringify(["a@x", "123456", "k1", "3"]))
+  t.gleich("Pruefung traegt faehig=1", felder(p).faehig, "1")
+  t.gleich("Pruefung ohne Bestaetigung traegt kein confirmCreate", "confirmCreate" in felder(p), false)
+  const pb = pruefAbruf(BASIS, "a@x", "123456", "k1", true)
+  t.gleich("Pruefung mit Bestaetigung traegt confirmCreate=1", felder(pb).confirmCreate, "1")
+  t.gleich("Pruefung mit Bestaetigung: kein Feld in der Adresse", pb.url, `${BASIS}/foundry-otp-verify.php`)
 }
 
 t.abschnitt("Antworten beim Anfordern")
@@ -147,7 +156,8 @@ t.abschnitt("Einbindung in beneos_cloud.js")
   const quelle = readFileSync(new URL("./beneos_cloud.js", import.meta.url), "utf8")
   const zahl = (s) => quelle.split(s).length - 1
   t.gleich("[Struktur] keine Anfrage mehr mit otpv=2", zahl("otpv=2"), 0)
-  t.gleich("[Struktur] die Anfrage baut ihre Adresse ueber anfrageAdresse", zahl("const reqURL = anfrageAdresse("), 1)
+  t.gleich("[Struktur] die Anfrage baut ihren Abruf ueber anfrageAbruf", zahl("const anfrage = anfrageAbruf(BeneosUtility.cloudBase(), email, userId, confirmCreate)\n    try {\n      const resp = await fetch(anfrage.url, anfrage.init)"), 1)
+  t.gleich("[Struktur] die Pruefung baut ihren Abruf ueber pruefAbruf", zahl("const verify = pruefAbruf(BeneosUtility.cloudBase(), email, code, kennung, mitBestaetigung)\n      const resp = await fetch(verify.url, verify.init)"), 1)
   t.gleich("[Struktur] die Anfrage wertet ueber anfrageStufe aus", zahl("anfrageStufe(await resp.json())"), 1)
   t.gleich("[Struktur] die Pruefung fragt bei new_account ueber confirmNewAccountDialog", zahl("() => this.confirmNewAccountDialog(email), confirmed)"), 1)
   t.gleich("[Struktur] der Codedialog zeigt die Adresse von Anfang an", zahl("<p class=\"bc-login-form__email\">${safeEmail}</p>\n        <button type=\"button\" class=\"bc-login-form__resend\" data-bc-change-email>"), 1)

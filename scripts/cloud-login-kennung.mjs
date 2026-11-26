@@ -27,9 +27,14 @@ export const SPERRCODE = "foundry-id-revoked"
 /** So sieht eine Kennung aus, die das Modul von der Cloud uebernimmt. */
 const SAUBER = /^[A-Za-z0-9]{1,64}$/
 
-/** Haengt `faehig=1` an eine Anmeldeadresse, die schon Parameter traegt. */
-export function mitFaehig(url) {
-  return `${url}&faehig=1`
+/**
+ * Setzt `faehig: "1"` in die Felder einer Anmeldung. Seit stre-T-494 reisen
+ * die Felder als POST-Rumpf (cloud-v2/anmelde-anfrage.mjs), nicht mehr in der
+ * Adresse; der Server liest `faehig` aus dem Rumpf (lib/foundry-kennung.php,
+ * foundry_kennung_faehig). Eine neue Kopie, das uebergebene Objekt bleibt.
+ */
+export function mitFaehig(felder) {
+  return { ...felder, faehig: "1" }
 }
 
 /**
