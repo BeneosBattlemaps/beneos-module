@@ -5674,7 +5674,7 @@ export class BeneosCloudWindowV2 extends HandlebarsApplicationMixin(ApplicationV
       // The old key BENEOS.Cloud.Install.NoPackDir is deliberately left behind
       // rather than reworded: it carries that wrong sentence in all thirteen
       // languages, and rewording only English would keep twelve wrong ones in
-      // service. The new keys are English-only for now (OP-CLD-130).
+      // service. The new keys carry all languages since MO-055 (OP-CLD-130).
       const grund = this._releaseNeedsLogin ? "needs_login"
                   : this._releaseLoadError  ? "catalog_load_failed"
                   : this._releaseIndex      ? "release_not_in_catalog"
