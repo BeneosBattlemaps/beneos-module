@@ -2497,7 +2497,7 @@
   "BENEOS.CanvasGuard.Session": "その後 Foundry は、シーンを切り替えてもセッションの残りの間ずっとこの失敗を繰り返します。そのため、1 枚だけでなくすべてのマップが壊れて見えます。<b>ページを再読み込み (F5) すると、キャンバスは再び正常に動作します。</b>",
   "BENEOS.CanvasGuard.Find": "原因を探すには: Beneos とその依存モジュール以外のすべてのモジュールを無効にし、再読み込みしてマップを開いてください。描画された場合は、残りのモジュールの半分を再び有効にして繰り返してください。",
   "BENEOS.CanvasGuard.Close": "閉じる",
-  "BENEOS.Cloud.Install.ReleaseNotInCatalog": "このマップは検索カタログに掲載されていますが、インストールできるリリースがありません。これはお客様ではなく私たちの側の不具合です。Discord でご報告ください。アップデートなしで修正できます。",
+  "BENEOS.Cloud.Install.ReleaseNotInCatalog": "このマップは検索カタログに掲載されていますが、インストールできるリリースがありません。これはあなたの側ではなく、私たちの側の不具合です。Discord でご報告ください。アップデートなしで修正できます。",
   "BENEOS.Cloud.Install.CatalogNotLoadedYet": "リリースの一覧はまだ読み込み中です。少し待ってから、もう一度「インストール」をクリックしてください。",
   "BENEOS.Cloud.Install.CatalogNeedsLogin": "先に Beneos Cloud にログインしてください。インストール可能なリリースの一覧は、ログインしたアカウントでのみ利用できます。",
   "BENEOS.Cloud.Install.CatalogLoadFailed": "インストール可能なリリースの一覧を読み込めませんでした。マップ一覧の「再試行」を使ってから、もう一度インストールしてください。",
